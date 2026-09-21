@@ -1,0 +1,29 @@
+# Asset license — Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Scope / 适用范围 / Область действия
+
+- **English:** Original art, audio, models and other non-code assets contributed to this repository
+  are licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0), unless
+  an individual asset (or a `LICENSE` file next to it) states otherwise. Source code is covered by
+  the MIT License in [LICENSE](LICENSE) instead.
+- **简体中文：** 贡献到本仓库的原创美术、音频、模型及其他非代码资源，除单个资源（或其同级目录下的
+  `LICENSE` 文件）另有说明外，均采用「知识共享 署名 4.0 国际」(CC BY 4.0) 许可。源代码则适用
+  [LICENSE](LICENSE) 中的 MIT 许可证。
+- **Русский:** Оригинальные изображения, звук, модели и другие некодовые материалы, добавленные в
+  этот репозиторий, распространяются по лицензии Creative Commons Attribution 4.0 International
+  (CC BY 4.0), если для отдельного файла (или в файле `LICENSE` рядом с ним) не указано иное. На
+  исходный код распространяется лицензия MIT — см. [LICENSE](LICENSE).
+
+Attribution / 署名方式 / Указание авторства
+
+    "<asset name>" by <author>, from the open-gwt project
+    (https://github.com/Mr47hsy/open-gwt), licensed under CC BY 4.0.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+
+---
+
+No asset in this repository originates from CD PROJEKT RED. See [CONTRIBUTING.md](CONTRIBUTING.md).
+本仓库中的任何资源均非来自 CD PROJEKT RED。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Ни один материал в этом репозитории не происходит от CD PROJEKT RED. См. [CONTRIBUTING.md](CONTRIBUTING.md).
