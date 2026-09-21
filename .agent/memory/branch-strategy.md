@@ -1,23 +1,25 @@
 ---
 name: branch-strategy
-description: Three branches exist (main, release, develop); the main-vs-release overlap is an open question the owner has not decided.
+description: git-flow — release is the default publish branch, develop is the integration branch; main was deleted.
 metadata:
   type: project
 ---
 
-Created 2026-09-22, all pointing at the initial commit `b60c049`: `main` (current default),
-`release` (intended publish branch), `develop` (intended integration branch). Day-to-day work
-branches off `develop`.
+Decided 2026-09-22: classic git-flow with two branches.
 
-**Open question — do not decide this unilaterally:** `main` and `release` currently mean the same
-thing. The three options put to the project owner were (1) drop `main` and make `release` the default
-branch, classic git-flow; (2) keep `main` as default and use `release` as a pre-release staging
-branch cut from `develop`; (3) leave all three and decide later. No answer yet. Also unanswered:
-whether to push the branches to `origin`.
+- `release` — publish branch, and the default branch on GitHub.
+- `develop` — integration branch; all day-to-day work branches off it and merges back into it.
+- `main` — **deleted.** It duplicated `release` and no longer exists locally or on the remote.
 
-**Why:** the owner asked for `release` and `develop` specifically, in a repository that already had
-`main`; resolving the redundancy by deleting or renaming a branch is their call, not an agent's
-cleanup task.
+Both branches are pushed to `origin` (https://github.com/Mr47hsy/open-gwt.git, public). GitHub picked
+`release` as the default branch on its own, because it was the first branch pushed to the empty
+repository — no repository setting was changed by hand.
 
-**How to apply:** when branch layout comes up, state that the question is open and ask, rather than
-assuming a workflow. Update this file once the decision is made. See [[project-status]].
+`release` may lag behind `develop` between releases; that is the intended shape, not drift to fix.
+
+**Why:** the owner asked for a dedicated `release` branch in a repository that already had `main`,
+and chose to drop `main` rather than keep two branches meaning the same thing.
+
+**How to apply:** branch off `develop`, open pull requests against `develop`, and merge into
+`release` only when publishing. Do not recreate `main` or push to `release` directly. See
+[[project-status]].

@@ -2,16 +2,16 @@
 
 ## Branches
 
-- `main` — currently the default branch.
-- `release` — publish branch.
+Classic git-flow, two branches:
+
+- `release` — publish branch, and the default branch on GitHub.
 - `develop` — integration branch for day-to-day work.
 
-> **Open question (2026-09-22):** `main` and `release` overlap and the project owner has not yet
-> chosen between dropping `main` (classic git-flow, `release` becomes default) and keeping `main` as
-> the default with `release` as a pre-release staging branch. Do not "tidy this up" on your own —
-> ask. See `memory/branch-strategy.md`.
+There is no `main`; it was deleted as a duplicate of `release`. Do not recreate it.
 
-Branch off `develop` for features and fixes; open the pull request against `develop`.
+Branch off `develop` for features and fixes, and open the pull request against `develop`. Only a
+release merges `develop` into `release`; nobody pushes to `release` directly. `release` sitting
+behind `develop` between releases is expected.
 
 ## Commits
 
