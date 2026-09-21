@@ -39,6 +39,17 @@ re-tag. This is detection, not prevention, and there is no configuration that ma
 The repository is public, so rulesets are available at no cost. Three rulesets, one per file in
 [`rulesets/`](rulesets/). They are checked in so the configuration is reviewable and re-appliable.
 
+### Import the JSON (no tooling required)
+
+*Settings → Rules → Rulesets → New ruleset ▾ → **Import a ruleset***, then pick each file in
+[`rulesets/`](rulesets/) in turn. The files are written in GitHub's ruleset schema, so they import
+as-is.
+
+Import also sidesteps a limitation of the web form: its "require status checks" picker only lists
+checks that have already reported at least once, so `source-branch-must-be-develop` would not be
+selectable until a pull request into `release` had run it. An imported ruleset carries the check
+name directly.
+
 ### With the GitHub CLI
 
 ```bash
@@ -50,9 +61,10 @@ gh api --method POST /repos/Mr47hsy/open-gwt/rulesets --input .github/rulesets/r
 To update one later, find its id with `gh api /repos/Mr47hsy/open-gwt/rulesets` and use
 `--method PUT /repos/Mr47hsy/open-gwt/rulesets/<id>`.
 
-### Through the web interface
+### By hand
 
-*Settings → Rules → Rulesets → New ruleset.*
+Only needed when you are changing the policy rather than applying it. *Settings → Rules → Rulesets →
+New ruleset.*
 
 **`develop`** — target branch `develop`:
 - Restrict deletions
@@ -69,13 +81,14 @@ To update one later, find its id with `gh api /repos/Mr47hsy/open-gwt/rulesets` 
 **`release tags`** — target tag pattern `release-*`:
 - Restrict creations, updates and deletions
 
-## Two things to check after applying
+## After applying, check two things
 
-**The required status check has to exist before you can require it.** GitHub only offers a check in
-the "require status checks" picker after it has reported at least once. Open one pull request into
-`release` first, let `branch-policy.yml` run, then add `source-branch-must-be-develop` as required.
+**That the required status check took.** Open the `release` ruleset and confirm
+`source-branch-must-be-develop` is listed under the status-check rule. If the import dropped it,
+open a pull request from `develop` into `release`, let `branch-policy.yml` report once, then add it
+by hand.
 
-**Bypass actors: verify them in the UI.** Each ruleset JSON grants bypass to repository admin
+**That the bypass actors are right.** Each ruleset JSON grants bypass to repository admin
 (`"actor_type": "RepositoryRole", "actor_id": 5`). Open the ruleset after applying it and confirm
 the bypass list reads *Repository admin* — role ids are an implementation detail and are worth a
 look rather than a trust.

@@ -18,7 +18,9 @@ that a `release-*` tag's commit is contained in `release` — after the push, wh
 rather than prevention.
 
 **How to apply:** do not describe these as native branch protection. The required status check only
-blocks once it has been added to the `release` ruleset, which GitHub allows only after the check has
+blocks once it is listed on the `release` ruleset. Apply the rulesets by importing
+`.github/rulesets/*.json` (*Settings → Rules → Rulesets → New ruleset → Import a ruleset*), which
+carries that check name through — the web form's picker would only offer a check that had already
 reported once. The rulesets grant bypass to repository admin on purpose: GitHub forbids self-approval,
 so without it the sole maintainer could not merge their own work. Adding a hotfix path means editing
 the policy document and the workflow together, never bypassing quietly. See [[branch-strategy]].
