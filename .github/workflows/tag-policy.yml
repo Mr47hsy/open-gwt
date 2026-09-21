@@ -1,0 +1,43 @@
+name: Tag policy
+
+# Requirement: release-*.*.* tags exist only on release.
+#
+# A ruleset can restrict *who* creates a release-* tag, but it cannot check
+# *which commit* the tag points at. This job does that check. It runs after the
+# tag is pushed, so it reports a violation rather than preventing it — see
+# .github/BRANCH_POLICY.md.
+
+on:
+  push:
+    tags:
+      - 'release-*'
+
+permissions:
+  contents: read
+
+jobs:
+  tag-on-release:
+    name: release-tag-must-be-on-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag name
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^release-[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Release tags must look like release-1.2.3; got '$GITHUB_REF_NAME'."
+            exit 1
+          fi
+
+      - name: Check the tagged commit is on release
+        run: |
+          git fetch --no-tags origin release:refs/remotes/origin/release
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/release; then
+            echo "::error::Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on release. Delete the tag, merge the commit into release, and tag it there."
+            exit 1
+          fi
+
+          echo "$GITHUB_REF_NAME points at a commit contained in release."

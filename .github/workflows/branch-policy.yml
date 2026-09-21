@@ -1,0 +1,38 @@
+name: Branch policy
+
+# Requirement: only develop may be merged into release.
+#
+# GitHub branch protection cannot express "this branch only accepts pull
+# requests from that branch", so it is enforced here and wired up as a
+# required status check on the release ruleset.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+    branches: [release]
+
+permissions:
+  contents: read
+
+jobs:
+  source-branch:
+    name: source-branch-must-be-develop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the pull request comes from develop
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::release only accepts pull requests from develop in $BASE_REPO. This one comes from the fork $HEAD_REPO. Open your pull request against develop instead."
+            exit 1
+          fi
+
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "::error::release only accepts pull requests from develop. This one comes from '$HEAD_REF'. Merge your work into develop first, then open a release pull request from develop."
+            exit 1
+          fi
+
+          echo "Source branch is develop."

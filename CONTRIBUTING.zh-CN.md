@@ -49,10 +49,21 @@
 
 ## 4. 提交 Pull Request
 
-1. Fork 本仓库，并从 `main` 分支切出新分支。
+1. Fork 本仓库，并从 `develop` 分支切出新分支。PR 请提交到 `develop`，不要提交到 `release`。
 2. 每个 PR 只做一件事；规则改动和客户端重构应该分开提。
 3. 说明**改了什么**以及**为什么改**。如果是规则改动，请说明你依据的公开资料或观察到的游戏表现。
 4. 请在申请 review 之前确认构建和测试都能通过。
+5. 所有 PR 都需要经过 owner 的 review 批准才能合并。两个分支都不接受直接 push。
+
+### 分支说明
+
+| 分支 | 用途 |
+| --- | --- |
+| `develop` | 集成分支。所有改动先通过 PR 合到这里。 |
+| `release` | 发布分支。只有 `develop` 会在发布时合并进来。 |
+
+发行 tag 形如 `release-1.2.3`，由 owner 在 `release` 分支上创建。完整的分支规范及其强制方式见
+[`.github/BRANCH_POLICY.md`](.github/BRANCH_POLICY.md)。
 
 ## 5. 报告 Bug
 

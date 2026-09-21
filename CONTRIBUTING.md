@@ -58,12 +58,26 @@ Good first steps: open an issue describing what you want to work on, so nobody d
 
 ## 4. Pull requests
 
-1. Fork the repository and create a branch off `main`.
+1. Fork the repository and create a branch off `develop`. Open your pull request against
+   `develop` — never against `release`.
 2. Keep each pull request focused on one thing; a rules change and a client refactor belong in
    separate pull requests.
 3. Describe *what* changed and *why*. For a rules change, say which public source or observed
    behaviour you based it on.
 4. Make sure the build and tests pass before asking for review.
+5. Every pull request needs the owner's approving review before it can be merged. Neither branch
+   accepts direct pushes.
+
+### Branches
+
+| Branch | Purpose |
+| --- | --- |
+| `develop` | Integration branch. All work lands here first, by pull request. |
+| `release` | Publish branch. Only `develop` is merged into it, at release time. |
+
+Release tags look like `release-1.2.3` and are created by the owner on `release`. The full policy,
+including how it is enforced, is in
+[`.github/BRANCH_POLICY.md`](.github/BRANCH_POLICY.md).
 
 ## 5. Reporting bugs
 

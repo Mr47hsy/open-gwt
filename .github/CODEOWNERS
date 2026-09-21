@@ -1,0 +1,5 @@
+# Every change needs the owner's review.
+# This is what makes "require review from Code Owners" on the develop and
+# release rulesets resolve to @Mr47hsy. See .github/BRANCH_POLICY.md.
+
+* @Mr47hsy

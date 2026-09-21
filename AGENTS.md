@@ -28,9 +28,12 @@ Check the filesystem before describing any module or API as existing.
 
 ## Working rules
 
-- Branch off `develop` and open pull requests against it; `release` is the publish branch and the
-  default branch, merged into only at release time. There is no `main`. One concern per pull
-  request; conventional commits in English (`feat(core): …`).
+- Branch off `develop` and open pull requests against it — `develop` takes no direct pushes, and
+  every pull request needs the owner's review. `release` is the publish branch and the default
+  branch; it accepts pull requests from `develop` only, and release tags (`release-1.2.3`) are
+  created there by the owner. There is no `main`. One concern per pull request; conventional commits
+  in English (`feat(core): …`). Policy and enforcement:
+  [`.github/BRANCH_POLICY.md`](.github/BRANCH_POLICY.md).
 - Rules changes ship with a test that fails before and passes after, and name their public source in
   the commit body.
 - `README` and `CONTRIBUTING` exist in English, 简体中文 and Русский. Edit all three together, or say

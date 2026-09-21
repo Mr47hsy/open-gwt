@@ -13,6 +13,20 @@ Branch off `develop` for features and fixes, and open the pull request against `
 release merges `develop` into `release`; nobody pushes to `release` directly. `release` sitting
 behind `develop` between releases is expected.
 
+The policy is enforced, not just documented — see [`.github/BRANCH_POLICY.md`](../../.github/BRANCH_POLICY.md):
+
+- `develop` takes no direct pushes. Every change arrives by pull request, approved by the owner
+  (`.github/CODEOWNERS`).
+- `release` accepts pull requests **from `develop` only**. GitHub cannot express that, so
+  `.github/workflows/branch-policy.yml` checks the source branch and is wired up as a required
+  status check.
+- Release tags are `release-1.2.3` — three numeric components, no `v` prefix — created by the owner
+  on `release`. A tag ruleset restricts who may create them; `.github/workflows/tag-policy.yml`
+  verifies the tagged commit is actually contained in `release`, after the fact.
+
+Do not work around any of this. If a workflow needs a new path (a hotfix branch, say), change the
+policy in `.github/BRANCH_POLICY.md` and the workflow together, in a pull request.
+
 ## Commits
 
 Conventional-commit prefixes, imperative subject, in English:
