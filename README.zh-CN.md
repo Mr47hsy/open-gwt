@@ -32,15 +32,19 @@ Windows · macOS · iOS · Android，基于 Unity 6.6 (6000.6.2f1)。
 ## 仓库结构
 
 ```
-client/   Unity 工程——用 Unity Hub 打开这个目录
-server/   权威游戏服务端
-docs/     规则说明、协议与设计文档
+client/   Unity 工程——瘦客户端；用 Unity Hub 打开这个目录
+server/   权威游戏服务端，Python——规则内核就在它里面
+data/     卡牌、卡组和翻译，以 YAML 编写
+docs/     决策记录（adr/）、协议（protocol/）、规则说明
 ```
 
 ## 开始开发
 
-- **开发服务端：** 代码位于 `server/` 目录。
-- **开发客户端：** 用 Unity Hub 打开 `client/` 目录，Unity 版本 6.6 (6000.6.2f1)。
+- **先读：** `docs/adr/` 记录架构决策，`docs/protocol/` 是卡牌协议和对局协议。
+- **开发服务端：** 代码位于 `server/` 目录，Python 3.12 或更新。规则内核、机器人和模拟器都是它
+  内部的包。
+- **开发客户端：** 用 Unity Hub 打开 `client/` 目录，Unity 版本 6.6 (6000.6.2f1)。客户端不运行
+  任何规则，即使和机器人对战也需要一个运行中的服务端。
 
 ## 参与贡献
 
