@@ -1,0 +1,29 @@
+# Worked example for docs/protocol/cards.md section 8 — data/i18n/en/cards.yaml.
+# Every value is a placeholder; original names are TODO for a human writer.
+faction.placeholder-a.name: Placeholder faction A
+card.u-0001.name: Placeholder unit one
+card.u-0001.text: A plain unit.
+card.u-0002.name: Placeholder unit two
+card.u-0002.text: Immune. Play on the ranged or the siege row.
+card.u-0003.name: Placeholder unit three
+card.u-0003.text: Deploys on the opponent's side. Draw two cards.
+card.u-0004.name: Placeholder unit four
+card.u-0004.text: Summons every other copy of itself from your deck.
+card.u-0005.name: Placeholder unit five
+card.u-0005.text: Power is multiplied by the number of copies on this row.
+card.u-0006.name: Placeholder unit six
+card.u-0006.text: Every other unit on this row gains 1.
+card.u-0007.name: Placeholder unit seven
+card.u-0007.text: Return a non-immune unit from your discard pile to the board.
+card.s-0001.name: Placeholder special one
+card.s-0001.text: Every non-immune melee unit on both sides has power 1.
+card.s-0002.name: Placeholder special two
+card.s-0002.text: Clear all row effects.
+card.s-0003.name: Placeholder special three
+card.s-0003.text: Destroy the strongest opponent units on rows totalling 10 or more.
+card.s-0004.name: Placeholder special four
+card.s-0004.text: Swap places with one of your non-immune units, which returns to your hand.
+card.s-0005.name: Placeholder special five
+card.s-0005.text: Double the power of your ranged row.
+card.l-0001.name: Placeholder leader one
+card.l-0001.text: Once per match, clear all row effects.

@@ -18,13 +18,16 @@ Mechanics are not copyrightable; a specific expression of them is.
 
 ## Project shape
 
-Unofficial open-source reimplementation of the Gwent rules. Engine-agnostic **rules core** →
-**authoritative server** → **Unity client** that renders and decides nothing. A match is a seed plus
-an ordered action log, and replaying it must reproduce the match exactly — so no wall-clock time, no
-unseeded randomness and no unordered iteration inside the core.
+Unofficial open-source reimplementation of the Gwent rules. Engine-agnostic **rules core** (a
+zero-dependency Python package) → **authoritative server** (Python, FastAPI) → **Unity client**
+(C#) that renders and decides nothing — it runs no rules and needs a server even for a bot match.
+A match is a seed plus an ordered action log, and replaying it must reproduce the match exactly —
+so no wall-clock time, no unseeded randomness and no unordered iteration inside the core. Card
+content is YAML under `data/` with a closed vocabulary. Decisions: `docs/adr/`; wire and content
+contracts: `docs/protocol/`.
 
-**`client/` and `server/` do not exist yet** (2026-09-22; the repository is documentation-only).
-Check the filesystem before describing any module or API as existing.
+**`client/`, `server/` and `data/` do not exist yet** (2026-09-22; the repository is
+documentation-only). Check the filesystem before describing any module or API as existing.
 
 ## Working rules
 

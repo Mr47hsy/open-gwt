@@ -1,57 +1,93 @@
-# Intended architecture
+# Architecture
 
-> **Status: design intent.** No code exists yet (2026-09-22). This file records the shape the
-> project is meant to take, so that early commits do not paint it into a corner. When code lands and
+> **Status: decided, not yet built.** The decisions are recorded in `docs/adr/` (0001–0007,
+> 2026-09-22) and the wire contracts in `docs/protocol/`. No code exists yet. When code lands and
 > disagrees with this file, the code wins — update this file in the same pull request.
 
-## Three layers
+## Three layers, two languages
 
 ```
-rules core   pure library, no engine dependency, no I/O, no clock, no ambient randomness
+rules core   opengwt.core — pure Python package, standard library only, no I/O, no clock
     ↑
-server       authoritative: owns the match, hides hidden information, validates every action
+server       Python (FastAPI): owns matches, hosts bots, filters hidden information, serves content
     ↑
-client       Unity: renders state, collects input, sends intents. Decides nothing.
+client       Unity (C#): renders views and events, collects input, sends intents. Runs no rules.
 ```
 
-The direction of the arrows is the whole point: the client may *predict* an outcome for
-responsiveness, but the server's result overwrites the prediction, and the rules core is the only
-place that knows what the rules are.
+The client is **thin** (ADR 0001). It never computes a score, never checks legality and never sees
+hidden information. The server sends `legal_intents` with every view; the client enables controls
+from that list. Anything "optimistic" in the client is presentation only and must be able to roll
+back when the server's events arrive. There is no offline mode: a bot match is a match against a
+bot the server hosts in-process.
+
+Inside the server code base the layering is enforced by an import-linter contract:
+`core` ← `data` ← `bots` ← `sim` ← `server` (arrows point at what may be imported).
 
 ## The determinism contract
 
-A match is **a seed plus an ordered list of actions**. Replaying that log against the same core
-version must reproduce the match exactly — same board, same hands, same result.
+A match is **a seed plus an ordered list of accepted intents**. Replaying that record through the
+same core version must reproduce the match exactly — same board, same hands, same events.
 
 This is what makes tests, bug reports and bots practical, so the core must avoid everything that
-breaks it:
+breaks it (ADR 0002):
 
-- no wall-clock time (`DateTime.Now`, `Time.deltaTime`, timers) inside rules evaluation;
-- no unseeded randomness — all randomness comes from the seeded PRNG the match carries;
-- no iteration over unordered collections (hash sets, dictionaries) in a way that affects results;
-- no floating point where integers will do;
-- no dependency on machine locale, culture or platform;
-- no reference-identity or allocation-order dependence.
+- no wall-clock time, no timers, no environment or locale reads inside rules evaluation;
+- no `random` module — the core carries its own PCG32 over Python integers, seeded from the record;
+- no `set` iteration and no `dict` iteration where order affects the result; ordered lists and
+  explicit `sorted(..., key=...)`; nothing depends on `hash()` of a string;
+- integers only for power, scores and counters; no floats;
+- entity ids come from a counter in the state, never from `id()` or allocation order.
 
-A rules change that breaks replay of existing logs is a breaking change and must be called out in
-the pull request.
+A rules change that breaks replay of existing records is a breaking change and must be called out
+in the pull request.
 
 ## Hidden information
 
-Hands, decks and upcoming draws live on the server and are never sent to a client that should not
-see them. "The client filters it out before rendering" is not acceptable — a modified client would
-then see everything. Serialise per-recipient views on the server.
+Hands, decks and upcoming draws exist only in the core state held by the server. Views are produced
+by the core's `view(state, player)` with hidden information removed *before* serialisation; nothing
+else serialises state for a client. "The client filters it out before rendering" is not acceptable
+— a modified client would then see everything.
+
+## Content pipeline
+
+Cards, decks and translations are YAML under `data/`, defined by the card protocol
+(`docs/protocol/cards.md`, ADR 0003) with a closed vocabulary of triggers, actions and targets.
+`opengwt.data` validates them against the JSON Schemas and the cross-file rules and compiles one
+content pack. The server loads the pack at start-up and serves it; the client renders from it.
+No runtime component reads YAML. A new card is a change under `data/` only; a new vocabulary word
+is a core change with a schema version bump.
+
+## Server shape
+
+- Configuration in three layers: code defaults, optional YAML file, environment variables. No
+  configuration service (ADR 0004).
+- Backends selected by URL with a zero-dependency default: SQLite, in-memory cache, inline tasks,
+  in-memory match store. PostgreSQL, MySQL and Redis are packaging extras.
+- Live matches live in the hosting process: **single worker process** until a shared match store
+  exists.
+- Wire contract: small HTTP API plus one WebSocket per player per match (`docs/protocol/match.md`).
+
+## Client shape
+
+- UI Toolkit for all UI (ADR 0005): UXML and USS text files, `PointerManipulator` for drag and
+  drop, no third-party UI dependency in the MVP.
+- A presenter consumes the server's event stream sequentially and drives the UI; nothing in the
+  UI reads match state directly.
+- Localisation through the Unity Localization package, fed from the pack's translations (ADR 0006).
 
 ## Where things belong
 
 | Concern | Layer |
 | --- | --- |
-| What a card does | rules core |
-| Whether a play is legal | rules core, enforced again on the server |
+| What a card does | card protocol data, interpreted by the rules core |
+| Which words the card protocol has | rules core |
+| Whether a play is legal | rules core; the server relays `legal_intents` |
 | Round/pass/tempo logic | rules core |
-| Matchmaking, sessions, reconnect | server |
-| Hidden-information filtering | server |
+| Bots | `opengwt.bots`, run in-process by the server or by the simulator |
+| Accounts, decks, rooms, reconnect, replay storage | server |
+| Hidden-information filtering | rules core `view()`, invoked only by the server |
 | Animation, layout, input, audio | client |
-| Card art and text | client assets + data files |
+| Card art | client assets; card text comes from the pack |
 
-If you find yourself writing a rule inside a `MonoBehaviour`, stop: it belongs in the core.
+If you find yourself writing a rule inside a `MonoBehaviour`, or inside a FastAPI route, stop: it
+belongs in the core.

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opengwt:protocol:deck:1",
+  "title": "open-gwt deck file (schema opengwt.deck/1)",
+  "type": "object",
+  "required": ["schema", "id", "faction", "cards"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "opengwt.deck/1" },
+    "id": { "$ref": "#/$defs/id" },
+    "faction": { "$ref": "#/$defs/id" },
+    "leader": { "$ref": "#/$defs/id" },
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "count": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" }
+  }
+}

@@ -34,15 +34,20 @@ Windows · macOS · iOS · Android, built on Unity 6.6 (6000.6.2f1).
 ## Repository layout
 
 ```
-client/   Unity project — open this directory with Unity Hub
-server/   authoritative game server
-docs/     rules notes, protocol and design documents
+client/   Unity project — a thin client; open this directory with Unity Hub
+server/   authoritative game server, Python — the rules core lives inside it
+data/     cards, decks and translations, authored in YAML
+docs/     decisions (adr/), protocols (protocol/), rules notes
 ```
 
 ## Getting started
 
-- **Working on the server:** the code lives in `server/`.
-- **Working on the client:** open `client/` with Unity Hub, using Unity 6.6 (6000.6.2f1).
+- **Read first:** `docs/adr/` records the architecture decisions; `docs/protocol/` the card and
+  match protocols.
+- **Working on the server:** the code lives in `server/`, Python 3.12 or newer. The rules core,
+  bots and simulator are packages inside it.
+- **Working on the client:** open `client/` with Unity Hub, using Unity 6.6 (6000.6.2f1). The
+  client runs no rules and needs a running server, also for a match against a bot.
 
 ## Contributing
 
