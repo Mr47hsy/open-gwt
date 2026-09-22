@@ -44,8 +44,8 @@ docs/     decisions (adr/), protocols (protocol/), rules notes
 
 - **Read first:** `docs/adr/` records the architecture decisions; `docs/protocol/` the card and
   match protocols.
-- **Working on the server:** the code lives in `server/`, Python 3.12 or newer. The rules core,
-  bots and simulator are packages inside it.
+- **Working on the server:** the code lives in `server/`, Python 3.10.15 or newer and uv 0.12.5 or
+  newer. The rules core, bots and simulator are packages inside it.
 - **Working on the client:** open `client/` with Unity Hub, using Unity 6.6 (6000.6.2f1). The
   client runs no rules and needs a running server, also for a match against a bot.
 

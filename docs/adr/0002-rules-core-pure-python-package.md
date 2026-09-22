@@ -32,7 +32,13 @@ couple it to web, database or configuration code.
   - integers only for power, scores and counters; no floats;
   - no wall-clock time, no environment or locale reads;
   - entity ids are assigned from a counter in the state, never from `id()` or allocation order.
-- Python 3.12 or newer. The core is type-annotated and checked strictly.
+- **Toolchain floors: Python `>=3.10.15` and uv `>=0.12.5`**, declared in `pyproject.toml` as
+  `requires-python` and `[tool.uv] required-version`. The floor is enforced by tooling, not by
+  discipline: ruff and mypy target `py310`, and CI runs the test suite on 3.10 and on the newest
+  stable release. Syntax and library features newer than 3.10 are therefore off the table in every
+  package, not only the core: no `type` statements, `typing.Self`, `typing.override`, `tomllib`,
+  `StrEnum`, `ExceptionGroup` or `itertools.batched`.
+- The core is type-annotated and checked strictly.
 
 ## Consequences
 
@@ -41,6 +47,9 @@ couple it to web, database or configuration code.
 - Performance is not a concern at this scale: a match is a few hundred state transitions, and
   ten thousand bot matches in the simulator are a matter of minutes, not hours.
 - The core can be published or vendored on its own later, because nothing else leaks into it.
+- Python 3.10 reaches end of life in October 2026. The floor is the owner's deployment
+  environment, and raising it later is a one-line change plus a CI matrix edit; lowering it later
+  would not be, which is why it is set at the floor now.
 
 ## Alternatives considered
 

@@ -78,10 +78,12 @@ pull request description which translations are outstanding. See `../skills/docs
 
 ## Code style
 
-- Rules core (`opengwt.core`): Python 3.12+, standard library only, fully type-annotated and
-  checked strictly, deterministic (see `02-architecture.md`). No I/O, no logging, no clock.
-- Server: FastAPI, async throughout, ruff for formatting and linting. Routes call the core and the
-  backends; they contain no rules.
+- Rules core (`opengwt.core`): Python 3.10.15 or newer, standard library only, fully
+  type-annotated and checked strictly, deterministic (see `02-architecture.md`). No I/O, no
+  logging, no clock. Nothing newer than 3.10 syntax anywhere in the server code base; ruff and
+  mypy target `py310` and CI tests on 3.10 and the newest release (ADR 0002).
+- Server: FastAPI, async throughout, uv 0.12.5 or newer for environments and the lockfile, ruff
+  for formatting and linting. Routes call the core and the backends; they contain no rules.
 - Card content: YAML under `data/`, valid against `docs/protocol/*.schema.json`. Ids are opaque
   and never displayed; text lives in `data/i18n/`.
 - Unity code: `MonoBehaviour`s and UI Toolkit controllers render and collect input; they do not
