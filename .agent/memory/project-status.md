@@ -7,8 +7,8 @@ metadata:
 
 As of 2026-09-22 the repository contains documentation only: trilingual `README` and `CONTRIBUTING`,
 `LICENSE` (MIT), `LICENSE-ASSETS` (CC BY 4.0), a Unity + .NET `.gitignore`, `.agent/`, `docs/adr/`
-(seven accepted decisions) and `docs/protocol/` (card protocol with JSON Schemas and worked
-examples, match protocol). The `client/`, `server/` and `data/` directories do **not exist yet**.
+(eight accepted decisions) and `docs/protocol/` (card protocol with JSON Schemas and worked
+examples, match protocol, i18n protocol with a conformance suite). The `client/`, `server/` and `data/` directories do **not exist yet**.
 
 Both branches are pushed to the public repository at https://github.com/Mr47hsy/open-gwt.
 

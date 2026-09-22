@@ -9,6 +9,8 @@ Background that is not a decision lives in `../context/` instead.
 - [Optional backends, no Nacos](server-optional-backends.md) — layered config; SQLite / memory defaults; PostgreSQL, MySQL, Redis as extras; single worker
 - [Client UI Toolkit](client-ui-toolkit.md) — all client UI as UXML/USS, no third-party UI dependency in the MVP
 - [MVP order](mvp-order.md) — core → server → client, with acceptance criteria per milestone
+- [Match scaling](match-scaling-stateless-workers.md) — stateless workers over a shared store; single-worker check tied to memory backends; M2b acceptance
+- [i18n shared message format](i18n-shared-message-format.md) — keys everywhere, one small format rendered on both sides, conformance suite in both CIs
 - [Branch strategy](branch-strategy.md) — git-flow: `release` is the default publish branch, `develop` the integration branch
 - [Branch protection](branch-protection.md) — how the policy is enforced; two rules need CI because GitHub cannot express them
 - [Licensing split](licensing-split.md) — MIT for code, CC BY 4.0 for original assets

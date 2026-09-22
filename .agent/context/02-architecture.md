@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status: decided, not yet built.** The decisions are recorded in `docs/adr/` (0001–0007,
+> **Status: decided, not yet built.** The decisions are recorded in `docs/adr/` (0001–0008,
 > 2026-09-22) and the wire contracts in `docs/protocol/`. No code exists yet. When code lands and
 > disagrees with this file, the code wins — update this file in the same pull request.
 
@@ -63,8 +63,15 @@ is a core change with a schema version bump.
   configuration service (ADR 0004).
 - Backends selected by URL with a zero-dependency default: SQLite, in-memory cache, inline tasks,
   in-memory match store. PostgreSQL, MySQL and Redis are packaging extras.
-- Live matches live in the hosting process: **single worker process** until a shared match store
-  exists.
+- Live matches live in the match store behind two small interfaces, `MatchStore` and
+  `EventBus`, each with a memory and a Redis implementation. Every mutation goes through one
+  path, `MatchService.apply`; handlers, bots and timers hold no state. With the memory backends
+  the server **refuses to start with more than one worker**; with Redis for both, any number of
+  workers may run (ADR 0008). The accepted-intent log is what is durable; snapshots are an
+  optimisation, and a live match can be rebuilt by replay.
+- Text: the server serves the translation tables per locale, negotiates the player's locale, and
+  renders a fallback `message` into every error. Everything else it emits is ids and keys
+  (ADR 0006).
 - Wire contract: small HTTP API plus one WebSocket per player per match (`docs/protocol/match.md`).
 
 ## Client shape
@@ -73,7 +80,10 @@ is a core change with a schema version bump.
   drop, no third-party UI dependency in the MVP.
 - A presenter consumes the server's event stream sequentially and drives the UI; nothing in the
   UI reads match state directly.
-- Localisation through the Unity Localization package, fed from the pack's translations (ADR 0006).
+- Localisation: an in-house renderer of the `opengwt.i18n/1` message format
+  (`docs/protocol/i18n.md`), fed from the tables the server serves and verified against the same
+  conformance suite as the server's renderer (ADR 0006). The Unity Localization package is not
+  required.
 
 ## Where things belong
 
@@ -87,6 +97,7 @@ is a core change with a schema version bump.
 | Accounts, decks, rooms, reconnect, replay storage | server |
 | Hidden-information filtering | rules core `view()`, invoked only by the server |
 | Animation, layout, input, audio | client |
+| Rendering text for players | client, with its own renderer; the server renders only the fallback `message` in errors |
 | Card art | client assets; card text comes from the pack |
 
 If you find yourself writing a rule inside a `MonoBehaviour`, or inside a FastAPI route, stop: it
