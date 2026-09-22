@@ -36,18 +36,27 @@ docs: add trilingual README, licenses and contribution guide
 feat(core): add row-limit check to unit placement
 fix(server): stop leaking opponent hand size on reconnect
 test(core): cover pass-in-round-three tie handling
+feat(data): add placeholder faction B
 ```
 
-Common scopes: `core`, `server`, `client`, `bots`, `docs`, `assets`, `ci`.
+Common scopes: `core`, `data`, `bots`, `server`, `client`, `protocol`, `docs`, `assets`, `ci`.
 
 Explain *why* in the body when the reason is not obvious from the diff. For a rules change, name the
 public source or the observed behaviour you based it on — this is part of the clean-room record, see
 `04-legal.md`.
 
+## Decisions
+
+Architecture decisions go in `docs/adr/` as numbered records that are not rewritten afterwards.
+When a record changes a rule an agent relies on, update `.agent/context/` in the same pull request.
+
 ## Tests
 
 A rules change ships with a test that fails before it and passes after it. Replay-based tests are
-preferred: seed + action log + expected end state.
+preferred: seed + decks + intents + expected end state, kept as data files.
+
+Python tests use pytest. The import-linter contract for `opengwt.core` and the content compiler's
+validation of `data/` are CI steps, not optional checks.
 
 ## Pull requests
 
@@ -65,9 +74,16 @@ current language in bold and the other two as links.
 When you change one of them, change all three in the same pull request, or say explicitly in the
 pull request description which translations are outstanding. See `../skills/docs-i18n-sync/`.
 
+`docs/adr/`, `docs/protocol/` and `.agent/` are English only.
+
 ## Code style
 
-- Rules core: plain C#, no engine types, no `UnityEngine` using-directives, deterministic (see
-  `02-architecture.md`).
-- Unity code: `MonoBehaviour`s render and collect input; they do not decide outcomes.
+- Rules core (`opengwt.core`): Python 3.12+, standard library only, fully type-annotated and
+  checked strictly, deterministic (see `02-architecture.md`). No I/O, no logging, no clock.
+- Server: FastAPI, async throughout, ruff for formatting and linting. Routes call the core and the
+  backends; they contain no rules.
+- Card content: YAML under `data/`, valid against `docs/protocol/*.schema.json`. Ids are opaque
+  and never displayed; text lives in `data/i18n/`.
+- Unity code: `MonoBehaviour`s and UI Toolkit controllers render and collect input; they do not
+  decide outcomes. UI is authored as UXML and USS text files.
 - Names and comments in English. Do not put card flavour text in code comments.

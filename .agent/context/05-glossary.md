@@ -34,6 +34,12 @@ names appear here.
 | intent | 操作意图 | намерение | What the client asks for; the server decides |
 | hidden information | 隐藏信息 | скрытая информация | Hands, decks, upcoming draws |
 | clean room | 净室实现 | чистая реализация | Built from public sources, never from official binaries |
+| thin client | 瘦客户端 | тонкий клиент | Client that renders and sends intents but runs no rules |
+| content pack | 内容包 | пакет контента | Compiled cards, decks and translations the server serves |
+| card protocol | 卡牌协议 | протокол карт | The YAML format and closed vocabulary cards are written in |
+| ability | 能力 | способность | A trigger plus an action on a card |
+| row effect | 行效果 | эффект ряда | A persistent modifier on one row of one side |
+| placeholder id | 占位 id | идентификатор-заглушка | Opaque card id used until a human writes an original name |
 
 ## Usage notes
 

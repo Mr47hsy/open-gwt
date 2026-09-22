@@ -21,22 +21,28 @@ Anything that would flatten one of these is a design regression, not a simplific
 In scope: the rules core, an authoritative server, a Unity client, bots, documentation, and
 original art and audio.
 
+Shape, decided 2026-09-22 (`docs/adr/`): the **server is Python** and contains the rules core as a
+zero-dependency package; the **client is a Unity thin client** that runs no rules and needs a
+server even for a match against a bot. Card content is authored in YAML under `data/`.
+
 Out of scope: shipping anything from CD PROJEKT RED, monetisation, account systems beyond what
-multiplayer needs, and "improvements" that quietly change the game's shape.
+multiplayer needs, offline play (see ADR 0001), and "improvements" that quietly change the game's
+shape.
 
 ## Platforms
 
-Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1).
+Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1). Online-only.
 
 ## Current state — 2026-09-22
 
 The repository contains documentation only: trilingual `README` and `CONTRIBUTING`, `LICENSE` (MIT,
 code) and `LICENSE-ASSETS` (CC BY 4.0, original art and audio), a `.gitignore` for Unity and .NET,
-and this `.agent/` directory.
+this `.agent/` directory, `docs/adr/` (decisions 0001–0007) and `docs/protocol/` (card and match
+protocols with schemas and examples).
 
-`client/` and `server/` do **not exist yet**. Any description of them in `02-architecture.md` is
-intended design, not something you can read out of the code. Do not tell a user a module exists
-because it is mentioned here — check the filesystem.
+`client/`, `server/` and `data/` do **not exist yet**. Any description of them in
+`02-architecture.md` is intended design, not something you can read out of the code. Do not tell
+a user a module exists because it is mentioned here — check the filesystem.
 
 ## Legal position in one line
 
