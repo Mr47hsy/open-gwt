@@ -46,17 +46,19 @@ could be added behind the same settings model as an optional layer — it is not
 
 ### Process model
 
-Live matches are held in memory by the process that hosts them. Until a shared match store
-exists, **the server runs as a single worker process**. Multi-worker deployment (several uvicorn
-or gunicorn workers) would split matches across processes that cannot see each other; this
-constraint is documented in the deployment notes and enforced by the default run command.
+Live matches are held by the match store. With the default in-memory store and event bus the
+server **must run as a single worker process**: several uvicorn or gunicorn workers would split
+matches across processes that cannot see each other. This is enforced at start-up, not by
+convention — the server refuses to start with more than one worker unless both the match store
+and the event bus are shared (Redis). How the multi-worker mode works, and what M1 and M2 must
+provide for it, is [ADR 0008](0008-match-scaling-stateless-workers.md).
 
 ## Consequences
 
 - `git clone`, `uv sync`, run — no Docker, no database server, no config centre.
 - Production deployments switch to PostgreSQL and Redis by changing two URLs.
-- Horizontal scaling of live matches is deliberately deferred; the pure core (ADR 0002) makes a
-  later move to a shared store or a dedicated match-worker process a server change only.
+- Horizontal scaling of live matches is a configuration change once the Redis backends exist;
+  the code path is the same in both modes (ADR 0008).
 - Celery is not part of the MVP. The reference backend's rule that a process must not fork after
   loading configuration is therefore moot here for now; it returns if a forking worker is added.
 
