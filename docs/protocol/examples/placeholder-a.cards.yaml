@@ -1,0 +1,123 @@
+# Worked example for docs/protocol/cards.md — placeholder content, not a real card set.
+# Ids are opaque and never displayed; names live in data/i18n/<locale>/cards.yaml.
+schema: opengwt.cards/1
+faction: placeholder-a
+
+cards:
+  # A plain unit: no abilities, one row.
+  u-0001:
+    kind: unit
+    rows: [melee]
+    power: 5
+
+  # An immune unit that may go on either of two rows (player chooses on play).
+  u-0002:
+    kind: unit
+    rows: [ranged, siege]
+    power: 10
+    traits: [immune]
+
+  # Played on the opponent's side, then draws two cards for its owner.
+  u-0003:
+    kind: unit
+    rows: [melee]
+    power: 4
+    deploy: opponent
+    abilities:
+      - when: played
+        do: draw
+        count: 2
+
+  # Pulls every other copy of itself out of the deck when played.
+  u-0004:
+    kind: unit
+    rows: [siege]
+    power: 3
+    abilities:
+      - when: played
+        do: summon_from_deck
+        same_id: true
+
+  # Grows with the number of copies on the same row.
+  u-0005:
+    kind: unit
+    rows: [melee]
+    power: 4
+    abilities:
+      - when: always
+        do: multiply_power_by_copies
+
+  # Gives every other unit on its row a small bonus.
+  u-0006:
+    kind: unit
+    rows: [ranged]
+    power: 2
+    abilities:
+      - when: always
+        do: boost_row_others
+        amount: 1
+
+  # Returns a non-immune unit from the owner's discard pile, chosen by the player.
+  u-0007:
+    kind: unit
+    rows: [melee]
+    power: 5
+    abilities:
+      - when: played
+        do: return_from_discard
+        where: { traits_none: [immune] }
+        choose: player
+
+  # Row effect: every non-immune melee unit on both sides has power 1.
+  s-0001:
+    kind: special
+    abilities:
+      - when: played
+        do: apply_row_effect
+        effect: power_to_one
+        rows: [melee]
+        sides: both
+
+  # Clears all row effects everywhere.
+  s-0002:
+    kind: special
+    abilities:
+      - when: played
+        do: clear_row_effects
+
+  # Destroys the strongest opponent units, but only where a row already totals 10 or more.
+  s-0003:
+    kind: special
+    abilities:
+      - when: played
+        do: destroy
+        target:
+          side: opponent
+          units: strongest
+          where: { row_total_at_least: 10 }
+
+  # Takes the place of one of the owner's board units, which returns to hand.
+  s-0004:
+    kind: special
+    abilities:
+      - when: played
+        do: swap_with_board_unit
+        where: { traits_none: [immune] }
+        choose: player
+
+  # Doubles the owner's ranged row.
+  s-0005:
+    kind: special
+    abilities:
+      - when: played
+        do: apply_row_effect
+        effect: double_power
+        rows: [ranged]
+        sides: self
+
+  # Leader: once per match, clears row effects.
+  l-0001:
+    kind: leader
+    abilities:
+      - when: activated
+        do: clear_row_effects
