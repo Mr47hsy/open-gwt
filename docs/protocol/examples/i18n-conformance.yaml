@@ -1,0 +1,70 @@
+# Conformance suite for docs/protocol/i18n.md. The tables are deliberately tiny and self-contained;
+# they test the renderer, not the project's real translations.
+schema: opengwt.i18n-conformance/1
+
+tables:
+  en:
+    ui.hand.count.one: "{count} card in hand"
+    ui.hand.count.other: "{count} cards in hand"
+    ui.only-base: "Base only"
+    ui.braces: "Literal {{braces}} stay, and a lone { too"
+    ui.mention: "Mention {who}"
+    ui.negative: "Delta {count}"
+    error.deck.too-few-units: "A deck needs at least {min} units, this one has {actual}."
+    error.deck.card-not-allowed: "{card} cannot be used by {faction}."
+    card.u-0007.name: "Placeholder unit seven"
+    card.u-0007.text: "Return a unit from your discard pile. {unused}"
+    faction.placeholder-a.name: "Placeholder faction A"
+  zh-CN:
+    ui.hand.count.other: "手牌 {count} 张"
+    error.deck.too-few-units: "卡组至少需要 {min} 张单位牌，当前只有 {actual} 张。"
+    card.u-0007.name: "占位单位七"
+  ru:
+    ui.hand.count.one: "{count} карта в руке"
+    ui.hand.count.few: "{count} карты в руке"
+    ui.hand.count.many: "{count} карт в руке"
+    ui.hand.count.other: "{count} карт в руке"
+    card.u-0007.name: "Заглушка: отряд семь"
+
+cases:
+  # plural categories — en
+  - { locale: en, key: ui.hand.count, params: { count: 1 }, expected: "1 card in hand" }
+  - { locale: en, key: ui.hand.count, params: { count: 0 }, expected: "0 cards in hand" }
+  - { locale: en, key: ui.hand.count, params: { count: 2 }, expected: "2 cards in hand" }
+  # plural categories — zh-CN has only .other and never falls through to English
+  - { locale: zh-CN, key: ui.hand.count, params: { count: 1 }, expected: "手牌 1 张" }
+  - { locale: zh-CN, key: ui.hand.count, params: { count: 7 }, expected: "手牌 7 张" }
+  # plural categories — ru: one / few / many with the teens exception
+  - { locale: ru, key: ui.hand.count, params: { count: 1 }, expected: "1 карта в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 3 }, expected: "3 карты в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 5 }, expected: "5 карт в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 11 }, expected: "11 карт в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 12 }, expected: "12 карт в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 21 }, expected: "21 карта в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 22 }, expected: "22 карты в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 112 }, expected: "112 карт в руке" }
+  - { locale: ru, key: ui.hand.count, params: { count: 0 }, expected: "0 карт в руке" }
+  # plural category uses the absolute value; the rendered number keeps its sign
+  - { locale: en, key: ui.negative, params: { count: -1 }, expected: "Delta -1" }
+  # placeholders and integers
+  - { locale: en, key: error.deck.too-few-units, params: { min: 22, actual: 20 }, expected: "A deck needs at least 22 units, this one has 20." }
+  - { locale: zh-CN, key: error.deck.too-few-units, params: { min: 22, actual: 20 }, expected: "卡组至少需要 22 张单位牌，当前只有 20 张。" }
+  # an absent parameter leaves the placeholder visible
+  - { locale: en, key: error.deck.too-few-units, params: { min: 22 }, expected: "A deck needs at least 22 units, this one has {actual}." }
+  # escapes and stray braces
+  - { locale: en, key: ui.braces, params: {}, expected: "Literal {braces} stay, and a lone { too" }
+  # references, resolved locale-major; a fallback sentence may mix languages by design
+  - { locale: en, key: error.deck.card-not-allowed, params: { card: "@card.u-0007.name", faction: "@faction.placeholder-a.name" }, expected: "Placeholder unit seven cannot be used by Placeholder faction A." }
+  - { locale: zh-CN, key: error.deck.card-not-allowed, params: { card: "@card.u-0007.name", faction: "@faction.placeholder-a.name" }, expected: "占位单位七 cannot be used by Placeholder faction A." }
+  - { locale: ru, key: error.deck.card-not-allowed, params: { card: "@card.u-0007.name", faction: "@faction.placeholder-a.name" }, expected: "Заглушка: отряд семь cannot be used by Placeholder faction A." }
+  # a referenced message is inserted as-is: its own placeholders are not processed
+  - { locale: en, key: ui.mention, params: { who: "@card.u-0007.text" }, expected: "Mention Return a unit from your discard pile. {unused}" }
+  # @@ escapes a literal leading @
+  - { locale: en, key: ui.mention, params: { who: "@@everyone" }, expected: "Mention @everyone" }
+  # a reference to a missing key renders as the key
+  - { locale: en, key: ui.mention, params: { who: "@ui.nope" }, expected: "Mention ui.nope" }
+  # locale fallback to en for a key the locale lacks
+  - { locale: ru, key: ui.only-base, params: {}, expected: "Base only" }
+  # missing everywhere: the key itself
+  - { locale: en, key: ui.missing.key, params: {}, expected: "ui.missing.key" }
+  - { locale: zh-CN, key: ui.missing.key, params: { count: 3 }, expected: "ui.missing.key" }

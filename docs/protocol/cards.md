@@ -17,6 +17,7 @@ data/
   decks/<deck-id>.deck.yaml      one file per deck
   i18n/<locale>/cards.yaml       card and faction texts, one flat map per locale
   i18n/<locale>/ui.yaml          client strings
+  i18n/conformance.yaml          renderer conformance cases, run by server and client
 ```
 
 Schemas: [`cards.schema.json`](cards.schema.json), [`decks.schema.json`](decks.schema.json).
@@ -171,6 +172,9 @@ faction.placeholder-a.name: Placeholder faction A
 Required keys per card: `card.<id>.name`, `card.<id>.text`. Per faction: `faction.<id>.name`.
 Every key in `en` must exist in every other locale; the compiler fails otherwise and lists the
 missing keys. Names must be original in every locale, transliterations of official names included.
+
+Message syntax, plural variants, `@` references, the fallback chain and the conformance suite are
+defined in [`i18n.md`](i18n.md).
 
 ## 9. Compilation and the content pack
 
