@@ -1,0 +1,21 @@
+# Server error messages — rendered on the server as the fallback `message` (docs/protocol/i18n.md §8).
+error.unauthorised: Sign in to do that.
+error.invalid-request: The request is not valid.
+error.locale-unsupported: The locale {locale} is not supported.
+error.deck-not-found: Deck {deck} was not found.
+error.deck-illegal: This deck is not legal.
+error.match-not-found: That match does not exist.
+error.match-not-started: The match has not started yet.
+error.match-not-finished: The match is still being played.
+error.match-over: The match is over.
+error.not-a-player: You are not a player in this match.
+error.room-not-found: No room has that code.
+error.room-full: That room already has two players.
+error.own-room: You cannot join your own room.
+error.room-code-exhausted: Could not allocate a room code; try again.
+error.illegal-intent: That move is not allowed right now.
+error.not-your-turn: It is not your turn.
+error.choice-pending: Make your pending choice first.
+error.unknown-instance: That card is not available.
+error.unknown-message: Unknown message type {type}.
+error.rate-limited: Too many moves at once.

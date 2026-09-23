@@ -64,6 +64,20 @@ def load_cards_file(path: Path) -> dict[str, CardDef]:
     return {cid: card_def_from_mapping(cid, faction, m) for cid, m in doc["cards"].items()}
 
 
+def load_cards_raw(cards_dir: Path) -> dict[str, dict[str, Any]]:
+    """Validated card mappings by id, each with its ``faction`` added: what the content pack
+    ships to clients (docs/protocol/cards.md §9)."""
+    raw: dict[str, dict[str, Any]] = {}
+    for path in sorted(cards_dir.glob("*.cards.yaml")):
+        doc = _read_yaml(path)
+        problems = _schema_problems("cards.schema.json", doc, path)
+        if problems:
+            raise DataError(problems)
+        for cid, mapping in doc["cards"].items():
+            raw[cid] = {"faction": str(doc["faction"]), **mapping}
+    return dict(sorted(raw.items()))
+
+
 def load_library(cards_dir: Path) -> Library:
     lib: Library = {}
     problems: list[str] = []
@@ -148,8 +162,24 @@ def load_i18n(i18n_dir: Path) -> dict[str, dict[str, str]]:
     return tables
 
 
+PLURAL_SUFFIXES = (".zero", ".one", ".two", ".few", ".many", ".other")
+
+
+def plural_base(key: str) -> str:
+    """``ui.hand.count`` for ``ui.hand.count.other``; the key itself when it has no suffix."""
+    for suffix in PLURAL_SUFFIXES:
+        if key.endswith(suffix):
+            return key[: -len(suffix)]
+    return key
+
+
 def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
-    """Missing keys, as ``locale: key`` strings — docs/protocol/i18n.md §7 and ADR 0006."""
+    """Missing keys, as ``locale: key`` strings — docs/protocol/i18n.md §2, §7 and ADR 0006.
+
+    Plural variants are compared by their base key: a locale that has any variant (or the bare
+    base key) of an English plural counts as complete, and a locale with variants must have
+    ``.other``.
+    """
     problems: list[str] = []
     base = tables.get(BASE_LOCALE)
     if base is None:
@@ -157,10 +187,15 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     required = {f"card.{cid}.{k}" for cid in lib for k in ("name", "text")}
     required |= {f"faction.{d.faction}.name" for d in lib.values()}
     problems.extend(f"{BASE_LOCALE}: {k}" for k in sorted(required - set(base)))
+    base_keys = {plural_base(k) for k in base}
     for locale, table in sorted(tables.items()):
-        if locale == BASE_LOCALE:
-            continue
-        problems.extend(f"{locale}: {k}" for k in sorted(set(base) - set(table)))
+        present = {plural_base(k) for k in table}
+        if locale != BASE_LOCALE:
+            problems.extend(f"{locale}: {k}" for k in sorted(base_keys - present))
+        variant_bases = {plural_base(k) for k in table if plural_base(k) != k}
+        for vb in sorted(variant_bases):
+            if f"{vb}.other" not in table:
+                problems.append(f"{locale}: {vb}.other (a plural needs its other form)")
     return problems
 
 

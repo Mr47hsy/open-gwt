@@ -34,6 +34,7 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `DELETE /decks/{deck_id}` | → `204` | |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. |
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
+| `GET /matches/{match_id}` | → `{match_id, mode, status, seat, room_code, result}` | `status` is `waiting`, `playing` or `finished`; `seat` is the caller's seat or null. |
 | `GET /matches/{match_id}/replay` | → replay record (section 9) | Only after the match ended; only for its players in the MVP. |
 
 Errors are `{error: {code, message_key, params, message, details?}}` with the appropriate HTTP
@@ -46,6 +47,11 @@ the key renders it itself and uses `message` only as a fallback.
 `GET <ws_url>` with the bearer token in the `Authorization` header, or `?token=` where headers are
 not available. One connection per player per match; a second connection for the same player
 replaces the first.
+
+Close codes the server uses: `4000` this connection was replaced by a newer one of the same
+player; `4401` the token is missing or invalid; `4403` the match does not exist or the caller is
+not seated in it; `4429` more than twenty intents arrived within one second. A normal close after
+`match_over` uses `1000`.
 
 On connect the server sends, in order:
 
@@ -174,8 +180,13 @@ after which the server passes for them.
 | `choice_pending` | A `choose` intent is required first. |
 | `unknown_instance` | The card instance id does not exist in this player's visible zones. |
 | `match_over` | |
+| `match_not_started` | The room still waits for its second player. |
 | `protocol_version` | Client and server protocol versions differ. |
 | `unauthorised` | Token invalid, or not a player of this match. |
+| `not_a_player` | The caller is not seated in the match (replay, status). |
+| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the rule keys. |
+| `room_not_found`, `room_full`, `own_room` | Joining a room. |
+| `locale_unsupported`, `invalid_request`, `unknown_message` | Request shape and content. |
 
 ## 11. Security notes
 

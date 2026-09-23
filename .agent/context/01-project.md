@@ -35,15 +35,18 @@ Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1). Online-only.
 
 ## Current state — 2026-09-23
 
-Milestone M1 of ADR 0007 is implemented. `server/` is a uv project (Python ≥ 3.10.15) with
-`opengwt.core` (rules engine, PCG32, views, canonical serialisation, replay), `opengwt.data`
-(YAML loading against the protocol schemas), `opengwt.bots` (random, greedy) and `opengwt.sim`
-(the `opengwt-sim` command). `data/` holds placeholder cards for three factions, two starter decks
-and generated en / zh-CN / ru texts. CI runs ruff, mypy, import-linter, pytest and a simulation on
-Python 3.10 and 3.14.
+Milestones M1 and M2 of ADR 0007 are implemented. `server/` is a uv project (Python ≥ 3.10.15)
+with `opengwt.core` (rules engine, PCG32, views, canonical serialisation, replay), `opengwt.data`
+(YAML loading against the protocol schemas), `opengwt.i18n` (the shared message-format renderer),
+`opengwt.bots` (random, greedy), `opengwt.sim` (`opengwt-sim`) and `opengwt.server`
+(`opengwt-server`: FastAPI, guest tokens, decks, bot and room matches, the WebSocket match
+protocol, SQLite plus memory `MatchStore` / `EventBus` / `Cache`, Alembic migrations). `data/`
+holds placeholder cards for three factions, two starter decks and en / zh-CN / ru texts. CI runs
+ruff, mypy, import-linter, pytest (with the migrations on SQLite and PostgreSQL) and a simulation
+on Python 3.10 and 3.14.
 
-`client/` and the FastAPI server (`opengwt.server`, milestone M2) do **not exist yet**. Do not
-tell a user a module exists because it is mentioned here — check the filesystem.
+`client/` (milestone M3) and the Redis backends (M2b) do **not exist yet**. Do not tell a user a
+module exists because it is mentioned here — check the filesystem.
 
 ## Legal position in one line
 

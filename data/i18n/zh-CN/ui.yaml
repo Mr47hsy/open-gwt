@@ -1,0 +1,12 @@
+# 客户端文案，以及与服务端选择事件共用的提示。
+choice.destroy: 选择一个要消灭的单位
+choice.boost: 选择一个要增强的单位
+choice.set-power: 选择一个单位
+choice.return-from-discard: 从你的弃牌堆中选择一个单位放回战场
+choice.swap-with-board-unit: 选择你的一个单位收回手牌
+ui.row.melee: 近战
+ui.row.ranged: 远程
+ui.row.siege: 攻城
+ui.board.pass: Pass
+ui.board.leader: 领袖
+ui.hand.count.other: "手牌 {count} 张"

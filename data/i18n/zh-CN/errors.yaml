@@ -1,0 +1,21 @@
+# 服务端错误文案，作为服务端渲染的兜底 `message`（docs/protocol/i18n.md §8）。
+error.unauthorised: 请先登录。
+error.invalid-request: 请求不合法。
+error.locale-unsupported: 不支持语言 {locale}。
+error.deck-not-found: 找不到卡组 {deck}。
+error.deck-illegal: 这副卡组不合法。
+error.match-not-found: 对局不存在。
+error.match-not-started: 对局尚未开始。
+error.match-not-finished: 对局仍在进行中。
+error.match-over: 对局已经结束。
+error.not-a-player: 你不是这场对局的玩家。
+error.room-not-found: 没有这个房间码。
+error.room-full: 这个房间已经有两名玩家。
+error.own-room: 不能加入自己的房间。
+error.room-code-exhausted: 暂时分配不到房间码，请重试。
+error.illegal-intent: 现在不能这样操作。
+error.not-your-turn: 还没轮到你。
+error.choice-pending: 请先完成待选择的操作。
+error.unknown-instance: 这张牌不可用。
+error.unknown-message: 未知的消息类型 {type}。
+error.rate-limited: 操作过于频繁。
