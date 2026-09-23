@@ -27,9 +27,10 @@ wrong.
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
 
 **Client**
-- Event-driven animation: cards flash today; playing, destroying, returning and row effects
-  should move (USS transitions or a small tween on `VisualElement`). Presenter seam exists in
-  `BoardView.OnEvent`; keep rendering from the view.
+- Motion still missing: row effects appearing and clearing, power changes (a flash today), the
+  opponent's draws and passes. Playing, destroying, returning and specials move since the visual
+  baseline (`BoardMotion`, driven by `BoardView`'s step queue); add the rest there, rendering from
+  the view.
 - Deck builder: the server has `GET/PUT/DELETE /decks` and validates legality; the client only
   offers starter decks.
 - Replay viewer: `GET /matches/{id}/replay` exists; the client has no way to watch one.
