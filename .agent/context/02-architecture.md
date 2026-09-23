@@ -35,11 +35,14 @@ This is what makes tests, bug reports and bots practical, so the core must avoid
 breaks it (ADR 0002):
 
 - no wall-clock time, no timers, no environment or locale reads inside rules evaluation;
-- no `random` module — the core carries its own PCG32 over Python integers, seeded from the record;
+- no `random` module — the core carries its own generator, seeded from the record: PCG32 over
+  Python integers in the v1 core, a SHA-256 counter-mode stream from ruleset phase B on
+  (ADR 0010);
 - no `set` iteration and no `dict` iteration where order affects the result; ordered lists and
   explicit `sorted(..., key=...)`; nothing depends on `hash()` of a string;
 - integers only for power, scores and counters; no floats;
-- entity ids come from a counter in the state, never from `id()` or allocation order.
+- entity ids come from a counter in the state, never from `id()` or allocation order; from phase
+  B they are rendered through a keyed stream so they reveal no deck position (ADR 0010).
 
 A rules change that breaks replay of existing records is a breaking change and must be called out
 in the pull request.
@@ -50,6 +53,10 @@ Hands, decks and upcoming draws exist only in the core state held by the server.
 by the core's `view(state, player)` with hidden information removed *before* serialisation; nothing
 else serialises state for a client. "The client filters it out before rendering" is not acceptable
 — a modified client would then see everything.
+
+The seed is hidden information too, and so is anything that narrows it down: the seed plus the
+open-source shuffle rebuilds every deck. It never reaches a client before the match is over,
+and from phase B it is 256 bits wide so it cannot be searched for either (ADR 0010).
 
 ## Content pipeline
 
