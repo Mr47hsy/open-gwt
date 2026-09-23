@@ -4,6 +4,10 @@
 accepted intents to the durable log, lets a server-hosted bot move while the lock is held, saves
 with a version check and publishes the events and both views. WebSocket handlers, timers and
 bots never touch match state directly.
+
+A match's seed is 256 bits from ``secrets`` (ADR 0010). It stays in the database and the store
+until the match is over; the replay record of a finished match is the only place it leaves.
+Matches played before ADR 0009 phase B keep their ``opengwt.record/1`` data as history.
 """
 
 from __future__ import annotations
@@ -19,11 +23,26 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from opengwt.bots import make_bot
-from opengwt.core.engine import IllegalIntent, acting_seat, apply, legal_intents, new_match
+from opengwt.core.engine import (
+    IllegalIntent,
+    acting_seats,
+    apply,
+    legal_intents,
+    new_match,
+)
 from opengwt.core.events import Event, event_to_dict
-from opengwt.core.intents import Choose, Intent, Mulligan, Pass, intent_from_dict, intent_to_dict
+from opengwt.core.intents import (
+    CancelChoice,
+    Choose,
+    EndMulligan,
+    Intent,
+    Pass,
+    intent_from_dict,
+    intent_to_dict,
+)
 from opengwt.core.model import Deck, MatchState, Phase, Rules
-from opengwt.core.replay import MatchRecord, record_to_dict, replay
+from opengwt.core.replay import MatchRecord, record_from_dict, record_to_dict, replay
+from opengwt.core.rng import bot_stream, parse_seed
 from opengwt.core.serialize import (
     deck_from_dict,
     deck_to_dict,
@@ -50,19 +69,48 @@ STATUS_PLAYING = "playing"
 STATUS_FINISHED = "finished"
 ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 RECENT_INTENT_IDS = 32
+LEGACY_RECORD_SCHEMA = "opengwt.record/1"
+BOT_DECISIONS_PER_CALL = 400
+
+
+def new_seed() -> str:
+    """256 bits for a new match, as 64 lowercase hex characters (ADR 0010)."""
+    return secrets.token_bytes(32).hex()
+
+
+def is_v2_seed(seed: str) -> bool:
+    try:
+        parse_seed(seed)
+    except ValueError:
+        return False
+    return True
 
 
 @dataclass(frozen=True)
 class MatchInfo:
+    """A match row. ``decks`` and ``rules`` stay as stored: a match from before ADR 0009
+    phase B has v1 shapes the current core does not read."""
+
     match_id: str
     mode: str
     status: str
     room_code: str | None
-    seed: int
+    seed: str
     seats: tuple[str | None, str | None]
-    decks: tuple[Deck, Deck] | tuple[Deck]
-    rules: Rules
+    decks: tuple[dict[str, Any], ...]
+    rules: dict[str, Any]
     result: dict[str, Any] | None
+
+    @property
+    def legacy(self) -> bool:
+        return not is_v2_seed(self.seed)
+
+    def core_decks(self) -> tuple[Deck, Deck]:
+        assert len(self.decks) == 2 and not self.legacy
+        return deck_from_dict(self.decks[0]), deck_from_dict(self.decks[1])
+
+    def core_rules(self) -> Rules:
+        return rules_from_dict(self.rules)
 
     def seat_of(self, player_id: str) -> int | None:
         for seat, occupant in enumerate(self.seats):
@@ -80,7 +128,6 @@ def _now() -> datetime:
 
 
 def _info(row: MatchRow) -> MatchInfo:
-    decks = tuple(deck_from_dict(d) for d in row.decks)
     return MatchInfo(
         match_id=row.id,
         mode=row.mode,
@@ -88,8 +135,8 @@ def _info(row: MatchRow) -> MatchInfo:
         room_code=row.room_code,
         seed=row.seed,
         seats=(row.seat0_player_id, row.seat1_player_id),
-        decks=(decks[0], decks[1]) if len(decks) == 2 else (decks[0],),
-        rules=rules_from_dict(row.rules),
+        decks=tuple(row.decks),
+        rules=dict(row.rules),
         result=row.result,
     )
 
@@ -126,7 +173,7 @@ class MatchService:
         if loaded is None:
             return None
         state = state_from_dict(loaded[0]["state"])
-        return state.seq, player_view(self.content.library, state, seat)
+        return state.seq, player_view(self.content.library, state, seat, match_id)
 
     async def history(self, match_id: str, since_seq: int) -> list[dict[str, Any]]:
         return await self.bus.history(match_id, since_seq)
@@ -145,9 +192,20 @@ class MatchService:
                     .order_by(MatchIntentRow.index)
                 )
             ).scalars()
-            intents = [(r.seat, intent_from_dict(r.intent)) for r in rows]
-        assert len(info.decks) == 2
-        record = MatchRecord(info.seed, info.decks, tuple(intents), info.rules)
+            logged = [(r.seat, r.intent) for r in rows]
+        if info.legacy:
+            # history from before ADR 0009 phase B, as it was stored; the current core cannot
+            # replay it
+            legacy = {
+                "schema": LEGACY_RECORD_SCHEMA,
+                "seed": int(info.seed),
+                "rules": info.rules,
+                "decks": list(info.decks),
+                "intents": [{"seat": seat, "intent": intent} for seat, intent in logged],
+            }
+            return {"record": legacy, "result": info.result}
+        intents = tuple((seat, intent_from_dict(intent)) for seat, intent in logged)
+        record = MatchRecord(info.seed, info.core_decks(), intents, info.core_rules())
         return {"record": record_to_dict(record), "result": info.result}
 
     # --- creation --------------------------------------------------------------------------
@@ -194,6 +252,8 @@ class MatchService:
         return info
 
     def _bot_deck(self, against: Deck) -> Deck:
+        """A starter deck of another faction, picked with ``secrets``: which deck the bot plays
+        is not part of the match's random stream."""
         others = [d for d in self.content.starter_decks.values() if d.faction != against.faction]
         pool = others or list(self.content.starter_decks.values())
         return pool[secrets.randbelow(len(pool))]
@@ -228,7 +288,7 @@ class MatchService:
             mode=mode,
             status=status,
             room_code=room_code,
-            seed=secrets.randbits(31),
+            seed=new_seed(),
             seat0_player_id=seats[0],
             seat1_player_id=seats[1],
             decks=[deck_to_dict(d) for d in decks],
@@ -243,11 +303,12 @@ class MatchService:
             return _info(row)
 
     async def _start(self, info: MatchInfo) -> None:
-        assert len(info.decks) == 2
         async with self.store.lock(info.match_id):
-            state, events = new_match(self.content.library, info.decks, info.seed, info.rules)
+            state, events = new_match(
+                self.content.library, info.core_decks(), info.seed, info.core_rules()
+            )
             data = {"state": state_to_dict(state), "intent_ids": [], "next_index": 0}
-            state, events, accepted = await self._bot_moves(info, state, events)
+            state, events, accepted = await self._bot_moves(info, state, events, 0)
             data = await self._persist(info.match_id, data, state, accepted, version=0)
             await self._publish(info, state, events)
 
@@ -276,7 +337,9 @@ class MatchService:
                     e.code, 409, details={"reason": e.reason} if e.reason else None
                 ) from e
             accepted = [(seat, intent)]
-            state, events, more = await self._bot_moves(info, state, events)
+            state, events, more = await self._bot_moves(
+                info, state, events, int(data["next_index"]) + len(accepted)
+            )
             accepted.extend(more)
             if intent_id is not None:
                 data["intent_ids"] = [*data["intent_ids"], intent_id][-RECENT_INTENT_IDS:]
@@ -284,43 +347,50 @@ class MatchService:
             await self._publish(info, state, events)
 
     async def timeout_move(self, match_id: str, seat: int) -> None:
-        """When a turn timer expires: pass if legal, otherwise the first legal intent."""
+        """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
+        first option, otherwise pass."""
         loaded = await self.store.load(match_id)
         if loaded is None:
             return
         state = state_from_dict(loaded[0]["state"])
-        if acting_seat(state) != seat:
+        if seat not in acting_seats(state):
             return
         legal = legal_intents(self.content.library, state, seat)
         if not legal:
             return
-        chosen: Intent = Pass() if Pass() in legal else legal[0]
-        if isinstance(chosen, Mulligan):
-            chosen = Mulligan()
-        if isinstance(chosen, Choose):
+        chosen: Intent
+        if EndMulligan() in legal:
+            chosen = EndMulligan()
+        elif CancelChoice() in legal:
+            chosen = CancelChoice()
+        elif Choose(0) in legal:
             chosen = Choose(0)
+        else:
+            chosen = Pass()
         await self.apply(match_id, seat, chosen)
 
     async def _bot_moves(
-        self, info: MatchInfo, state: MatchState, events: list[Event]
+        self, info: MatchInfo, state: MatchState, events: list[Event], log_index: int
     ) -> tuple[MatchState, list[Event], list[tuple[int, Intent]]]:
+        """Let a server-hosted bot act while the rules wait on it. Each decision gets a fresh bot
+        on its own stream, labelled with the decision's index in the intent log (ADR 0010), so
+        the bot keeps no state between calls and its choices say nothing about the match's
+        stream."""
         accepted: list[tuple[int, Intent]] = []
         bot_seats = {seat for seat, who in enumerate(info.seats) if who == BOT_PLAYER_ID}
         if not bot_seats:
             return state, events, accepted
-        bot = make_bot(self.settings.bot, info.seed)
-        guard = 0
         while state.phase is not Phase.MATCH_OVER:
-            seat = acting_seat(state)
-            if seat is None or seat not in bot_seats:
+            seat = next((s for s in acting_seats(state) if s in bot_seats), None)
+            if seat is None:
                 break
+            bot = make_bot(self.settings.bot, bot_stream(info.seed, log_index + len(accepted)))
             legal = legal_intents(self.content.library, state, seat)
             intent = bot.choose(self.content.library, state, seat, legal)
             state, more = apply(self.content.library, state, seat, intent)
             events = events + more
             accepted.append((seat, intent))
-            guard += 1
-            if guard > 200:
+            if len(accepted) > BOT_DECISIONS_PER_CALL:
                 raise RuntimeError(f"bot did not yield the turn in match {info.match_id}")
         return state, events, accepted
 
@@ -364,7 +434,7 @@ class MatchService:
         return {
             "winner": state.winner,
             "rounds": [
-                {"round": r.round, "winner": r.winner, "scores": list(r.scores)}
+                {"round": r.round, "winners": list(r.winners), "scores": list(r.scores)}
                 for r in state.rounds
             ],
             "final_hash": state_hash(state),
@@ -374,7 +444,10 @@ class MatchService:
         over = state.phase is Phase.MATCH_OVER
         payload: dict[str, Any] = {
             "events": [event_to_dict(e) for e in events],
-            "views": {str(seat): player_view(self.content.library, state, seat) for seat in (0, 1)},
+            "views": {
+                str(seat): player_view(self.content.library, state, seat, info.match_id)
+                for seat in (0, 1)
+            },
             "over": over,
         }
         if over:
@@ -390,7 +463,7 @@ class MatchService:
         try:
             assert len(info.seats) == 2 and info.seats[0] is not None
             record = await self.replay_record(info.match_id, info.seats[0])
-            final, _ = replay(self.content.library, MatchRecord(**_record_kwargs(record)))
+            final, _ = replay(self.content.library, record_from_dict(record["record"]))
             stored = record["result"]["final_hash"] if record["result"] else None
             if state_hash(final) != stored:
                 logger.error("match %s: replay hash differs from the stored result", info.match_id)
@@ -405,8 +478,8 @@ class MatchService:
         timeout = self.settings.turn_timeout_seconds
         if timeout <= 0 or state.phase is Phase.MATCH_OVER:
             return
-        seat = acting_seat(state)
-        if seat is None or info.seats[seat] == BOT_PLAYER_ID:
+        seat = next((s for s in acting_seats(state) if info.seats[s] != BOT_PLAYER_ID), None)
+        if seat is None:
             self._deadlines.pop(info.match_id, None)
             return
         self._deadlines[info.match_id] = (asyncio.get_running_loop().time() + timeout, seat)
@@ -422,15 +495,3 @@ class MatchService:
                     await self.timeout_move(match_id, seat)
                 except AppError as e:
                     logger.info("timer for %s could not move: %s", match_id, e.code)
-
-
-def _record_kwargs(payload: dict[str, Any]) -> dict[str, Any]:
-    from opengwt.core.replay import record_from_dict
-
-    record = record_from_dict(payload["record"])
-    return {
-        "seed": record.seed,
-        "decks": record.decks,
-        "intents": record.intents,
-        "rules": record.rules,
-    }

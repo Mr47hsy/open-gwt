@@ -4,11 +4,18 @@ import pytest
 import yaml
 
 from opengwt.core.engine import check_deck
-from opengwt.core.model import Deck, Kind, Rules
+from opengwt.core.model import Deck, Kind, Rules, Status, phase_c_words
 from opengwt.data import DataError, DataSet, load_data
-from opengwt.data.loader import check_i18n, load_cards_file, load_deck
+from opengwt.data.loader import (
+    check_i18n,
+    check_references,
+    load_cards_file,
+    load_deck,
+    load_library,
+)
 
 REPO = Path(__file__).resolve().parents[2]
+EXAMPLES = REPO / "docs" / "protocol" / "examples"
 
 
 def test_real_data_loads(dataset: DataSet) -> None:
@@ -19,15 +26,24 @@ def test_real_data_loads(dataset: DataSet) -> None:
         assert check_deck(dataset.library, deck, Rules()) == []
 
 
-# The examples are v2 since ADR 0009 phase A; the v1 loader cannot read them until phase B.
-# Strict: once it can, this fails, and the marker must go. test_protocol_v2 checks them meanwhile.
-@pytest.mark.xfail(strict=True, raises=DataError, reason="examples are v2, loader v1 until phase B")
+def test_data_uses_only_the_words_phase_b_acts_on(dataset: DataSet) -> None:
+    """ADR 0009: data/ stays within phase B; a leader's activated ability is the one exception,
+    since every leader has one and using it is phase C. A stratagem's is used from phase B on
+    (ADR 0011)."""
+    for defn in dataset.library.values():
+        allowed = {"card:activation", "when:on_activate"} if defn.kind is Kind.LEADER else set()
+        assert set(phase_c_words(defn)) <= allowed, defn.id
+
+
 def test_protocol_examples_load() -> None:
-    examples = REPO / "docs" / "protocol" / "examples"
-    lib = load_cards_file(examples / "placeholder-a.cards.yaml")
-    assert lib["u-0002"].immune and lib["u-0002"].kind is Kind.UNIT
-    deck = load_deck(examples / "starter-a.deck.yaml", lib)
-    assert deck.leader == "l-0001" and len(deck.cards) == 22
+    """The whole v2 vocabulary loads — phase-C words included, carried until phase C."""
+    lib = load_library(EXAMPLES)
+    assert lib["u-0029"].statuses == (Status.GUARDING,)
+    assert phase_c_words(lib["u-0007"]) == ["card:activation", "when:on_activate"]
+    assert phase_c_words(lib["g-0101"]) == []
+    deck = load_deck(EXAMPLES / "starter-a.deck.yaml", lib)
+    assert deck.leader == "l-0001" and deck.stratagem == "g-0101" and len(deck.cards) == 28
+    assert check_deck(lib, deck, Rules()) == []
 
 
 def test_schema_violation_is_reported_with_path(tmp_path: Path) -> None:
@@ -35,15 +51,30 @@ def test_schema_violation_is_reported_with_path(tmp_path: Path) -> None:
     bad.write_text(
         yaml.safe_dump(
             {
-                "schema": "opengwt.cards/1",
+                "schema": "opengwt.cards/2",
                 "faction": "test-x",
-                "cards": {"u-1": {"kind": "unit", "power": 3}},
+                "cards": {"u-1": {"kind": "unit", "color": "bronze", "provisions": 4}},
             }
         )
     )
     with pytest.raises(DataError) as info:
         load_cards_file(bad)
-    assert any("u-1" in p and "rows" in p for p in info.value.problems)
+    assert any("u-1" in p and "power" in p for p in info.value.problems)
+
+
+def test_v1_files_are_rejected(tmp_path: Path) -> None:
+    old = tmp_path / "x.cards.yaml"
+    old.write_text(
+        yaml.safe_dump(
+            {
+                "schema": "opengwt.cards/1",
+                "faction": "test-x",
+                "cards": {"u-1": {"kind": "unit", "rows": ["siege"], "power": 3}},
+            }
+        )
+    )
+    with pytest.raises(DataError):
+        load_cards_file(old)
 
 
 def test_deck_with_foreign_card_is_rejected(dataset: DataSet, tmp_path: Path) -> None:
@@ -51,10 +82,12 @@ def test_deck_with_foreign_card_is_rejected(dataset: DataSet, tmp_path: Path) ->
     deck.write_text(
         yaml.safe_dump(
             {
-                "schema": "opengwt.deck/1",
+                "schema": "opengwt.deck/2",
                 "id": "test-x",
                 "faction": "placeholder-a",
-                "cards": [{"id": "b-u-0001", "count": 1}],
+                "leader": "l-1001",
+                "stratagem": "g-0001",
+                "cards": [{"id": "u-2001", "count": 1}],
             }
         )
     )
@@ -65,11 +98,25 @@ def test_deck_with_foreign_card_is_rejected(dataset: DataSet, tmp_path: Path) ->
 
 def test_i18n_completeness_reports_missing_keys(dataset: DataSet) -> None:
     tables = {loc: dict(t) for loc, t in dataset.i18n.items()}
-    del tables["ru"]["card.a-u-0001.name"]
-    del tables["en"]["card.b-u-0001.text"]
+    del tables["ru"]["card.u-1001.name"]
+    del tables["en"]["card.u-2001.text"]
+    del tables["en"]["tag.tag-a.name"]
     problems = check_i18n(dataset.library, tables)
-    assert "ru: card.a-u-0001.name" in problems
-    assert "en: card.b-u-0001.text" in problems
+    assert "ru: card.u-1001.name" in problems
+    assert "en: card.u-2001.text" in problems
+    assert "en: tag.tag-a.name" in problems
+
+
+def test_place_new_card_must_name_a_unit_or_artifact(dataset: DataSet) -> None:
+    from dataclasses import replace
+
+    lib = dict(dataset.library)
+    maker = lib["u-2009"]
+    lib["u-2009"] = replace(
+        maker, abilities=tuple(replace(a, card="s-2001") for a in maker.abilities)
+    )
+    assert check_references(lib) == ["u-2009: place_new_card names s-2001, not a unit or artifact"]
+    assert check_references(dataset.library) == []
 
 
 def test_load_data_rejects_broken_tree(tmp_path: Path) -> None:
@@ -82,9 +129,22 @@ def test_check_deck_rules() -> None:
     from tests.helpers import make_library
 
     lib = make_library()
-    deck = Deck("test", ("plain5",) * 21 + ("frost",) * 11, leader="plain5")
-    problems = check_deck(lib, deck, Rules())
-    assert "error.deck.too-few-units" in problems
-    assert "error.deck.too-many-specials" in problems
-    assert "error.deck.leader-not-leader:plain5" in problems
-    assert check_deck(lib, Deck("test", ("plain5",) * 22, leader="leader-clear"), Rules()) == []
+    too_small = Deck(
+        "test",
+        ("plain5",) * 3 + ("tok", "leader", "strat-boost"),
+        leader="plain5",
+        stratagem="leader",
+    )
+    problems = check_deck(lib, too_small, Rules())
+    assert problems == [
+        "error.deck.leader-not-leader:plain5",
+        "error.deck.stratagem-not-stratagem:leader",
+        "error.deck.token-in-deck:tok",
+        "error.deck.leader-in-deck:leader",
+        "error.deck.stratagem-in-deck:strat-boost",
+        "error.deck.too-few-cards",
+    ]
+    big = Deck("test", ("plain5",) * 41, leader="leader", stratagem="strat-boost")
+    assert check_deck(lib, big, Rules()) == ["error.deck.too-many-cards"]
+    legal = Deck("test", ("plain5",) * 25, leader="leader", stratagem="strat-boost")
+    assert check_deck(lib, legal, Rules()) == []

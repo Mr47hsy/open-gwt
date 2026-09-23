@@ -55,11 +55,33 @@ card.u-0024.text: On play, damage the weakest enemy unit without Placeholder tag
 card.u-0025.name: Placeholder unit twenty-five
 card.u-0025.text: On play, shield one of your other units that has no shield.
 card.u-0026.name: Placeholder unit twenty-six
-card.u-0026.text: On play, remove all damage from your other melee units.
+card.u-0026.text: On play, heal your damaged melee units.
 card.u-0027.name: Placeholder unit twenty-seven
 card.u-0027.text: On play, move the first two cards with Placeholder tag A from your deck to your ranged row. When destroyed, move a random unit with 3 or less power from your deck onto the board.
 card.u-0028.name: Placeholder unit twenty-eight
 card.u-0028.text: Whenever you play a unit with Placeholder tag A on your side, it gains 1 armour.
+card.u-0029.name: Placeholder unit twenty-nine
+card.u-0029.text: 2 armour. Guarding.
+card.u-0030.name: Placeholder unit thirty
+card.u-0030.text: Status-proof. On play, if you hold 3 cards or fewer, boost this unit by 3.
+card.u-0031.name: Placeholder unit thirty-one
+card.u-0031.text: On play, drain 3 from an enemy unit.
+card.u-0032.name: Placeholder unit thirty-two
+card.u-0032.text: On play, duel an enemy unit.
+card.u-0033.name: Placeholder unit thirty-three
+card.u-0033.text: On play, consume one of your units with Placeholder tag B.
+card.u-0034.name: Placeholder unit thirty-four
+card.u-0034.text: On play, take control of an enemy unit with 3 or less power.
+card.u-0035.name: Placeholder unit thirty-five
+card.u-0035.text: On play, if two or more enemy units are damaged, damage the strongest enemy unit by 3.
+card.u-0036.name: Placeholder unit thirty-six
+card.u-0036.text: At the end of your turn, if this unit is boosted, damage a random enemy unit by 1.
+card.u-0037.name: Placeholder unit thirty-seven
+card.u-0037.text: On play, if your starting deck had no neutral card, boost this unit by 3.
+card.u-0038.name: Placeholder unit thirty-eight
+card.u-0038.text: On play, reset a boosted unit to its base power.
+card.u-0039.name: Placeholder unit thirty-nine
+card.u-0039.text: On play, damage every opponent's unit on your side by 2.
 card.t-0001.name: Placeholder token one
 card.t-0001.text: A token.
 card.s-0001.name: Placeholder special one
@@ -92,6 +114,14 @@ card.s-0014.name: Placeholder special fourteen
 card.s-0014.text: Play a random special card from your deck.
 card.s-0015.name: Placeholder special fifteen
 card.s-0015.text: Play a bronze special card from your opponent's graveyard.
+card.s-0016.name: Placeholder special sixteen
+card.s-0016.text: Discard 2 random cards from your hand, then draw 2 cards.
+card.s-0017.name: Placeholder special seventeen
+card.s-0017.text: Create a bronze unit.
+card.s-0018.name: Placeholder special eighteen
+card.s-0018.text: Clear the hazards from your rows.
+card.s-0019.name: Placeholder special nineteen
+card.s-0019.text: Clear the boons from your opponent's rows.
 card.a-0001.name: Placeholder artifact one
 card.a-0001.text: "Activated ability, 3 charges: damage an enemy unit by 1. At round end, gain 1 charge."
 card.a-0002.name: Placeholder artifact two
@@ -106,5 +136,7 @@ card.u-0102.name: Placeholder neutral unit two
 card.u-0102.text: Banished whenever it leaves the board.
 card.u-0103.name: Placeholder neutral unit three
 card.u-0103.text: Shielded.
+card.g-0101.name: Placeholder stratagem one
+card.g-0101.text: Starts on your board if you go first. Once, boost one of your units by 3.
 card.s-0101.name: Placeholder neutral special one
 card.s-0101.text: Draw 2 cards.

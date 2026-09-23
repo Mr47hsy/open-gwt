@@ -16,8 +16,9 @@ Records are numbered in the order they were accepted. Numbers are never reused.
 | [0006](0006-i18n-keys-and-unity-localization.md) | Keys-only i18n with one message format rendered on both sides | accepted |
 | [0007](0007-mvp-order-and-acceptance.md) | MVP order: core, then server, then client | accepted |
 | [0008](0008-match-scaling-stateless-workers.md) | Match scaling: stateless workers over a shared match store | accepted |
-| [0009](0009-two-row-standalone-ruleset.md) | Adopt the two-row standalone ruleset as the game's shape | accepted; PRNG clause superseded by 0010 |
+| [0009](0009-two-row-standalone-ruleset.md) | Adopt the two-row standalone ruleset as the game's shape | accepted; PRNG clause superseded by 0010, compensation left out superseded by 0011 |
 | [0010](0010-unpredictable-random-stream.md) | An unpredictable random stream for the rules core | accepted |
+| [0011](0011-first-player-compensation.md) | Compensate the player who goes first: an extra redraw and a stratagem | accepted |
 
 ## Writing a new record
 

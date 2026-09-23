@@ -7,9 +7,11 @@ sends intents; every decision is made on the server. Version 2 carries the two-r
 [ADR 0009](../adr/0009-two-row-standalone-ruleset.md), whose rules are defined in
 [`cards.md`](cards.md).
 
-> **Transition.** This is phase A of ADR 0009: the protocol is written before the code. Until
-> phase E lands, the server and the client on `develop` still speak protocol 1, described by the
-> previous revision of this file (`git show b68be93:docs/protocol/match.md`).
+> **Transition.** Since ADR 0009 phase B the server speaks protocol 2: views, intents and events
+> come from the v2 rules core. The Unity client on `develop` still speaks protocol 1 (`git show
+> b68be93:docs/protocol/match.md`) until phase E; between the two it cannot play, by the owner's
+> decision. Until phase C only a stratagem's activated ability is ever ready (ADR 0011), and
+> every pending choice is of kind `unit`.
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
 rendered to a human carries keys or codes, never sentences ([ADR 0006](../adr/0006-i18n-keys-and-unity-localization.md)).
@@ -40,8 +42,8 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
-| `GET /decks` | → `[{deck_id, name, faction, leader, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
-| `PUT /decks/{deck_id}` | `{name, faction, leader, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` is required. |
+| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
+| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` and `stratagem` are required. |
 | `DELETE /decks/{deck_id}` | → `204` | |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. |
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
@@ -102,7 +104,7 @@ Exactly what the rules core accepts; the server only adds authentication and rou
 
 | `kind` | Fields | When legal |
 | --- | --- | --- |
-| `mulligan` | `{card: instance}` | During the mulligan, while this player has redraws left and has not ended their mulligan: return this card from hand and draw a replacement (`cards.md` §11.5). |
+| `mulligan` | `{card: instance}` | During the mulligan, while this player has redraws left, cards in their deck and has not ended their mulligan: return this card from hand and draw a replacement into its place (`cards.md` §11.5). |
 | `end_mulligan` | `{}` | During the mulligan, until this player's mulligan is over. It ends by itself when the redraws run out. |
 | `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end). Playing a card ends the turn once it has resolved. |
 | `use_order` | `{instance}` | On this player's turn, with no choice pending, for a card of theirs on the board or their leader whose activated ability is ready (`cards.md` §6.3). Does not end the turn. |
@@ -144,7 +146,7 @@ serialisation; it does not exist in the message.
         "effect": null,
         "cards": [
           { "instance": "c09", "card": "u-0003", "owner": 0,
-            "power": 6, "base": 4, "boost": 2, "aura": 1, "damage": 1, "armor": 2,
+            "power": 6, "base": 4, "aura": 1, "armor": 2,
             "statuses": [ { "status": "bleeding", "turns": 2 }, { "status": "shielded" } ],
             "order": null },
           { "instance": "c11", "card": "a-0001", "owner": 0,
@@ -177,14 +179,14 @@ and the like are shortened for the examples, and a client never parses them.
 | `graveyard`, `banished` | Public zones, oldest first. |
 | `leader` | The leader's instance and card, and its `order` (below); `null` for a deck without one. |
 | `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished; otherwise `null`. |
-| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. |
+| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. The starter's stratagem is one of these cards until it is used, with its `order`. |
 
 A card on the board:
 
 | Field | Meaning |
 | --- | --- |
 | `instance`, `card`, `owner` | Instance id, card id, and the seat of the owner (the controller is the side it is listed under). |
-| `power`, `base`, `boost`, `aura`, `damage`, `armor` | Units only: `power = base + boost + aura − damage` (`cards.md` §11.1), and armour apart. |
+| `power`, `base`, `aura`, `armor` | Units only: `power` is the current power plus `aura` (`cards.md` §11.1); the unit is boosted when `power − aura` is above `base` and damaged when it is below. Armour apart. |
 | `statuses` | In order of arrival: `{status}` or `{status, turns}` for a timed one. |
 | `order` | `null` for a card without an activated ability; otherwise `{ready, charges, cooldown}`, where `charges` is `null` when unlimited and `ready` follows `cards.md` §6.3 — so it is only ever `true` for this player's cards on their turn. |
 
@@ -221,39 +223,44 @@ id, then instance id. The answer is `choose {option}`, the option's index.
 Each event is `{seq, type, ...}`. Events are what the client animates. The set is open-ended by
 adding types; the fields of an existing type are only ever extended.
 
-`seat` is the player an event concerns: the acting player for intents, choices and passes, the
-controller — the side it stands on — for a card on the board. `side` is `self` or `opponent`
-relative to `seat`. `reason` names what caused a change: an action (`damage`), a status
+`seat` is the player an event concerns: the acting player for intents, choices and passes and
+for a card played or summoned, the controller — the side it stands on — for any other event about
+a card on the board. `side` is `self` or `opponent` relative to `seat`: where a played or summoned
+card landed. `reason` names what caused a change: an action (`damage`), a status
 (`bleeding`, `growing`), a row effect (`damage_weakest`), or `aura`. `source` is the instance
 whose ability caused it, or `null` for a status or a row effect.
 
 | `type` | Fields | Notes |
 | --- | --- | --- |
 | `match_started` | `{starter}` | Never carries the seed (section 11). |
+| `stratagem_placed` | `{seat, instance, card, row, position}` | The starter's stratagem starts on their board (ADR 0011). |
 | `round_started` | `{round, starter}` | |
 | `card_drawn` | `{seat, instance?, card?}` | `instance` and `card` only for the receiving player's own draws. |
-| `draw_skipped` | `{seat, reason}` | `reason` is `hand_full` or `deck_empty`. |
-| `mulligan_started` | `{round, redraws: [n0, n1]}` | Both players at once. |
+| `draw_skipped` | `{seat, reason, count}` | `reason` is `hand_full` or `deck_empty`; `count` draws of one draw action did not happen. |
+| `mulligan_started` | `{round, redraws: [n0, n1]}` | Both players at once; the redraws include those for draws a full hand prevented. |
 | `card_redrawn` | `{seat, instance?, card?}` | A card went back into the deck; its replacement follows as `card_drawn`. Identity for the owner only. |
 | `mulligan_done` | `{seat, count}` | |
 | `turn_started` | `{seat}` | |
 | `turn_ended` | `{seat}` | |
 | `card_played` | `{seat, instance, card, from, row?, position?, side?}` | `from` is `hand`, `deck` or `graveyard`; `row`, `position`, `side` for a unit or artifact. |
-| `order_used` | `{seat, instance, card, charges, cooldown}` | After the fact: remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
+| `order_used` | `{seat, instance, card, charges, cooldown}` | When the order's first ability starts to act (after its choice, if it asks one): remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
 | `card_summoned` | `{seat, instance, card, from, row, position, side}` | Onto the board without being played; `from` is `deck` or `created`. |
 | `card_moved` | `{seat, instance, card, from_row, to_row, position}` | |
 | `card_returned` | `{seat, instance, card}` | From the board to its owner's hand. |
-| `card_destroyed` | `{seat, instance, card, row, banished}` | `banished` is `true` when `banish_on_leave` sent it away instead of to the graveyard. |
+| `control_changed` | `{seat, instance, card, from_seat, row, position, source}` | By `take_control`; `seat` is the new controller. |
+| `card_discarded` | `{seat, instance, card}` | From `seat`'s hand to the owner's graveyard. |
+| `card_destroyed` | `{seat, instance, card, row, banished, source}` | `banished` is `true` when `banish_on_leave` sent it away instead of to the graveyard; `source` is `null` for the destruction check (`cards.md` §11.2). |
 | `card_banished` | `{seat, instance, card}` | Removed from the board by `banish`, or by `banish_on_leave` when it was returned or cleared at round end. |
 | `unit_damaged` | `{seat, instance, card, amount, power, reason, source}` | `amount` reached power past armour; `power` is the new value. |
 | `damage_blocked` | `{seat, instance, card, amount, reason, source}` | A shield blocked it; `status_removed` follows. |
 | `unit_boosted` | `{seat, instance, card, amount, power, reason, source}` | |
-| `damage_removed` | `{seat, instance, card, amount, power, source}` | |
+| `unit_healed` | `{seat, instance, card, amount, power, source}` | By `heal`; `amount` of damage undone. |
 | `base_power_changed` | `{seat, instance, card, from, to, power, source}` | |
 | `armor_changed` | `{seat, instance, card, from, to, reason, source}` | Gained, or used up absorbing damage. |
-| `power_changed` | `{seat, instance, card, from, to, reason}` | Any other change of power, such as an aura starting or ending. |
+| `power_changed` | `{seat, instance, card, from, to, reason, source}` | Any other change of power: `reset_power`, or `aura` right after the change that started or ended an aura — a card entering, leaving, moving, locked or unlocked (`source` `null`). |
 | `status_added` | `{seat, instance, card, status, turns?, reason, source}` | `turns` is the timer after the addition. |
-| `status_removed` | `{seat, instance, card, status, reason, source}` | `reason` is an action, `expired`, `blocked` (a shield used up) or `kept` (`kept_at_round_end` used). |
+| `status_reduced` | `{seat, instance, card, status, turns, reason, source}` | A timer shortened: `bleeding` and `growing` cancelling each other. |
+| `status_removed` | `{seat, instance, card, status, reason, source}` | `reason` is an action, `expired`, `blocked` (a shield used up), `cancelled` (`bleeding` against `growing`) or `kept` (`kept_at_round_end` used). |
 | `charges_changed` | `{seat, instance, card, from, to, source}` | By `add_charges`. |
 | `row_effect_set` | `{seat, row, effect, amount, count?, source}` | Replaces any previous one; no `row_effect_cleared` precedes it. |
 | `row_effect_cleared` | `{seat, row, effect, source}` | By `clear_row_effect`. The end of a round removes row effects without this event (`board_cleared`). |
@@ -268,10 +275,12 @@ whose ability caused it, or `null` for a status or a row effect.
 ## 9. Replay record and reconnect
 
 The server stores, per match, a record of schema `opengwt.record/2`: the `seed` — 256 bits as 64
-lowercase hex characters (ADR 0010) — the `Rules` values the match was played with, both decks, and the ordered list of **accepted** intents with
-the seat that sent each. Replaying that record through the rules core reproduces every event and
-view. The replay endpoint returns exactly that record plus the result; a replay viewer streams it
-through the same `events`/`view` messages.
+lowercase hex characters (ADR 0010) — the `Rules` values the match was played with, both decks,
+and the ordered list of **accepted** intents with the seat that sent each. Replaying that record
+through the rules core reproduces every event and view. The replay endpoint returns exactly that
+record plus the result; a replay viewer streams it through the same `events`/`view` messages. A
+match finished before ADR 0009 phase B is returned as the `opengwt.record/1` data it was stored
+with — an integer seed and v1 rules and decks — which the current core does not replay.
 
 Reconnect: the client opens a new socket, receives `hello` and a full `view`, then optionally
 sends `resync {since_seq}` to receive the events it missed for animation. If the client cannot

@@ -26,6 +26,17 @@ cards:
     power: 4
     statuses: [shielded]
 
+  # A stratagem (ADR 0011): starts on the board of the player who goes first, takes a place on
+  # its row, and is used once: boost one of the player's units by 3.
+  g-0101:
+    kind: stratagem
+    rows: [melee]
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 3
+        target: { units: chosen, side: self }
+
   # Draw two cards.
   s-0101:
     kind: special

@@ -35,7 +35,8 @@ class DeckCardEntry(BaseModel):
 class DeckUpsert(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     faction: str
-    leader: str | None = None
+    leader: str
+    stratagem: str
     cards: list[DeckCardEntry]
 
 
@@ -44,6 +45,7 @@ class DeckOut(BaseModel):
     name: str
     faction: str
     leader: str | None
+    stratagem: str | None
     cards: list[DeckCardEntry]
 
 

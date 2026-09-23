@@ -21,7 +21,7 @@ from opengwt.server.services.matches import STATUS_FINISHED, MatchService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-PROTOCOL = 1
+PROTOCOL = 2
 CLOSE_REPLACED = 4000
 CLOSE_UNAUTHORISED = 4401
 CLOSE_NOT_A_PLAYER = 4403
