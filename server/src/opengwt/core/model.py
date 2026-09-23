@@ -1,10 +1,10 @@
 """Vocabulary and state of the rules core — docs/protocol/cards.md (``opengwt.cards/2``).
 
 Definitions (``CardDef`` and friends) are immutable and built from plain mappings shaped like the
-cards files. The whole v2 vocabulary loads: ADR 0009 phase B implements the power and board words
-and phase C the triggers, activation and generalised choices; until then the phase-C words of a
-card are carried and do nothing (``phase_c_words`` lists them). Match state is mutable and only
-ever changed by ``engine.apply``.
+cards files. The whole v2 vocabulary loads and acts: ADR 0009 phase B implemented the power and
+board words, phase C the triggers, activation and generalised choices (``phase_c_words`` lists
+the words of a card that phase C gave behaviour to). Match state is mutable and only ever changed
+by ``engine.apply``.
 """
 
 from __future__ import annotations
@@ -561,11 +561,9 @@ def card_def_from_mapping(card_id: str, faction: str, m: Mapping[str, Any]) -> C
 
 
 def phase_c_words(defn: CardDef) -> list[str]:
-    """The words of ``defn`` whose behaviour arrives with ADR 0009 phase C, as ``kind:word``.
-
-    The phase-B engine loads them and does nothing with them: those triggers never fire, those
-    actions and selectors do nothing, and no activated ability is ready.
-    """
+    """The words of ``defn`` that ADR 0009 phase C gave behaviour to, as ``kind:word`` — the
+    phase-B engine carried them without acting on them. A stratagem's activated ability acted
+    from phase B on (ADR 0011) and is not listed."""
     words: list[str] = []
     stratagem = defn.kind is Kind.STRATAGEM  # its activated ability acts from phase B (ADR 0011)
     if defn.activation is not None and not stratagem:

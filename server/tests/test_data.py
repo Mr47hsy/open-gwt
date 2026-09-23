@@ -4,7 +4,16 @@ import pytest
 import yaml
 
 from opengwt.core.engine import check_deck
-from opengwt.core.model import Deck, Kind, Rules, Status, phase_c_words
+from opengwt.core.model import (
+    PHASE_C_ACTIONS,
+    PHASE_C_TRIGGERS,
+    PHASE_C_UNITS,
+    Deck,
+    Kind,
+    Rules,
+    Status,
+    phase_c_words,
+)
 from opengwt.data import DataError, DataSet, load_data
 from opengwt.data.loader import (
     check_i18n,
@@ -26,17 +35,35 @@ def test_real_data_loads(dataset: DataSet) -> None:
         assert check_deck(dataset.library, deck, Rules()) == []
 
 
-def test_data_uses_only_the_words_phase_b_acts_on(dataset: DataSet) -> None:
-    """ADR 0009: data/ stays within phase B; a leader's activated ability is the one exception,
-    since every leader has one and using it is phase C. A stratagem's is used from phase B on
-    (ADR 0011)."""
-    for defn in dataset.library.values():
-        allowed = {"card:activation", "when:on_activate"} if defn.kind is Kind.LEADER else set()
-        assert set(phase_c_words(defn)) <= allowed, defn.id
+def test_the_starter_decks_exercise_every_phase_c_word(dataset: DataSet) -> None:
+    """ADR 0009 phase C: the starter decks, which the simulator and CI play, use every word phase
+    C gave behaviour to, and activated abilities with charges, cooldowns and ready on play."""
+    lib = dataset.library
+    in_play = {
+        cid
+        for deck in (dataset.decks["starter-a"], dataset.decks["starter-b"])
+        for cid in (*deck.cards, deck.leader, deck.stratagem)
+    }
+    used = {word for cid in in_play for word in phase_c_words(lib[cid])}
+    assert used == {
+        "card:activation",
+        *(f"when:{t.value}" for t in PHASE_C_TRIGGERS),
+        *(f"do:{a.value}" for a in PHASE_C_ACTIONS),
+        *(f"units:{u.value}" for u in PHASE_C_UNITS),
+        "row_target:chosen",
+        "cards:chosen",
+        "if:trigger_unit",
+    }
+    orders = [lib[cid] for cid in in_play if lib[cid].activation is not None]
+    assert {d.kind for d in orders} >= {Kind.UNIT, Kind.ARTIFACT, Kind.LEADER, Kind.STRATAGEM}
+    activations = [d.activation for d in orders if d.activation is not None]
+    assert any(a.cooldown > 0 and a.charges is None for a in activations)
+    assert any(a.ready_on_play for a in activations)
+    assert any(a.charges is not None and a.charges > 1 for a in activations)
 
 
 def test_protocol_examples_load() -> None:
-    """The whole v2 vocabulary loads — phase-C words included, carried until phase C."""
+    """The whole v2 vocabulary loads."""
     lib = load_library(EXAMPLES)
     assert lib["u-0029"].statuses == (Status.GUARDING,)
     assert phase_c_words(lib["u-0007"]) == ["card:activation", "when:on_activate"]

@@ -86,7 +86,8 @@ def test_a_redraw_skips_returned_ids_and_puts_the_card_back(
     assert returned.instance in {c.instance for c in q.deck}
     assert len(q.hand) == 10 and len(q.deck) == len(p.deck)
     assert event_types(events) == ["card_redrawn", "card_drawn"]
-    assert q.mulligan is not None and q.mulligan.remaining == 2
+    assert p.mulligan is not None and q.mulligan is not None
+    assert q.mulligan.remaining == p.mulligan.remaining - 1
     hidden = event_for_seat(events[0], 1)
     assert "card" not in hidden.data and "instance" not in hidden.data
 

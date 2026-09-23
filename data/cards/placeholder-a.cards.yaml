@@ -181,6 +181,68 @@ cards:
         amount: 2
         target: { units: this }
 
+  # boosts its neighbours at each of its controller's turn starts
+  u-1017:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_turn_start
+        do: boost
+        amount: 1
+        target: { units: adjacent }
+
+  # reusable every other turn
+  u-1018:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    activation: { cooldown: 2 }
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 2
+        target: { units: chosen, side: self }
+
+  # two charges, usable at once: armour for a whole row of allies
+  u-1019:
+    kind: unit
+    color: gold
+    provisions: 8
+    power: 4
+    activation: { charges: 2, ready_on_play: true }
+    abilities:
+      - when: on_activate
+        do: add_armor
+        amount: 1
+        target: { units: chosen_row, side: self }
+
+  # armours the allies with tag-a played after it
+  u-1020:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_ally_played
+        if: { trigger_unit: { tags_any: [tag-a] } }
+        do: add_armor
+        amount: 1
+        target: { units: trigger_unit }
+
+  u-1021:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_boosted
+        do: add_armor
+        amount: 1
+        target: { units: this }
+
   s-1001:
     kind: special
     color: bronze
@@ -217,6 +279,25 @@ cards:
         amount: 3
         target: { units: chosen, side: self }
 
+  s-1004:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: play_from_deck
+        cards: { pick: chosen, offer: 3, where: { kind: [unit], power_at_most: 4 } }
+
+  s-1005:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: add_charges
+        to: leader
+        amount: 1
+
   a-1001:
     kind: artifact
     color: bronze
@@ -228,7 +309,23 @@ cards:
         amount: 1
         scope: row
 
-  # its activated ability arrives with ADR 0009 phase C
+  # one charge, and one more at each of its controller's turn ends
+  a-1002:
+    kind: artifact
+    color: bronze
+    provisions: 5
+    rows: [ranged]
+    activation: { charges: 1 }
+    abilities:
+      - when: on_activate
+        do: damage
+        amount: 1
+        target: { units: chosen, side: opponent }
+      - when: on_turn_end
+        do: add_charges
+        to: this
+        amount: 1
+
   l-1001:
     kind: leader
     provision_bonus: 15
