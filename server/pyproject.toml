@@ -54,6 +54,6 @@ testpaths = ["tests"]
 root_package = "opengwt"
 
 [[tool.importlinter.contracts]]
-name = "Layers: sim > bots > data > core"
+name = "Layers: sim > bots > data > i18n > core"
 type = "layers"
-layers = ["opengwt.sim", "opengwt.bots", "opengwt.data", "opengwt.core"]
+layers = ["opengwt.sim", "opengwt.bots", "opengwt.data", "opengwt.i18n", "opengwt.core"]
