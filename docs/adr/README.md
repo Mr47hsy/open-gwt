@@ -9,14 +9,15 @@ Records are numbered in the order they were accepted. Numbers are never reused.
 | # | Title | Status |
 | --- | --- | --- |
 | [0001](0001-python-server-unity-thin-client.md) | Python server, Unity thin client | accepted |
-| [0002](0002-rules-core-pure-python-package.md) | Rules core as a zero-dependency Python package | accepted |
+| [0002](0002-rules-core-pure-python-package.md) | Rules core as a zero-dependency Python package | accepted; PRNG clause superseded by 0010 |
 | [0003](0003-card-effect-protocol-yaml.md) | Card effects as a YAML protocol with a closed vocabulary | accepted |
 | [0004](0004-server-config-and-optional-backends.md) | Layered config and optional backends, no Nacos | accepted |
 | [0005](0005-client-ui-toolkit.md) | UI Toolkit for the whole client UI | accepted |
 | [0006](0006-i18n-keys-and-unity-localization.md) | Keys-only i18n with one message format rendered on both sides | accepted |
 | [0007](0007-mvp-order-and-acceptance.md) | MVP order: core, then server, then client | accepted |
 | [0008](0008-match-scaling-stateless-workers.md) | Match scaling: stateless workers over a shared match store | accepted |
-| [0009](0009-two-row-standalone-ruleset.md) | Adopt the two-row standalone ruleset as the game's shape | accepted |
+| [0009](0009-two-row-standalone-ruleset.md) | Adopt the two-row standalone ruleset as the game's shape | accepted; PRNG clause superseded by 0010 |
+| [0010](0010-unpredictable-random-stream.md) | An unpredictable random stream for the rules core | accepted |
 
 ## Writing a new record
 

@@ -12,7 +12,9 @@ one pull request per concern.
 - Phase A: `docs/protocol/cards.md` v2 + schemas, `match.md` v2, glossary rows.
 - Phase B: two rows with capacity, base / boost / damage / armour, statuses with timers,
   per-round draws and mulligans, hand limit, tie rule, weather as per-turn damage; v1 actions
-  dropped; data rewritten to v2; goldens regenerated.
+  dropped; data rewritten to v2; goldens regenerated. Also ADR 0010: SHA-256 random stream,
+  256-bit hex seed (`opengwt.record/2`, `matches.seed` migration), opaque instance ids, bot
+  on its own per-decision stream.
 - Phase C: `use_order` with charges / cooldown / immediate, leader charges, on-destroyed,
   turn-start/end, ally-played, boosted/damaged, adjacency, generalised choices; bots use orders.
 - Phase D: provisions, colours, copy limits, minimum units; server validation; pack v2.
