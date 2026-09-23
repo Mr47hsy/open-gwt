@@ -21,8 +21,16 @@ from starlette.testclient import WebSocketTestSession
 
 from opengwt.bots import RandomBot
 from opengwt.core.engine import apply, legal_intents, new_match
-from opengwt.core.intents import CancelChoice, Choose, EndMulligan, Intent, Pass, PlayCard
-from opengwt.core.model import MatchState
+from opengwt.core.intents import (
+    CancelChoice,
+    Choose,
+    EndMulligan,
+    Intent,
+    Mulligan,
+    Pass,
+    PlayCard,
+)
+from opengwt.core.model import MatchState, Phase
 from opengwt.core.replay import record_from_dict, replay
 from opengwt.core.rng import bot_stream
 from opengwt.core.serialize import state_from_dict, state_hash
@@ -519,60 +527,98 @@ def test_the_turn_timer_plays_for_a_player_who_never_moves(tmp_path: Path) -> No
     assert state_hash(final) == body["result"]["final_hash"]
 
 
-def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> None:
-    """The opponent has passed, so the player keeps the turn after playing a card. The timer set
-    before that card must not pass on the player's next turn; only the one the card re-armed
-    may."""
-    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+class _Room:
+    """A room match between two guests, moved and timed out through ``MatchService`` directly
+    so a test decides exactly which timer fires when."""
+
+    def __init__(self, client: TestClient) -> None:
         h0, _ = _guest(client, "a")
         h1, _ = _guest(client, "b")
         room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"})
-        match_id = room.json()["match_id"]
+        self.match_id: str = room.json()["match_id"]
         joined = client.post(
             "/matches/join",
             headers=h1,
             json={"room_code": room.json()["room_code"], "deck_id": "starter-b"},
         )
         assert joined.status_code == 200
-        service: MatchService = client.app.state.matches  # type: ignore[attr-defined]
-        portal = client.portal
-        assert portal is not None
+        self.service: MatchService = client.app.state.matches  # type: ignore[attr-defined]
+        assert client.portal is not None
+        self.portal = client.portal
 
-        def state() -> MatchState:
-            loaded = portal.call(service.store.load, match_id)
-            assert loaded is not None
-            return state_from_dict(loaded[0]["state"])
+    def state(self) -> MatchState:
+        loaded = self.portal.call(self.service.store.load, self.match_id)
+        assert loaded is not None
+        return state_from_dict(loaded[0]["state"])
 
-        def move(seat: int, intent: Intent) -> None:
-            portal.call(service.apply, match_id, seat, intent)
+    def legal(self, seat: int) -> list[Intent]:
+        return legal_intents(self.service.content.library, self.state(), seat)
 
-        starter = state().starter
+    def move(self, seat: int, intent: Intent) -> None:
+        self.portal.call(self.service.apply, self.match_id, seat, intent)
+
+    def timer(self, seat: int) -> Any:
+        return self.service._deadlines.get((self.match_id, seat))
+
+    def time_out(self, seat: int, timer: Any) -> None:
+        self.portal.call(self.service.timeout_move, self.match_id, seat, timer.wait)
+
+
+def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> None:
+    """The opponent has passed, so the player keeps the turn after playing a card. The timer set
+    before that card must not pass on the player's next turn; only the one the card re-armed
+    may."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client)
+        starter = room.state().starter
         player = 1 - starter
-        move(starter, EndMulligan())
-        move(player, EndMulligan())
-        move(starter, Pass())
-        stale = service._deadlines[match_id]
-        assert (stale.seat, stale.seq) == (player, state().seq)
+        room.move(starter, EndMulligan())
+        room.move(player, EndMulligan())
+        room.move(starter, Pass())
+        stale = room.timer(player)
+        assert stale is not None and room.timer(starter) is None
 
-        play = next(
-            i
-            for i in legal_intents(service.content.library, state(), player)
-            if isinstance(i, PlayCard) and i.row is not None
-        )
-        move(player, replace(play, position=0))
-        after = state()
+        play = next(i for i in room.legal(player) if isinstance(i, PlayCard) and i.row is not None)
+        room.move(player, replace(play, position=0))
+        after = room.state()
         assert after.turn == player
-        fresh = service._deadlines[match_id]
-        assert (fresh.seat, fresh.seq) == (player, after.seq)
+        fresh = room.timer(player)
+        assert fresh is not None and fresh != stale
 
-        portal.call(service.timeout_move, match_id, stale.seat, stale.seq)
-        assert state().seq == after.seq and not state().players[player].passed
+        room.time_out(player, stale)
+        assert room.state().seq == after.seq and not room.state().players[player].passed
 
-        portal.call(service.timeout_move, match_id, fresh.seat, fresh.seq)
-        events = [e for p in portal.call(service.history, match_id, after.seq) for e in p["events"]]
-        assert {"type": "player_passed", "seat": player} in [
-            {"type": e["type"], "seat": e.get("seat")} for e in events
-        ]
+        room.time_out(player, fresh)
+        history = room.portal.call(room.service.history, room.match_id, after.seq)
+        passed = [e for p in history for e in p["events"] if e["type"] == "player_passed"]
+        assert [e["seat"] for e in passed] == [player]
+
+
+def test_both_players_mulligan_on_their_own_clock(tmp_path: Path) -> None:
+    """Both players mulligan at once (match.md §6), so each has a timer from the start of the
+    mulligan: the other player's redraws neither restart it nor cancel it, and ending one
+    mulligan stops only that player's timer."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client)
+        starter = room.state().starter
+        other = 1 - starter
+        clocks = {seat: room.timer(seat) for seat in (0, 1)}
+        assert clocks[0] is not None and clocks[0] == clocks[1]
+
+        redraw = next(i for i in room.legal(other) if isinstance(i, Mulligan))
+        room.move(other, redraw)
+        assert {seat: room.timer(seat) for seat in (0, 1)} == clocks
+
+        room.time_out(starter, clocks[starter])
+        players = room.state().players
+        assert players[starter].mulligan is not None and players[starter].mulligan.done
+        assert players[other].mulligan is not None and not players[other].mulligan.done
+        assert room.timer(starter) is None and room.timer(other) == clocks[other]
+
+        room.time_out(other, clocks[other])
+        state = room.state()
+        assert state.phase is Phase.PLAYING and state.turn == starter
+        assert room.timer(starter) is not None and room.timer(other) is None
 
 
 def _timer_service(monkeypatch: pytest.MonkeyPatch, timeout_move: Any) -> MatchService:
@@ -587,6 +633,10 @@ def _timer_service(monkeypatch: pytest.MonkeyPatch, timeout_move: Any) -> MatchS
     )
     monkeypatch.setattr(service, "timeout_move", timeout_move)
     return service
+
+
+def _due(seq: int) -> Any:
+    return match_service._Deadline(0.0, ("seq", seq))
 
 
 async def _until(condition: Callable[[], bool], within: float = 5.0) -> None:
@@ -604,18 +654,18 @@ async def test_the_timer_loop_outlives_a_failing_match(
     failures = {"conflict": VersionConflict("stale"), "runaway": RuntimeError("no yield")}
     moved: list[str] = []
 
-    async def timeout_move(match_id: str, seat: int, seq: int) -> None:
+    async def timeout_move(match_id: str, seat: int, wait: Any) -> None:
         moved.append(match_id)
         if match_id in failures:
             raise failures[match_id]
 
     service = _timer_service(monkeypatch, timeout_move)
     for match_id in ("conflict", "runaway", "fine"):
-        service._deadlines[match_id] = match_service._Deadline(0.0, 0, 1)
+        service._deadlines[(match_id, 0)] = _due(1)
     loop = asyncio.create_task(service.run_timers(0.001))
     try:
         await _until(lambda: "fine" in moved)
-        service._deadlines["later"] = match_service._Deadline(0.0, 0, 1)
+        service._deadlines[("later", 0)] = _due(1)
         await _until(lambda: "later" in moved)
         assert not loop.done()
     finally:
@@ -630,25 +680,25 @@ async def test_a_timer_re_armed_while_the_loop_runs_is_kept(
 ) -> None:
     """While the loop moves for one match, a player's move on another re-arms that match's
     timer. The loop listed the old timer before; it must skip it and keep the new one."""
-    moved: list[tuple[str, int]] = []
-    fresh = match_service._Deadline(asyncio.get_running_loop().time() + 3600, 1, 7)
+    moved: list[tuple[str, Any]] = []
+    fresh = match_service._Deadline(asyncio.get_running_loop().time() + 3600, ("seq", 7))
 
-    async def timeout_move(match_id: str, seat: int, seq: int) -> None:
-        moved.append((match_id, seq))
+    async def timeout_move(match_id: str, seat: int, wait: Any) -> None:
+        moved.append((match_id, wait))
         if match_id == "first":
-            service._deadlines["second"] = fresh
+            service._deadlines[("second", 1)] = fresh
 
     service = _timer_service(monkeypatch, timeout_move)
-    service._deadlines["first"] = match_service._Deadline(0.0, 0, 1)
-    service._deadlines["second"] = match_service._Deadline(0.0, 0, 3)
+    service._deadlines[("first", 0)] = _due(1)
+    service._deadlines[("second", 1)] = _due(3)
     loop = asyncio.create_task(service.run_timers(0.001))
     try:
         await _until(lambda: bool(moved))
         await asyncio.sleep(0.02)
     finally:
         loop.cancel()
-    assert moved == [("first", 1)]
-    assert service._deadlines == {"second": fresh}
+    assert moved == [("first", ("seq", 1))]
+    assert service._deadlines == {("second", 1): fresh}
 
 
 def test_settings_layers_and_deployment_checks(

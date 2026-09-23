@@ -287,7 +287,9 @@ animate a gap it simply renders the `view`.
 
 A player who stays disconnected keeps their turn until the match's turn timeout, a server setting,
 after which the server passes for them — or, during the mulligan, ends their mulligan, and while a
-choice is pending, cancels it if it can or picks the first option.
+choice is pending, cancels it if it can or picks the first option. In the mulligan each player has
+their own timeout, from the start of the mulligan: neither player's redraws restart it. Otherwise
+the timeout restarts with every change to the match.
 
 `resync` is answered from the match's event log. In a multi-worker deployment that log is shared
 (ADR 0008), so a reconnecting client may land on any worker and still receive the same events.

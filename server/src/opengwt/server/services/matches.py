@@ -124,13 +124,23 @@ class MatchInfo:
         return self.status != STATUS_WAITING
 
 
+_Wait = tuple[str, int]
+
+
+def _wait(state: MatchState) -> _Wait:
+    """What a player's turn timer runs for (match.md §9). Both players mulligan at once, so the
+    mulligan is one wait per player for as long as it lasts, whatever either of them does in
+    it; any other wait ends with the next change to the match."""
+    if state.phase is Phase.MULLIGAN:
+        return ("mulligan", state.round)
+    return ("seq", state.seq)
+
+
 class _Deadline(NamedTuple):
-    """A turn timer: when it runs out, whose it is and the ``seq`` of the state it was set
-    for."""
+    """A player's turn timer: when it runs out and the wait it was set for."""
 
     at: float
-    seat: int
-    seq: int
+    wait: _Wait
 
 
 def _now() -> datetime:
@@ -167,7 +177,7 @@ class MatchService:
         self.sessions = sessions
         self.tasks = tasks
         self.settings = settings
-        self._deadlines: dict[str, _Deadline] = {}
+        self._deadlines: dict[tuple[str, int], _Deadline] = {}
 
     # --- lookups ---------------------------------------------------------------------------
 
@@ -329,14 +339,15 @@ class MatchService:
     ) -> None:
         await self._move(match_id, seat, lambda state: intent, intent_id)
 
-    async def timeout_move(self, match_id: str, seat: int, seq: int) -> None:
+    async def timeout_move(self, match_id: str, seat: int, wait: _Wait) -> None:
         """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
-        first option, otherwise pass. The timer was set for the state at ``seq``; the move is
-        decided under the match lock and only if no intent has moved the match on since, so a
-        player's own intent that lands first is never followed by a move they did not make."""
+        first option, otherwise pass. The move is decided under the match lock and only while the
+        wait the timer was set for goes on, so a player's own intent that lands first is never
+        followed by a move they did not make, and the other player's redraws in a mulligan
+        neither cancel nor restart it."""
 
         def decide(state: MatchState) -> Intent | None:
-            if state.seq != seq or seat not in acting_seats(state):
+            if seat not in acting_seats(state) or _wait(state) != wait:
                 return None
             legal = legal_intents(self.content.library, state, seat)
             if not legal:
@@ -475,7 +486,6 @@ class MatchService:
         await self.bus.publish(info.match_id, state.seq, payload)
         self._schedule_timer(info, state)
         if over:
-            self._deadlines.pop(info.match_id, None)
             self.tasks.spawn(self._after_match(info), name=f"after-match:{info.match_id}")
 
     async def _after_match(self, info: MatchInfo) -> None:
@@ -495,15 +505,20 @@ class MatchService:
     # --- timers ----------------------------------------------------------------------------
 
     def _schedule_timer(self, info: MatchInfo, state: MatchState) -> None:
+        """Give every player the rules wait on a timer, keeping the one they have while its wait
+        goes on; a player the rules no longer wait on, or a bot, has none."""
         timeout = self.settings.turn_timeout_seconds
-        if timeout <= 0 or state.phase is Phase.MATCH_OVER:
+        if timeout <= 0:
             return
-        seat = next((s for s in acting_seats(state) if info.seats[s] != BOT_PLAYER_ID), None)
-        if seat is None:
-            self._deadlines.pop(info.match_id, None)
-            return
+        wait = _wait(state)
         at = asyncio.get_running_loop().time() + timeout
-        self._deadlines[info.match_id] = _Deadline(at, seat, state.seq)
+        acting = acting_seats(state)
+        for seat in (0, 1):
+            key = (info.match_id, seat)
+            if seat not in acting or info.seats[seat] == BOT_PLAYER_ID:
+                self._deadlines.pop(key, None)
+            elif (current := self._deadlines.get(key)) is None or current.wait != wait:
+                self._deadlines[key] = _Deadline(at, wait)
 
     async def run_timers(self, interval: float = 1.0) -> None:
         """Move for every player whose timer ran out. One match's failure is logged and the loop
@@ -511,13 +526,14 @@ class MatchService:
         while True:
             await asyncio.sleep(interval)
             now = asyncio.get_running_loop().time()
-            due = [(m, d) for m, d in self._deadlines.items() if d.at <= now]
-            for match_id, deadline in due:
-                if self._deadlines.get(match_id) != deadline:
+            due = [(key, d) for key, d in self._deadlines.items() if d.at <= now]
+            for key, deadline in due:
+                if self._deadlines.get(key) != deadline:
                     continue  # re-armed by a move while an earlier timer here was running
-                del self._deadlines[match_id]
+                del self._deadlines[key]
+                match_id, seat = key
                 try:
-                    await self.timeout_move(match_id, deadline.seat, deadline.seq)
+                    await self.timeout_move(match_id, seat, deadline.wait)
                 except AppError as e:
                     logger.info("timer for %s could not move: %s", match_id, e.code)
                 except Exception:
