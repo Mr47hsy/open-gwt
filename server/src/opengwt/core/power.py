@@ -1,49 +1,71 @@
-"""Effective power, row totals and scores — docs/protocol/cards.md §6."""
+"""Power, aura, scores and board order — docs/protocol/cards.md §5 and §11.1.
+
+``power = current + aura``: the current power a unit carries (its base, raised by boosts and
+lowered by damage) plus the continuous boosts of the other cards on its row-side, recomputed on
+every read and never stored. Artifacts have no power.
+"""
 
 from __future__ import annotations
 
-from .model import ROWS, Action, CardInstance, Kind, Library, MatchState, Row, RowEffect
+from dataclasses import dataclass
+
+from .model import Action, CardInstance, Kind, Library, MatchState, Row, Scope, Status
 
 
-def effective_power(
-    lib: Library, state: MatchState, seat: int, row: Row, unit: CardInstance
-) -> int:
-    defn = lib[unit.card]
-    if defn.kind is not Kind.UNIT:
-        return 0
-    power = unit.power
-    if defn.immune:
-        return power
-    row_state = state.players[seat].rows[row]
-    if RowEffect.POWER_TO_ONE in row_state.effects:
-        power = 1
-    if defn.passives(Action.MULTIPLY_POWER_BY_COPIES):
-        power *= sum(1 for u in row_state.units if u.card == unit.card)
-    for other in row_state.units:
-        if other is unit:
+@dataclass(frozen=True)
+class Loc:
+    """Where a card stands on the board: its controller's seat, the row and the index."""
+
+    seat: int
+    row: Row
+    index: int
+    card: CardInstance
+
+
+def is_unit(lib: Library, card: CardInstance) -> bool:
+    return lib[card.card].kind is Kind.UNIT
+
+
+def aura_at(lib: Library, state: MatchState, seat: int, row: Row, index: int) -> int:
+    cards = state.players[seat].rows[row].cards
+    total = 0
+    for j, other in enumerate(cards):
+        if j == index or other.has(Status.LOCKED):
             continue
-        for passive in lib[other.card].passives(Action.BOOST_ROW_OTHERS):
-            power += passive.amount
-    if RowEffect.DOUBLE_POWER in row_state.effects:
-        power *= 2
-    return power
+        for ability in lib[other.card].auras():
+            if ability.do is not Action.CONTINUOUS_BOOST:
+                continue
+            if ability.scope is Scope.ROW or (
+                ability.scope is Scope.ADJACENT and abs(j - index) == 1
+            ):
+                total += ability.amount
+    return total
 
 
-def row_total(lib: Library, state: MatchState, seat: int, row: Row) -> int:
-    return sum(
-        effective_power(lib, state, seat, row, u) for u in state.players[seat].rows[row].units
-    )
+def power_at(lib: Library, state: MatchState, seat: int, row: Row, index: int) -> int:
+    """The power of the card at a board position; 0 for an artifact."""
+    card = state.players[seat].rows[row].cards[index]
+    if not is_unit(lib, card):
+        return 0
+    return card.power + aura_at(lib, state, seat, row, index)
+
+
+def board(state: MatchState, first: int | None = None) -> list[Loc]:
+    """Every card on the board in board order: the side of ``first`` (by default the active
+    player) first, rows in ``Rules.rows`` order, left to right."""
+    start = state.active if first is None else first
+    out: list[Loc] = []
+    for seat in (start, 1 - start):
+        for row in state.rules.rows:
+            out.extend(
+                Loc(seat, row, i, c) for i, c in enumerate(state.players[seat].rows[row].cards)
+            )
+    return out
 
 
 def score(lib: Library, state: MatchState, seat: int) -> int:
-    return sum(row_total(lib, state, seat, row) for row in ROWS)
-
-
-def board_powers(lib: Library, state: MatchState) -> dict[str, tuple[int, int]]:
-    """``instance -> (seat, effective power)`` for every card on the board, in board order."""
-    out: dict[str, tuple[int, int]] = {}
-    for seat in (0, 1):
-        for row in ROWS:
-            for unit in state.players[seat].rows[row].units:
-                out[unit.instance] = (seat, effective_power(lib, state, seat, row, unit))
-    return out
+    total = 0
+    for row in state.rules.rows:
+        for index in range(len(state.players[seat].rows[row].cards)):
+            total += power_at(lib, state, seat, row, index)
+    return total

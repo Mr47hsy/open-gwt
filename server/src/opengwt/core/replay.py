@@ -9,14 +9,17 @@ from .engine import apply, new_match
 from .events import Event
 from .intents import Intent, intent_from_dict, intent_to_dict
 from .model import Deck, Library, MatchState, Rules
+from .rng import parse_seed
 from .serialize import deck_from_dict, deck_to_dict, rules_from_dict, rules_to_dict
 
-RECORD_SCHEMA = "opengwt.record/1"
+RECORD_SCHEMA = "opengwt.record/2"
 
 
 @dataclass(frozen=True)
 class MatchRecord:
-    seed: int
+    """``seed`` is 256 bits as 64 lowercase hex characters (ADR 0010)."""
+
+    seed: str
     decks: tuple[Deck, Deck]
     intents: tuple[tuple[int, Intent], ...]
     rules: Rules = field(default_factory=Rules)
@@ -35,14 +38,16 @@ def record_to_dict(record: MatchRecord) -> dict[str, Any]:
 def record_from_dict(d: dict[str, Any]) -> MatchRecord:
     if d.get("schema") != RECORD_SCHEMA:
         raise ValueError(f"unsupported record schema {d.get('schema')!r}")
+    seed = str(d["seed"])
+    parse_seed(seed)
     decks = tuple(deck_from_dict(x) for x in d["decks"])
     if len(decks) != 2:
         raise ValueError("a record has exactly two decks")
     return MatchRecord(
-        seed=int(d["seed"]),
+        seed=seed,
         decks=(decks[0], decks[1]),
         intents=tuple((int(x["seat"]), intent_from_dict(x["intent"])) for x in d["intents"]),
-        rules=rules_from_dict(d["rules"]) if "rules" in d else Rules(),
+        rules=rules_from_dict(d["rules"]),
     )
 
 
