@@ -1,142 +1,340 @@
-/* Flat placeholder look for the MVP (ADR 0005): boxes and text, no art. */
+/* Board styles (ADR 0005). Every value comes from Tokens.uss through var(); the art is the
+   vector images in Art/ (UI Toolkit VectorImage, tinted here). Card layout is in percentages
+   so one rule set serves the board, the hand and the large preview, whose sizes differ. */
 
 .board {
     flex-grow: 1;
-    background-color: rgb(24, 27, 33);
-    color: rgb(230, 230, 230);
-    font-size: 14px;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--font-size-md);
     -unity-font-definition: url("/Assets/OpenGwt/Fonts/NotoSans-Regular-SDF.asset");
 }
 
 /* Card names and titles in the serif face; everything else stays in the sans (Fonts/README.md). */
-.card__name, .dialog__title, .bar__name, .middle__status {
+.card__name, .dialog__title, .bar__name, .middle__status, .preview__name {
     -unity-font-definition: url("/Assets/OpenGwt/Fonts/NotoSerif-Regular-SDF.asset");
 }
 
 .hidden { display: none; }
 
-.match { flex-grow: 1; padding: 6px 10px; }
+.match { flex-grow: 1; padding: var(--space-3) var(--space-4); }
+
+/* --- bars ---------------------------------------------------------------------------------- */
 
 .bar {
     flex-direction: row;
     align-items: center;
-    height: 36px;
-    padding: 0 8px;
-    background-color: rgb(34, 38, 46);
-    border-radius: 6px;
-    margin-bottom: 4px;
+    height: var(--size-bar);
+    flex-shrink: 0;
+    padding: 0 var(--space-4);
+    background-color: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2);
 }
-.bar__name { font-size: 15px; -unity-font-style: bold; margin-right: 12px; }
-.bar__score { font-size: 22px; -unity-font-style: bold; color: rgb(255, 214, 102); min-width: 48px; }
-.bar__lives { color: rgb(240, 120, 120); margin-right: 12px; }
-.bar__info { color: rgb(170, 175, 185); margin-right: 12px; }
-.bar__passed { color: rgb(120, 200, 140); -unity-font-style: bold; }
+.bar__name { font-size: var(--font-size-lg); -unity-font-style: bold; margin-right: var(--space-5); }
+.bar__score { font-size: var(--font-size-2xl); -unity-font-style: bold; color: var(--color-accent); min-width: 48px; }
+.bar__lives { color: var(--color-negative); margin-right: var(--space-5); }
+.bar__info { color: var(--color-text-muted); margin-right: var(--space-5); }
+.bar__passed { color: var(--color-positive); -unity-font-style: bold; }
 .bar__spacer { flex-grow: 1; }
-.bar__turn { -unity-font-style: bold; color: rgb(140, 200, 255); }
+.bar__turn { -unity-font-style: bold; color: var(--color-info); }
+
+/* --- rows ---------------------------------------------------------------------------------- */
 
 .side { flex-grow: 1; }
-.side--opponent { margin-bottom: 4px; }
-.side--mine { margin-top: 4px; }
+.side--opponent { margin-bottom: var(--space-1); }
+.side--mine { margin-top: var(--space-1); }
 
 .row {
     flex-direction: row;
     align-items: center;
-    min-height: 96px;
-    margin: 2px 0;
-    padding: 2px 6px;
+    min-height: var(--size-row-min-height);
+    margin: 1px 0;
+    padding: 1px var(--space-3);
     border-width: 1px;
-    border-color: rgb(58, 64, 76);
-    border-radius: 6px;
-    background-color: rgb(30, 34, 41);
+    border-color: var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-surface-1);
+    transition-property: border-color, background-color;
+    transition-duration: var(--duration-base);
 }
-.row--active { border-color: rgb(255, 214, 102); background-color: rgb(40, 44, 52); }
-.row__label { width: 60px; color: rgb(150, 155, 165); -unity-text-align: middle-left; }
-.row__effects { width: 90px; color: rgb(140, 200, 255); font-size: 11px; white-space: normal; }
-.row__units { flex-direction: row; flex-grow: 1; flex-wrap: wrap; }
-.row__total { width: 44px; font-size: 18px; -unity-font-style: bold; -unity-text-align: middle-right; }
+.row--active { border-color: var(--color-accent); background-color: var(--color-surface-3); }
+.row__head { width: 64px; align-items: center; justify-content: center; }
+.row__icon {
+    width: var(--size-icon-lg);
+    height: var(--size-icon-lg);
+    margin-bottom: var(--space-1);
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-icon);
+    transition-property: -unity-background-image-tint-color;
+    transition-duration: var(--duration-base);
+}
+.row--active .row__icon { -unity-background-image-tint-color: var(--color-accent); }
+.row__label { color: var(--color-text-subtle); font-size: var(--font-size-xs); -unity-text-align: middle-center; }
+.row__effects { width: 90px; color: var(--color-info); font-size: var(--font-size-xs); white-space: normal; }
+.row__units { flex-direction: row; flex-grow: 1; flex-wrap: wrap; align-items: center; }
+.row__total {
+    width: 40px;
+    height: 40px;
+    font-size: var(--font-size-xl);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    background-image: url("/Assets/OpenGwt/UI/Art/power-badge.svg");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-border-strong);
+}
 
-.middle { flex-direction: row; align-items: center; height: 30px; padding: 0 8px; }
-.middle__status { -unity-font-style: bold; color: rgb(255, 214, 102); margin-right: 16px; }
-.middle__message { color: rgb(240, 150, 150); }
+/* Row icons, shared by row heads, cards and the preview. */
+.icon--melee { background-image: url("/Assets/OpenGwt/UI/Art/row-melee.svg"); }
+.icon--ranged { background-image: url("/Assets/OpenGwt/UI/Art/row-ranged.svg"); }
+.icon--siege { background-image: url("/Assets/OpenGwt/UI/Art/row-siege.svg"); }
+.icon--special { background-image: url("/Assets/OpenGwt/UI/Art/kind-special.svg"); }
+.icon--immune { background-image: url("/Assets/OpenGwt/UI/Art/status-immune.svg"); }
+
+.middle { flex-direction: row; align-items: center; height: 28px; flex-shrink: 0; padding: 0 var(--space-4); }
+.middle__status { -unity-font-style: bold; color: var(--color-accent); margin-right: var(--space-6); }
+.middle__message { color: var(--color-negative); }
 
 .hand {
-    height: 128px;
-    margin-top: 4px;
-    background-color: rgb(34, 38, 46);
-    border-radius: 6px;
-    padding: 4px;
+    height: var(--size-hand-height);
+    flex-shrink: 0;
+    margin-top: var(--space-2);
+    background-color: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
 }
 .hand .unity-scroll-view__content-container { flex-direction: row; }
 
+/* --- cards --------------------------------------------------------------------------------- */
+
 .card {
-    width: 84px;
-    height: 112px;
-    margin: 3px;
-    padding: 4px;
+    width: var(--size-card-width);
+    height: var(--size-card-height);
+    flex-shrink: 0;
+    margin: var(--space-1);
     border-width: 2px;
-    border-radius: 6px;
-    border-color: rgb(90, 98, 112);
-    background-color: rgb(52, 58, 70);
-    justify-content: space-between;
-    transition-property: background-color, border-color, scale;
-    transition-duration: 0.45s;
+    border-radius: var(--radius-md);
+    border-color: var(--color-card-border);
+    background-color: var(--color-card-unit);
+    background-image: url("/Assets/OpenGwt/UI/Art/card-frame.svg");
+    -unity-background-scale-mode: stretch-to-fill;
+    translate: 0 0;
+    transition-property: background-color, border-color, scale, translate, opacity;
+    transition-duration: var(--duration-slow);
+    transition-timing-function: ease-out-cubic;
 }
-.card--flash { background-color: rgb(150, 130, 60); border-color: rgb(255, 214, 102); scale: 1.06 1.06; }
-.card--gone { background-color: rgb(120, 50, 50); border-color: rgb(240, 120, 120); }
-.card--playable { border-color: rgb(120, 200, 140); }
-.card--playable:hover { background-color: rgb(66, 74, 88); }
-.card--selected { border-color: rgb(255, 214, 102); background-color: rgb(80, 72, 50); }
-.card--immune { border-color: rgb(255, 214, 102); }
-.card--special { background-color: rgb(58, 52, 74); }
-.card--foreign { border-color: rgb(240, 120, 120); }
-.card__name { font-size: 12px; white-space: normal; height: 46px; }
-.card__meta { font-size: 10px; color: rgb(170, 175, 185); }
-.card__power { font-size: 24px; -unity-font-style: bold; -unity-text-align: middle-right; }
-.card__power--boosted { color: rgb(120, 200, 140); }
-.card__power--reduced { color: rgb(240, 120, 120); }
+.row__units .card { width: var(--size-card-board-width); height: var(--size-card-board-height); }
+.hand .card, .modal__options .card { transition-duration: var(--duration-base); }
+.card--special { background-color: var(--color-card-special); }
+.card--leader { background-color: var(--color-card-leader); }
+.card--playable { border-color: var(--color-positive); }
+.card--playable:hover { background-color: var(--color-card-unit-hover); scale: 1.04 1.04; }
+.card--selected { border-color: var(--color-accent); background-color: var(--color-accent-soft); }
+.card--immune { border-color: var(--color-accent); }
+.card--foreign { border-color: var(--color-negative); }
+.card--flash { background-color: var(--color-accent-soft); border-color: var(--color-accent); scale: 1.06 1.06; }
+
+/* Header: power badge left, row / kind / status icons right. Regions follow Art/card-frame.svg. */
+.card__power {
+    position: absolute;
+    left: 1%;
+    top: 1%;
+    width: 34%;
+    aspect-ratio: 1;
+    font-size: var(--font-size-md);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--color-text);
+    background-image: url("/Assets/OpenGwt/UI/Art/power-badge.svg");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-badge);
+}
+.hand .card__power, .modal__options .card__power { font-size: var(--font-size-lg); }
+.card__power--none { display: none; }
+.card__power--boosted { color: var(--color-positive); -unity-background-image-tint-color: var(--color-badge-boosted); }
+.card__power--reduced { color: var(--color-negative); -unity-background-image-tint-color: var(--color-badge-reduced); }
+.card__icons { position: absolute; right: 5%; top: 5%; flex-direction: row; }
+.card__icon {
+    width: var(--size-icon-sm);
+    height: var(--size-icon-sm);
+    margin-left: 1px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-icon-strong);
+}
+.card__art {
+    position: absolute;
+    left: 8.3%;
+    right: 8.3%;
+    top: 21.4%;
+    height: 42.9%;
+    align-items: center;
+    justify-content: center;
+}
+.card__watermark {
+    height: 72%;
+    aspect-ratio: 1;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-card-watermark);
+}
+.card__name {
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    top: 69%;
+    bottom: 3%;
+    font-size: var(--font-size-2xs);
+    white-space: normal;
+    overflow: hidden;
+    -unity-text-align: middle-center;
+}
+.hand .card__name, .modal__options .card__name { font-size: var(--font-size-xs); }
+/* Board cards are small: one line of name, smaller icons; the preview has the rest. */
+.row__units .card__name { white-space: nowrap; text-overflow: ellipsis; }
+.row__units .card__icon { width: var(--size-icon-xs); height: var(--size-icon-xs); }
+
+/* The large card in the preview. */
+.card--large {
+    width: var(--size-card-large-width);
+    height: var(--size-card-large-height);
+    margin: 0;
+    border-color: var(--color-border-strong);
+}
+.card--large .card__power { font-size: var(--font-size-4xl); }
+.card--large .card__name { font-size: var(--font-size-xl); }
+.card--large .card__icon { width: var(--size-icon-lg); height: var(--size-icon-lg); margin-left: var(--space-1); }
+
+/* --- motion (BoardMotion adds and removes these; durations are tokens) --------------------- */
+
+/* A new card grows in where it stands. */
+.card--enter-from { opacity: 0; scale: 0.6 0.6; }
+/* The opponent's card starts small and faint at their hand. */
+.card--enter-far { opacity: 0.4; scale: 0.5 0.5; }
+/* An element waiting for its ghost to land: hidden, and without transitions so it appears at once.
+   Two classes, so they win over `.hand .card` and `.row__units .card`. */
+.card.card--instant { transition-duration: 0s; }
+.card.card--pending { opacity: 0; }
+
+/* A card that left its place keeps it as a ghost in the effects layer while it goes. */
+.fx-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.card--ghost {
+    position: absolute;
+    margin: 0;
+    transition-property: background-color, border-color, opacity, scale, rotate, translate;
+    transition-duration: var(--duration-fast), var(--duration-fast), var(--duration-exit), var(--duration-exit), var(--duration-exit), var(--duration-exit);
+    transition-delay: 0s, 0s, var(--duration-fast), var(--duration-fast), var(--duration-fast), var(--duration-fast);
+    transition-timing-function: ease-in-cubic;
+}
+/* Played from the hand to a row, returned to the hand, or played by the opponent. */
+.card--travel {
+    transition-property: translate, scale, opacity;
+    transition-duration: var(--duration-slow);
+    transition-delay: 0s;
+    transition-timing-function: ease-out-cubic;
+}
+/* A played special flies to the middle of the board, then fades. */
+.card--cast {
+    transition-property: translate, opacity, scale;
+    transition-duration: var(--duration-slow), var(--duration-base), var(--duration-base);
+    transition-delay: 0s, var(--duration-slow), var(--duration-slow);
+    transition-timing-function: ease-out-cubic, ease-in-cubic, ease-in-cubic;
+}
+.card--cast-out { opacity: 0; scale: 1.25 1.25; }
+/* Destroyed: flushes red, then shrinks, tilts and fades. */
+.card--destroyed {
+    background-color: var(--color-negative-deep);
+    border-color: var(--color-negative);
+    opacity: 0;
+    scale: 0.7 0.7;
+    rotate: -8deg;
+}
+/* Gone for any other reason: the round ended, it went back to the deck. */
+.card--leaving { opacity: 0; scale: 0.9 0.9; }
+
+/* --- card preview -------------------------------------------------------------------------- */
+
+.preview {
+    position: absolute;
+    top: 64px;
+    right: 72px;
+    width: var(--size-preview-width);
+    align-items: center;
+    opacity: 0;
+    scale: 0.96 0.96;
+    transition-property: opacity, scale;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: ease-out-cubic;
+}
+.preview--left { right: auto; left: 80px; }
+.preview--visible { opacity: 1; scale: 1 1; }
+.preview__details {
+    width: 100%;
+    margin-top: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-md);
+    border-width: 1px;
+    border-color: var(--color-border);
+    background-color: var(--color-surface-2);
+}
+.preview__name { font-size: var(--font-size-lg); -unity-font-style: bold; white-space: normal; margin-bottom: var(--space-2); }
+.preview__line { flex-direction: row; align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2); }
+.preview__icon {
+    width: var(--size-icon-md);
+    height: var(--size-icon-md);
+    margin-right: var(--space-1);
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-icon-strong);
+}
+.preview__chip { color: var(--color-text-muted); font-size: var(--font-size-sm); margin-right: var(--space-4); }
+.preview__text { font-size: var(--font-size-sm); white-space: normal; color: var(--color-text); }
+
+/* --- controls and dialogs ------------------------------------------------------------------ */
 
 .button {
-    height: 30px;
+    height: var(--size-button);
     padding: 0 14px;
-    margin: 0 4px;
-    border-radius: 6px;
+    margin: 0 var(--space-2);
+    border-radius: var(--radius-md);
     border-width: 0;
-    background-color: rgb(70, 78, 92);
-    color: rgb(230, 230, 230);
+    background-color: var(--color-control);
+    color: var(--color-text);
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
 }
-.button:hover { background-color: rgb(86, 96, 112); }
+.button:hover { background-color: var(--color-control-hover); }
 .button:disabled { opacity: 0.35; }
-.button--primary { background-color: rgb(46, 120, 84); }
-.button--primary:hover { background-color: rgb(56, 140, 100); }
+.button--primary { background-color: var(--color-primary); }
+.button--primary:hover { background-color: var(--color-primary-hover); }
 
 .overlay {
     position: absolute;
     left: 0; top: 0; right: 0; bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: var(--color-scrim);
     align-items: center;
     justify-content: center;
 }
 .dialog {
     width: 460px;
-    padding: 20px;
-    border-radius: 10px;
-    background-color: rgb(34, 38, 46);
+    padding: var(--space-7);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-2);
 }
 .dialog--wide { width: 720px; }
-.dialog__title { font-size: 22px; -unity-font-style: bold; margin-bottom: 8px; }
-.dialog__note { color: rgb(150, 155, 165); font-size: 11px; white-space: normal; margin-bottom: 12px; }
-.dialog__buttons { flex-direction: row; align-items: center; margin-top: 8px; }
-.dialog__status { margin-top: 10px; color: rgb(140, 200, 255); white-space: normal; }
-.field { margin: 4px 0; }
-.field .unity-base-field__label { min-width: 70px; color: rgb(170, 175, 185); }
+.dialog__title { font-size: var(--font-size-2xl); -unity-font-style: bold; margin-bottom: var(--space-4); }
+.dialog__note { color: var(--color-text-subtle); font-size: var(--font-size-xs); white-space: normal; margin-bottom: var(--space-5); }
+.dialog__buttons { flex-direction: row; align-items: center; margin-top: var(--space-4); }
+.dialog__status { margin-top: 10px; color: var(--color-info); white-space: normal; }
+.field { margin: var(--space-2) 0; }
+.field .unity-base-field__label { min-width: 70px; color: var(--color-text-muted); }
 .field--code { flex-grow: 1; }
-.unity-base-dropdown__container-outer { background-color: rgb(34, 38, 46); }
+.unity-base-dropdown__container-outer { background-color: var(--color-surface-2); }
 .modal__options { flex-direction: row; flex-wrap: wrap; max-height: 300px; }
 
 .event-log {
-    margin-top: 4px;
-    height: 54px;
-    font-size: 10px;
-    color: rgb(150, 155, 165);
+    margin-top: var(--space-2);
+    height: var(--size-event-log-height);
+    flex-shrink: 0;
+    font-size: var(--font-size-2xs);
+    color: var(--color-text-subtle);
     white-space: normal;
+    overflow: hidden;
 }

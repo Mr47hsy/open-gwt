@@ -1,0 +1,99 @@
+/* Design tokens: every colour, size, radius, type step and duration the client's USS uses.
+   Imported by OpenGwtTheme.tss, so `:root` is the panel root and every element inherits them;
+   Board.uss refers to them with var() and holds no literal colour of its own. Change the look
+   here. The names describe a role, never a place on the screen. */
+
+:root {
+    /* Surfaces, darkest first */
+    --color-bg: rgb(24, 27, 33);
+    --color-surface-1: rgb(30, 34, 41);
+    --color-surface-2: rgb(34, 38, 46);
+    --color-surface-3: rgb(40, 44, 52);
+    --color-scrim: rgba(0, 0, 0, 0.6);
+    --color-scrim-light: rgba(0, 0, 0, 0.35);
+    --color-border: rgb(58, 64, 76);
+    --color-border-strong: rgb(90, 98, 112);
+
+    /* Text */
+    --color-text: rgb(230, 230, 230);
+    --color-text-muted: rgb(170, 175, 185);
+    --color-text-subtle: rgb(150, 155, 165);
+    --color-text-on-accent: rgb(24, 27, 33);
+
+    /* Roles */
+    --color-accent: rgb(255, 214, 102);
+    --color-accent-soft: rgb(80, 72, 50);
+    --color-info: rgb(140, 200, 255);
+    --color-positive: rgb(120, 200, 140);
+    --color-negative: rgb(240, 120, 120);
+    --color-negative-deep: rgb(120, 40, 36);
+
+    /* Controls */
+    --color-control: rgb(70, 78, 92);
+    --color-control-hover: rgb(86, 96, 112);
+    --color-primary: rgb(46, 120, 84);
+    --color-primary-hover: rgb(56, 140, 100);
+
+    /* Cards: the frame SVG is white at low opacity over these fills */
+    --color-card-unit: rgb(52, 58, 70);
+    --color-card-unit-hover: rgb(66, 74, 88);
+    --color-card-special: rgb(58, 52, 74);
+    --color-card-leader: rgb(70, 60, 44);
+    --color-card-border: rgb(90, 98, 112);
+    --color-card-watermark: rgba(255, 255, 255, 0.16);
+    --color-badge: rgb(200, 205, 215);
+    --color-badge-boosted: rgb(120, 200, 140);
+    --color-badge-reduced: rgb(240, 120, 120);
+    --color-icon: rgb(150, 155, 165);
+    --color-icon-strong: rgb(215, 218, 225);
+
+    /* Spacing */
+    --space-1: 2px;
+    --space-2: 4px;
+    --space-3: 6px;
+    --space-4: 8px;
+    --space-5: 12px;
+    --space-6: 16px;
+    --space-7: 20px;
+
+    /* Radii */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+
+    /* Type scale */
+    --font-size-2xs: 10px;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 14px;
+    --font-size-lg: 15px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 22px;
+    --font-size-3xl: 24px;
+    --font-size-4xl: 40px;
+
+    /* Sizes */
+    --size-bar: 36px;
+    --size-button: 30px;
+    --size-icon-xs: 10px;
+    --size-icon-sm: 12px;
+    --size-icon-md: 16px;
+    --size-icon-lg: 22px;
+    --size-card-width: 84px;
+    --size-card-height: 112px;
+    --size-card-board-width: 66px;
+    --size-card-board-height: 88px;
+    --size-card-large-width: 240px;
+    --size-card-large-height: 320px;
+    --size-preview-width: 264px;
+    --size-row-min-height: 96px;
+    --size-hand-height: 124px;
+    --size-event-log-height: 46px;
+
+    /* Motion. BoardView waits for the transition's end event, with a fallback timer longer
+       than the slowest of these, so they can be tuned here alone. */
+    --duration-fast: 0.12s;
+    --duration-base: 0.25s;
+    --duration-slow: 0.45s;
+    --duration-exit: 0.6s;
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- open-gwt original art, CC BY 4.0 (LICENSE-ASSETS). White rim over a dark well; USS tints
+       the whole badge, so the rim takes the tint colour and the well stays dark. -->
+  <circle cx="16" cy="16" r="15" fill="#ffffff"/>
+  <circle cx="16" cy="16" r="12.5" fill="#15181d" fill-opacity="0.94"/>
+  <circle cx="16" cy="16" r="10.75" fill="none" stroke="#ffffff" stroke-opacity="0.3" stroke-width="0.75"/>
+  <polygon points="16,0.2 17.6,2 16,3.8 14.4,2" fill="#15181d"/>
+  <polygon points="16,28.2 17.6,30 16,31.8 14.4,30" fill="#15181d"/>
+</svg>

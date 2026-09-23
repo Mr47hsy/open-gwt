@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- open-gwt original art, CC BY 4.0 (LICENSE-ASSETS). Melee row: two crossed blades. White;
+       USS tints it. -->
+  <g transform="rotate(45 12 12)">
+    <polygon points="12,1.5 13.5,4 13.5,15 10.5,15 10.5,4" fill="#ffffff"/>
+    <rect x="7.5" y="15" width="9" height="1.8" rx="0.9" fill="#ffffff"/>
+    <rect x="11.1" y="16.8" width="1.8" height="3.6" fill="#ffffff"/>
+    <circle cx="12" cy="21.4" r="1.3" fill="#ffffff"/>
+  </g>
+  <g transform="rotate(-45 12 12)">
+    <polygon points="12,1.5 13.5,4 13.5,15 10.5,15 10.5,4" fill="#ffffff"/>
+    <rect x="7.5" y="15" width="9" height="1.8" rx="0.9" fill="#ffffff"/>
+    <rect x="11.1" y="16.8" width="1.8" height="3.6" fill="#ffffff"/>
+    <circle cx="12" cy="21.4" r="1.3" fill="#ffffff"/>
+  </g>
+</svg>

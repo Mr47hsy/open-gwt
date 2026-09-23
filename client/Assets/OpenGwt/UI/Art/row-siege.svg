@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- open-gwt original art, CC BY 4.0 (LICENSE-ASSETS). Siege row: a wheeled catapult and its
+       stone in flight. White; USS tints it. -->
+  <rect x="2.5" y="16" width="16" height="2.2" rx="1.1" fill="#ffffff"/>
+  <circle cx="6" cy="19.5" r="2.4" fill="#ffffff"/>
+  <circle cx="15" cy="19.5" r="2.4" fill="#ffffff"/>
+  <polygon points="9,16 13,16 11.4,9.5 10.6,9.5" fill="#ffffff"/>
+  <polygon points="13.57,11.93 5.07,3.43 3.93,4.57 12.43,13.07" fill="#ffffff"/>
+  <circle cx="4.4" cy="4" r="1.9" fill="#ffffff"/>
+  <circle cx="18.6" cy="4.6" r="2.8" fill="#ffffff"/>
+</svg>

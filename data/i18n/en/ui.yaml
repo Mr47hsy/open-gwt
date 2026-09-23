@@ -51,6 +51,11 @@ ui.effect.double-power: ×2
 ui.row.melee: Melee
 ui.row.ranged: Ranged
 ui.row.siege: Siege
+ui.kind.unit: Unit
+ui.kind.special: Special
+ui.kind.leader: Leader
+ui.preview.immune: Immune
+ui.preview.base-power: "Base power {power}"
 ui.hand.count.one: "{count} card in hand"
 ui.hand.count.other: "{count} cards in hand"
 ui.event.card-played: "{who}: played {card}"

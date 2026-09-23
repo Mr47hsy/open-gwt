@@ -53,6 +53,11 @@ ui.effect.double-power: ×2
 ui.row.melee: Ближний
 ui.row.ranged: Дальний
 ui.row.siege: Осадный
+ui.kind.unit: Отряд
+ui.kind.special: Особая карта
+ui.kind.leader: Лидер
+ui.preview.immune: Иммунитет
+ui.preview.base-power: "Базовая сила {power}"
 ui.hand.count.one: "{count} карта в руке"
 ui.hand.count.few: "{count} карты в руке"
 ui.hand.count.many: "{count} карт в руке"
