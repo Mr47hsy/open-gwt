@@ -43,6 +43,11 @@ describing any module or API as existing.
   [`.github/BRANCH_POLICY.md`](.github/BRANCH_POLICY.md).
 - Rules changes ship with a test that fails before and passes after, and name their public source in
   the commit body.
+- **Several sessions work in parallel, one feature each.** Start from `git checkout develop &&
+  git pull`, branch off it, and check `git branch --show-current` before every commit — the owner
+  may have switched the working tree to `develop` between your commands. Never commit on
+  `develop`. Pick work from `.agent/memory/backlog.md`; a client change ends with
+  `.agent/skills/client-headless-check/`, any new text goes through `.agent/skills/i18n-strings/`.
 - `README` and `CONTRIBUTING` exist in English, 简体中文 and Русский. Edit all three together, or say
   which translations are outstanding.
 
