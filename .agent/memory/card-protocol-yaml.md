@@ -6,7 +6,9 @@ metadata:
 ---
 
 Decided 2026-09-22 (`docs/adr/0003`, spec `docs/protocol/cards.md`): card content is authored in
-YAML with a closed vocabulary of triggers (`when`), actions (`do`), targets and two row effects.
+YAML with a closed vocabulary of triggers (`when`), conditions (`if`), actions (`do`), target
+selectors, statuses and row effects — `opengwt.cards/2` since ADR 0009 phase A, which the code
+implements from phase B on.
 JSON Schemas in `docs/protocol/` are normative. `opengwt.data` validates and compiles everything
 into one content pack; no runtime component parses YAML. Action names describe behaviour and never
 reuse official ability names. Card ids are opaque and never displayed.

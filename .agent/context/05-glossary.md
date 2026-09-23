@@ -10,23 +10,37 @@ names appear here.
 
 | English | 简体中文 | Русский | Meaning |
 | --- | --- | --- | --- |
-| row | 行 / 战场行 | ряд | One of the three lines units are placed on |
+| row | 行 / 战场行 | ряд | One of the two lines — melee and ranged — each player places cards on (ADR 0009) |
+| melee row / ranged row | 近战行 / 远程行 | ближний ряд / дальний ряд | The two rows, in board order |
+| row capacity | 行容量 | вместимость ряда | Most cards one player's row holds; nine by default |
+| position / adjacent | 位置 / 相邻 | позиция / соседний | A card's place in its row, left to right, and the cards directly beside it |
 | round | 局 | раунд | One scoring segment; a match is best-of-three |
+| turn | 回合 | ход | One player's go within a round: activated abilities, then one card or a pass |
+| tie | 平局 | ничья | A round with equal scores; by default it counts as won by both players |
 | match | 对战 | матч | The whole game, up to three rounds |
 | pass | pass / 停手 | пас | Stop playing for the round, keeping the rest of your hand |
 | hand | 手牌 | рука | Cards you hold; carried across rounds |
 | deck | 牌库 | колода | Cards left to draw from |
 | draw | 抽牌 | добор | Taking a card from the deck |
-| mulligan | 换牌 | мулиган | Replacing cards before a round |
+| mulligan | 换牌 | мулиган | Returning cards from hand to the deck for others, a limited number of times at the start of each round |
 | points / power | 点数 / 战力 | очки / сила | A unit's contribution to the row total |
 | board | 战场 | поле | All rows for both players |
 | provision cost / budget | 构筑费用 / 预算 | стоимость / бюджет | What a card costs at deck-building time, and the total a leader allows (ADR 0009) |
-| base power / current power | 基础战力 / 当前战力 | базовая сила / текущая сила | The printed value, and the value after boosts and damage |
+| base power / current power | 基础战力 / 当前战力 | базовая сила / текущая сила | The printed value, and the value after boosts, continuous effects and damage |
+| boost / damage | 增益 / 伤害 | усиление / урон | Raise and lower a unit's current power; damage meets shields and armour first |
 | armour | 护甲 | броня | Absorbs damage before power does |
 | status | 状态 | статус | A marker on a unit that alters how rules apply to it, possibly with a timer |
-| activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn; using it does not end the turn |
+| activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn; using it does not end the turn (intent `use_order`) |
+| charges / cooldown / ready | 次数 / 冷却 / 就绪 | заряды / перезарядка / готова | Uses an activated ability has left, turns before it can be used again, and whether it can be used now |
+| timer | 计时 | таймер | Turns a status lasts; it ticks at its controller's turn start |
 | bronze / gold | 铜卡 / 金卡 | бронзовая / золотая карта | Card colours that set the copy limit in a deck |
+| unit / special / artifact | 单位 / 特殊牌 / 器物 | отряд / особая карта / артефакт | A card with power on a row; a card that acts once and goes to the graveyard; a card on a row without power |
+| leader / leader ability | 领袖 / 领袖能力 | лидер / способность лидера | Not a card on the board: the provision bonus and the activated ability a deck is built around |
+| token | 衍生卡 | токен | A card created during a match, never in a deck; banished when it leaves the board |
+| tag | 标签 | метка | A free-form original word on a card that other cards' effects refer to |
 | graveyard / banish | 墓地 / 放逐 | кладбище / изгнание | Where destroyed cards go, and removal from the match entirely |
+| owner / controller | 所有者 / 控制者 | владелец / контролирующий игрок | Whose deck a card came from, and whose side of the board it stands on |
+| target / candidate | 目标 / 候选 | цель / кандидат | What an ability acts on, and what it may pick from |
 
 ## Project terms
 
@@ -45,7 +59,13 @@ names appear here.
 | content pack | 内容包 | пакет контента | Compiled cards, decks and translations the server serves |
 | card protocol | 卡牌协议 | протокол карт | The YAML format and closed vocabulary cards are written in |
 | ability | 能力 | способность | A trigger plus an action on a card |
-| row effect | 行效果 | эффект ряда | A persistent modifier on one row of one side |
+| row effect | 行效果 | эффект ряда | A persistent modifier on one row of one side; at most one per row-side |
+| row-side | 一方的行 | ряд стороны | One row of one player — the unit row effects, capacity and positions apply to |
+| continuous effect | 持续效果 | постоянный эффект | An effect in force while its card is on the board, never queued (`while_on_board`) |
+| vocabulary word | 词汇 | слово словаря | A trigger, action, selector, status or row effect of the card protocol; an identifier, never displayed |
+| acting player | 行动方 | действующий игрок | The player an ability's `self` and `opponent` are relative to, and who makes its choices |
+| resolution queue | 结算队列 | очередь разрешения | First-in, first-out list of abilities waiting to resolve |
+| pending choice | 待定选择 | ожидающий выбор | A pick the core asks one player for, from options it computed; nothing else happens until it is made |
 | placeholder id | 占位 id | идентификатор-заглушка | Opaque card id used until a human writes an original name |
 
 ## Usage notes

@@ -1,18 +1,30 @@
-# Worked example for docs/protocol/cards.md section 7.
-schema: opengwt.deck/1
+# Worked example for docs/protocol/cards.md section 12 — legal under the default Rules:
+# 28 cards, 20 units, bronze at most twice, gold once, 161 provisions of a 150 + 15 budget.
+schema: opengwt.deck/2
 id: starter-a
 faction: placeholder-a
 leader: l-0001
 cards:
-  - { id: u-0001, count: 3 }
-  - { id: u-0002, count: 1 }
-  - { id: u-0003, count: 2 }
-  - { id: u-0004, count: 3 }
-  - { id: u-0005, count: 3 }
-  - { id: u-0006, count: 2 }
-  - { id: u-0007, count: 2 }
-  - { id: s-0001, count: 2 }
-  - { id: s-0002, count: 1 }
-  - { id: s-0003, count: 1 }
-  - { id: s-0004, count: 1 }
+  - { id: u-0001, count: 2 }
+  - { id: u-0002, count: 2 }
+  - { id: u-0003, count: 1 }
+  - { id: u-0005, count: 2 }
+  - { id: u-0007, count: 1 }
+  - { id: u-0008, count: 1 }
+  - { id: u-0009, count: 1 }
+  - { id: u-0013, count: 1 }
+  - { id: u-0014, count: 2 }
+  - { id: u-0017, count: 1 }
+  - { id: u-0019, count: 1 }
+  - { id: u-0023, count: 1 }
+  - { id: u-0025, count: 1 }
+  - { id: u-0101, count: 2 }
+  - { id: u-0102, count: 1 }
+  - { id: s-0001, count: 1 }
   - { id: s-0005, count: 1 }
+  - { id: s-0006, count: 1 }
+  - { id: s-0009, count: 1 }
+  - { id: s-0010, count: 1 }
+  - { id: s-0101, count: 1 }
+  - { id: a-0001, count: 1 }
+  - { id: a-0002, count: 1 }

@@ -1,0 +1,37 @@
+# Worked example for docs/protocol/cards.md — neutral placeholder cards any faction's deck may use.
+schema: opengwt.cards/2
+faction: neutral
+
+cards:
+  # Plain neutral unit.
+  u-0101:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 5
+
+  # A strong unit that is banished instead of reaching any other zone when it leaves the board.
+  u-0102:
+    kind: unit
+    color: gold
+    provisions: 7
+    power: 9
+    statuses: [banish_on_leave]
+
+  # Starts shielded: the first damage it would take is blocked.
+  u-0103:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    statuses: [shielded]
+
+  # Draw two cards.
+  s-0101:
+    kind: special
+    color: gold
+    provisions: 9
+    abilities:
+      - when: on_play
+        do: draw
+        count: 2

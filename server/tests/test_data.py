@@ -19,6 +19,9 @@ def test_real_data_loads(dataset: DataSet) -> None:
         assert check_deck(dataset.library, deck, Rules()) == []
 
 
+# The examples are v2 since ADR 0009 phase A; the v1 loader cannot read them until phase B.
+# Strict: once it can, this fails, and the marker must go. test_protocol_v2 checks them meanwhile.
+@pytest.mark.xfail(strict=True, raises=DataError, reason="examples are v2, loader v1 until phase B")
 def test_protocol_examples_load() -> None:
     examples = REPO / "docs" / "protocol" / "examples"
     lib = load_cards_file(examples / "placeholder-a.cards.yaml")

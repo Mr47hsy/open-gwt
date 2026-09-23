@@ -1,124 +1,593 @@
 # Worked example for docs/protocol/cards.md — placeholder content, not a real card set.
+# Together with neutral.cards.yaml it uses every word of the opengwt.cards/2 vocabulary once at
+# least (a server test checks this); phase F's placeholder set grows from it.
 # Ids are opaque and never displayed; names live in data/i18n/<locale>/cards.yaml.
-schema: opengwt.cards/1
+schema: opengwt.cards/2
 faction: placeholder-a
 
 cards:
-  # A plain unit: no abilities, one row.
+  # --- units ------------------------------------------------------------------------------------
+
+  # A plain unit with a tag.
   u-0001:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 4
     power: 5
+    tags: [tag-a]
 
-  # An immune unit that may go on either of two rows (player chooses on play).
+  # Melee only. On play, damage an enemy unit of the player's choice by 3.
   u-0002:
     kind: unit
-    rows: [ranged, siege]
-    power: 10
-    traits: [immune]
+    color: bronze
+    provisions: 5
+    power: 4
+    rows: [melee]
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 3
+        target: { units: chosen, side: opponent }
 
-  # Played on the opponent's side, then draws two cards for its owner.
+  # Starts with 3 armour; each time it takes damage, boost itself by 1.
   u-0003:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 5
     power: 4
-    deploy: opponent
+    armor: 3
+    rows: [melee]
     abilities:
-      - when: played
-        do: draw
-        count: 2
+      - when: on_damaged
+        do: boost
+        amount: 1
+        target: { units: this }
 
-  # Pulls every other copy of itself out of the deck when played.
+  # Whenever an ally stronger than this unit is played, boost this unit by 1.
   u-0004:
     kind: unit
-    rows: [siege]
+    color: bronze
+    provisions: 4
     power: 3
     abilities:
-      - when: played
-        do: summon_from_deck
-        same_id: true
+      - when: on_ally_played
+        if: { trigger_unit: { stronger_than_this: true } }
+        do: boost
+        amount: 1
+        target: { units: this }
 
-  # Grows with the number of copies on the same row.
+  # On play, every other copy of this card moves from the deck onto the board.
   u-0005:
     kind: unit
-    rows: [melee]
-    power: 4
+    color: bronze
+    provisions: 4
+    power: 3
+    tags: [tag-a]
     abilities:
-      - when: always
-        do: multiply_power_by_copies
+      - when: on_play
+        do: summon_from_deck
+        cards: { pick: all, where: { same_id_as_this: true } }
 
-  # Gives every other unit on its row a small bonus.
+  # Row-dependent: on the melee row gain 2 armour; on the ranged row damage 2 random enemies by 1.
   u-0006:
     kind: unit
-    rows: [ranged]
-    power: 2
+    color: bronze
+    provisions: 5
+    power: 4
     abilities:
-      - when: always
-        do: boost_row_others
+      - when: on_play
+        if: { on_row: melee }
+        do: add_armor
+        amount: 2
+        target: { units: this }
+      - when: on_play
+        if: { on_row: ranged }
+        do: damage
         amount: 1
+        target: { units: random, side: opponent, count: 2 }
 
-  # Returns a non-immune unit from the owner's discard pile, chosen by the player.
+  # Activated ability, reusable: damage a chosen enemy by 1, then wait two of the owner's turns.
   u-0007:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 5
+    power: 3
+    activation: { cooldown: 2 }
+    abilities:
+      - when: on_activate
+        do: damage
+        amount: 1
+        target: { units: chosen, side: opponent }
+
+  # Activated ability with two charges, usable on the turn it is played: boost a chosen ally by 2.
+  u-0008:
+    kind: unit
+    color: gold
+    provisions: 9
+    power: 5
+    activation: { charges: 2, ready_on_play: true }
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 2
+        target: { units: chosen, side: self }
+
+  # At the start of its controller's turn, boost the units next to it by 1.
+  u-0009:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_turn_start
+        do: boost
+        amount: 1
+        target: { units: adjacent }
+
+  # Ranged only. At the end of its controller's turn, damage the strongest enemy unit by 1.
+  u-0010:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    rows: [ranged]
+    abilities:
+      - when: on_turn_end
+        do: damage
+        amount: 1
+        target: { units: strongest, side: opponent }
+
+  # Stays on the board when the round ends, after boosting itself by 2 at that moment.
+  u-0011:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    statuses: [kept_at_round_end]
+    abilities:
+      - when: on_round_end
+        do: boost
+        amount: 2
+        target: { units: this }
+
+  # When destroyed, two new copies of the token t-0001 appear on its row.
+  u-0012:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_destroyed
+        do: place_new_card
+        card: t-0001
+        count: 2
+
+  # Immune. On play, destroy the strongest enemy unit among those with 8 power or more.
+  u-0013:
+    kind: unit
+    color: gold
+    provisions: 10
+    power: 7
+    statuses: [immune]
+    abilities:
+      - when: on_play
+        do: destroy
+        target: { units: strongest, side: opponent, where: { power_at_least: 8 } }
+
+  # On play, poison a chosen enemy unit; a unit poisoned twice is destroyed.
+  u-0014:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: poisoned
+        target: { units: chosen, side: opponent }
+
+  # On play, a chosen enemy unit bleeds for 3 turns: 1 damage at each of its controller's turn starts.
+  u-0015:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: bleeding
+        turns: 3
+        target: { units: chosen, side: opponent }
+
+  # On play, grows for 3 turns: boost 1 at each of its controller's turn starts.
+  u-0016:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_play
+        do: add_status
+        status: growing
+        turns: 3
+        target: { units: this }
+
+  # On play, lock a chosen enemy unit or artifact, then damage what was locked by 2.
+  u-0017:
+    kind: unit
+    color: gold
+    provisions: 8
     power: 5
     abilities:
-      - when: played
-        do: return_from_discard
-        where: { traits_none: [immune] }
-        choose: player
+      - when: on_play
+        do: add_status
+        status: locked
+        target: { units: chosen, side: opponent, where: { kind: [unit, artifact] } }
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: previous_targets }
 
-  # Row effect: every non-immune melee unit on both sides has power 1.
+  # While on the board, the units next to it have 1 more power.
+  u-0018:
+    kind: unit
+    color: bronze
+    provisions: 6
+    power: 4
+    abilities:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: adjacent
+
+  # Lands on the opponent's side of the board; the player who played it draws a card.
+  u-0019:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 7
+    side: opponent
+    abilities:
+      - when: on_play
+        do: draw
+        count: 1
+
+  # On play, return another of the player's units that is not locked to its owner's hand.
+  u-0020:
+    kind: unit
+    color: gold
+    provisions: 8
+    power: 4
+    abilities:
+      - when: on_play
+        do: return_to_hand
+        target: { units: chosen, side: self, where: { statuses_none: [locked] } }
+
+  # On play, move a chosen enemy unit to its other row.
+  u-0021:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: move_to_other_row
+        target: { units: chosen, side: opponent }
+
+  # Each time it is boosted, gain 1 armour.
+  u-0022:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_boosted
+        do: add_armor
+        amount: 1
+        target: { units: this }
+
+  # On play, boost every other ally with tag-a by 1.
+  u-0023:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    tags: [tag-a]
+    abilities:
+      - when: on_play
+        do: boost
+        amount: 1
+        target: { units: all, side: self, where: { tags_any: [tag-a] } }
+
+  # On play, damage the weakest enemy unit without tag-b by 2.
+  u-0024:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: weakest, side: opponent, where: { tags_none: [tag-b] } }
+
+  # On play, shield a chosen ally that has no shield yet.
+  u-0025:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: shielded
+        target: { units: chosen, side: self, where: { statuses_none: [shielded] } }
+
+  # On play, remove all damage from the player's melee units.
+  u-0026:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: remove_damage
+        target: { units: all, side: self, rows: [melee] }
+
+  # On play, the first two tag-a cards from the top of the deck move onto the ranged row.
+  # When destroyed, a random unit with 3 power or less moves from the deck onto the board.
+  u-0027:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_play
+        do: summon_from_deck
+        cards: { pick: first, count: 2, where: { tags_any: [tag-a] } }
+        row: ranged
+      - when: on_destroyed
+        do: summon_from_deck
+        cards: { pick: random, where: { kind: [unit], power_at_most: 3 } }
+
+  # Whenever an ally with tag-a is played, that ally gains 1 armour.
+  u-0028:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_ally_played
+        if: { trigger_unit: { tags_any: [tag-a] } }
+        do: add_armor
+        amount: 1
+        target: { units: trigger_unit }
+
+  # A token: never in a deck, only placed on the board by an ability (u-0012).
+  t-0001:
+    kind: unit
+    token: true
+    power: 1
+    tags: [tag-b]
+
+  # --- specials ---------------------------------------------------------------------------------
+
+  # Row effect on a chosen enemy row: at each of that player's turn starts, damage its weakest unit by 2.
   s-0001:
     kind: special
+    color: bronze
+    provisions: 5
     abilities:
-      - when: played
-        do: apply_row_effect
-        effect: power_to_one
-        rows: [melee]
-        sides: both
+      - when: on_play
+        do: set_row_effect
+        effect: damage_weakest
+        amount: 2
+        row_target: { pick: chosen, side: opponent }
 
-  # Clears the power-to-one effect everywhere, leaving doubling in place.
+  # Row effect on a chosen enemy row: every unit that enters it takes 2 damage.
   s-0002:
     kind: special
+    color: bronze
+    provisions: 5
     abilities:
-      - when: played
-        do: clear_row_effects
-        effects: [power_to_one]
+      - when: on_play
+        do: set_row_effect
+        effect: damage_on_arrival
+        amount: 2
+        row_target: { pick: chosen, side: opponent }
 
-  # Destroys the strongest opponent units, but only where a row already totals 10 or more.
+  # Row effect on every enemy row: at each of that player's turn starts, damage 3 random units by 1.
   s-0003:
     kind: special
+    color: gold
+    provisions: 9
     abilities:
-      - when: played
-        do: destroy
-        target:
-          side: opponent
-          units: strongest
-          where: { row_total_at_least: 10 }
+      - when: on_play
+        do: set_row_effect
+        effect: damage_random
+        amount: 1
+        count: 3
+        row_target: { pick: all, side: opponent }
 
-  # Takes the place of one of the owner's board units, which returns to hand.
+  # Row effect on one of the player's own rows: at each of their turn starts, boost 2 random units by 1.
   s-0004:
     kind: special
+    color: bronze
+    provisions: 4
     abilities:
-      - when: played
-        do: swap_with_board_unit
-        where: { traits_none: [immune] }
-        choose: player
+      - when: on_play
+        do: set_row_effect
+        effect: boost_random
+        amount: 1
+        count: 2
+        row_target: { pick: chosen, side: self }
 
-  # Doubles the owner's ranged row.
+  # Clears the row effects on both players' melee rows.
   s-0005:
     kind: special
+    color: bronze
+    provisions: 4
     abilities:
-      - when: played
-        do: apply_row_effect
-        effect: double_power
-        rows: [ranged]
-        sides: self
+      - when: on_play
+        do: clear_row_effect
+        row_target: { pick: all, side: both, rows: [melee] }
 
-  # Leader: once per match, clears row effects.
+  # Row effect on a chosen enemy row: at each of that player's turn starts, damage its strongest unit by 2.
+  s-0006:
+    kind: special
+    color: gold
+    provisions: 9
+    abilities:
+      - when: on_play
+        do: set_row_effect
+        effect: damage_strongest
+        amount: 2
+        row_target: { pick: chosen, side: opponent }
+
+  # Damage every unit on an enemy row of the player's choice by 1.
+  s-0007:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 1
+        target: { units: chosen_row, side: opponent }
+
+  # Banish a chosen locked unit from either side of the board.
+  s-0008:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: banish
+        target: { units: chosen, side: both, where: { statuses_any: [locked] } }
+
+  # Play a bronze unit of the player's choice from their graveyard.
+  s-0009:
+    kind: special
+    color: bronze
+    provisions: 6
+    abilities:
+      - when: on_play
+        do: play_from_graveyard
+        cards: { pick: chosen, where: { color: bronze, kind: [unit] } }
+
+  # Offer three random units with 4 power or less from the deck; play the one the player picks.
+  s-0010:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: play_from_deck
+        cards: { pick: chosen, offer: 3, where: { kind: [unit], power_at_most: 4 } }
+
+  # Raise the base power of a chosen ally by 2.
+  s-0011:
+    kind: special
+    color: bronze
+    provisions: 5
+    abilities:
+      - when: on_play
+        do: raise_base_power
+        amount: 2
+        target: { units: chosen, side: self }
+
+  # Remove poison, bleeding and locks from every ally.
+  s-0012:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: remove_statuses
+        statuses: [poisoned, bleeding, locked]
+        target: { units: all, side: self }
+
+  # Give the player's leader ability one more charge.
+  s-0013:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: add_charges
+        to: leader
+        amount: 1
+
+  # Play a random special card from the deck.
+  s-0014:
+    kind: special
+    color: gold
+    provisions: 7
+    abilities:
+      - when: on_play
+        do: play_from_deck
+        cards: { pick: random, where: { kind: [special] } }
+
+  # Play a bronze special of the player's choice from the opponent's graveyard.
+  s-0015:
+    kind: special
+    color: gold
+    provisions: 9
+    abilities:
+      - when: on_play
+        do: play_from_graveyard
+        cards: { pick: chosen, side: opponent, where: { kind: [special], color: bronze } }
+
+  # --- artifacts --------------------------------------------------------------------------------
+
+  # Three charges: damage a chosen enemy unit by 1. At round end, regain one charge.
+  a-0001:
+    kind: artifact
+    color: bronze
+    provisions: 6
+    activation: { charges: 3 }
+    abilities:
+      - when: on_activate
+        do: damage
+        amount: 1
+        target: { units: chosen, side: opponent }
+      - when: on_round_end
+        do: add_charges
+        to: this
+        amount: 1
+
+  # Ranged only. While on the board, the other units on its row have 1 more power.
+  a-0002:
+    kind: artifact
+    color: gold
+    provisions: 9
+    rows: [ranged]
+    abilities:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: row
+
+  # Immune. At the start of its controller's turn, clear the effect on its own row.
+  a-0003:
+    kind: artifact
+    color: bronze
+    provisions: 5
+    statuses: [immune]
+    abilities:
+      - when: on_turn_start
+        do: clear_row_effect
+        row_target: { pick: this }
+
+  # --- leader -----------------------------------------------------------------------------------
+
+  # Adds 15 to the deck's provision budget. Two charges: boost a chosen ally by 2.
   l-0001:
     kind: leader
+    provision_bonus: 15
+    activation: { charges: 2 }
     abilities:
-      - when: activated
-        do: clear_row_effects
+      - when: on_activate
+        do: boost
+        amount: 2
+        target: { units: chosen, side: self }
