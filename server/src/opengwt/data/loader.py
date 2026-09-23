@@ -125,9 +125,12 @@ def load_deck(path: Path, lib: Library) -> Deck:
     leader = str(doc["leader"])
     if leader not in lib:
         problems.append(f"{path}: unknown leader {leader}")
+    stratagem = str(doc["stratagem"])
+    if stratagem not in lib:
+        problems.append(f"{path}: unknown stratagem {stratagem}")
     if problems:
         raise DataError(problems)
-    return Deck(faction=faction, cards=tuple(cards), leader=leader)
+    return Deck(faction=faction, cards=tuple(cards), leader=leader, stratagem=stratagem)
 
 
 def load_decks(decks_dir: Path, lib: Library, rules: Rules = DEFAULT_RULES) -> dict[str, Deck]:

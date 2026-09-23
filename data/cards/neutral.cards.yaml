@@ -50,6 +50,38 @@ cards:
         amount: 2
         target: { units: all, side: self, where: { statuses_any: [on_enemy_side] } }
 
+  # a token some stratagems place
+  t-0001:
+    kind: unit
+    token: true
+    power: 2
+
+  # stratagems (ADR 0011): the player who goes first starts with theirs on the board, taking a
+  # place on its row; each is used once and then banished
+  g-0001:
+    kind: stratagem
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 3
+        target: { units: chosen, side: self }
+
+  g-0002:
+    kind: stratagem
+    rows: [ranged]
+    abilities:
+      - when: on_activate
+        do: place_new_card
+        card: t-0001
+        count: 2
+
+  g-0003:
+    kind: stratagem
+    abilities:
+      - when: on_activate
+        do: draw
+        count: 1
+
   s-0001:
     kind: special
     color: gold

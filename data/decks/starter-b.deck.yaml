@@ -4,6 +4,7 @@ schema: opengwt.deck/2
 id: starter-b
 faction: placeholder-b
 leader: l-2001
+stratagem: g-0001
 cards:
   - { id: u-2001, count: 2 }
   - { id: u-2002, count: 2 }

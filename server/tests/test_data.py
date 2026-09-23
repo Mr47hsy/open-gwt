@@ -28,7 +28,8 @@ def test_real_data_loads(dataset: DataSet) -> None:
 
 def test_data_uses_only_the_words_phase_b_acts_on(dataset: DataSet) -> None:
     """ADR 0009: data/ stays within phase B; a leader's activated ability is the one exception,
-    since every leader has one and using it is phase C."""
+    since every leader has one and using it is phase C. A stratagem's is used from phase B on
+    (ADR 0011)."""
     for defn in dataset.library.values():
         allowed = {"card:activation", "when:on_activate"} if defn.kind is Kind.LEADER else set()
         assert set(phase_c_words(defn)) <= allowed, defn.id
@@ -39,8 +40,9 @@ def test_protocol_examples_load() -> None:
     lib = load_library(EXAMPLES)
     assert lib["u-0029"].statuses == (Status.GUARDING,)
     assert phase_c_words(lib["u-0007"]) == ["card:activation", "when:on_activate"]
+    assert phase_c_words(lib["g-0101"]) == []
     deck = load_deck(EXAMPLES / "starter-a.deck.yaml", lib)
-    assert deck.leader == "l-0001" and len(deck.cards) == 28
+    assert deck.leader == "l-0001" and deck.stratagem == "g-0101" and len(deck.cards) == 28
     assert check_deck(lib, deck, Rules()) == []
 
 
@@ -84,6 +86,7 @@ def test_deck_with_foreign_card_is_rejected(dataset: DataSet, tmp_path: Path) ->
                 "id": "test-x",
                 "faction": "placeholder-a",
                 "leader": "l-1001",
+                "stratagem": "g-0001",
                 "cards": [{"id": "u-2001", "count": 1}],
             }
         )
@@ -126,15 +129,22 @@ def test_check_deck_rules() -> None:
     from tests.helpers import make_library
 
     lib = make_library()
-    too_small = Deck("test", ("plain5",) * 3 + ("tok", "leader"), leader="plain5")
+    too_small = Deck(
+        "test",
+        ("plain5",) * 3 + ("tok", "leader", "strat-boost"),
+        leader="plain5",
+        stratagem="leader",
+    )
     problems = check_deck(lib, too_small, Rules())
     assert problems == [
         "error.deck.leader-not-leader:plain5",
+        "error.deck.stratagem-not-stratagem:leader",
         "error.deck.token-in-deck:tok",
         "error.deck.leader-in-deck:leader",
+        "error.deck.stratagem-in-deck:strat-boost",
         "error.deck.too-few-cards",
     ]
-    assert check_deck(lib, Deck("test", ("plain5",) * 41, leader="leader"), Rules()) == [
-        "error.deck.too-many-cards"
-    ]
-    assert check_deck(lib, Deck("test", ("plain5",) * 25, leader="leader"), Rules()) == []
+    big = Deck("test", ("plain5",) * 41, leader="leader", stratagem="strat-boost")
+    assert check_deck(lib, big, Rules()) == ["error.deck.too-many-cards"]
+    legal = Deck("test", ("plain5",) * 25, leader="leader", stratagem="strat-boost")
+    assert check_deck(lib, legal, Rules()) == []
