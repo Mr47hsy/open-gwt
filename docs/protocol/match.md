@@ -179,7 +179,7 @@ and the like are shortened for the examples, and a client never parses them.
 | `graveyard`, `banished` | Public zones, oldest first. |
 | `leader` | The leader's instance and card, and its `order` (below); `null` for a deck without one. |
 | `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished; otherwise `null`. |
-| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. The starter's stratagem is one of these cards until it is used, with its `order`. |
+| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. The starter's stratagem is one of these cards until it is used or round one ends, with its `order`. |
 
 A card on the board:
 

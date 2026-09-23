@@ -256,13 +256,18 @@ def test_a_stratagem_takes_a_place_and_nothing_acts_on_it() -> None:
     )
 
 
-def test_an_unused_stratagem_stays_through_the_round_end() -> None:
+def test_an_unused_stratagem_is_gone_when_round_one_ends() -> None:
     s = _strategist(hand1=["plain3"])
+    strat = s.players[0].rows[MELEE].cards[0].instance
     s, _ = apply(LIB, s, 0, Pass())
     s, events = play(LIB, s, 1, "plain3")  # seat 1's hand is then empty: it passes, round over
     assert s.round == 2
-    assert [c.card for c in s.players[0].rows[MELEE].cards] == ["strat-boost"]
-    assert "status_removed" not in event_types(events)
+    assert s.players[0].rows[MELEE].cards == []
+    assert [c.card for c in s.players[0].banished] == ["strat-boost"]
+    assert [c.card for c in s.players[0].graveyard] == ["plain5"]
+    banished = events_of(events, "card_banished")
+    assert [e["instance"] for e in banished] == [strat]
+    assert events_of(events, "board_cleared")[0]["kept"] == []
 
 
 def test_a_stratagem_whose_first_ability_asks_nothing_starts_at_once() -> None:

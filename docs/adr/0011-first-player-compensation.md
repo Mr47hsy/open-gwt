@@ -1,6 +1,8 @@
 # ADR 0011: Compensate the player who goes first — an extra redraw and a stratagem
 
-- Status: accepted, 2026-09-23
+- Status: accepted, 2026-09-23. Corrected the same day from the owner's play experience: an
+  unused stratagem does not stay — it is banished when round one's board is cleared
+  (`docs/protocol/cards.md` §3, §11.5).
 - Deciders: project owner
 - Supersedes: in [ADR 0009](0009-two-row-standalone-ruleset.md), the sentence leaving
   stratagems and the coin-toss compensation out of scope.

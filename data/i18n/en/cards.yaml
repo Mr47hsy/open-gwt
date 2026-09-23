@@ -4,11 +4,11 @@ card.a-1001.text: Artifact, ranged row. While on the board, the units on its row
 card.a-2001.name: Placeholder B artifact 1
 card.a-2001.text: Artifact, melee row. Cannot be chosen as a target. As the round ends, damage a random enemy unit by 2.
 card.g-0001.name: Placeholder N stratagem 1
-card.g-0001.text: 'Stratagem. Starts on your board if you go first. Once: boost one of your units by 3.'
+card.g-0001.text: 'Stratagem. If you go first, it is on your board for round one. Once: boost one of your units by 3.'
 card.g-0002.name: Placeholder N stratagem 2
-card.g-0002.text: 'Stratagem, ranged row. Starts on your board if you go first. Once: place two Placeholder N token 1 next to it.'
+card.g-0002.text: 'Stratagem, ranged row. If you go first, it is on your board for round one. Once: place two Placeholder N token 1 next to it.'
 card.g-0003.name: Placeholder N stratagem 3
-card.g-0003.text: 'Stratagem. Starts on your board if you go first. Once: draw a card.'
+card.g-0003.text: 'Stratagem. If you go first, it is on your board for round one. Once: draw a card.'
 card.l-1001.name: Placeholder A leader 1
 card.l-1001.text: 'Leader. Adds 15 to the provision budget. Two charges: boost one of your units by 2.'
 card.l-2001.name: Placeholder B leader 1

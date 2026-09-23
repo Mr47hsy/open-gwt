@@ -35,7 +35,8 @@ and inert. The owner then decided (ADR 0011) that the **compensation for going f
 to the game and to phase B: one more redraw in round one for the starter (`mulligans_per_round`
 `[2, 2, 2]` plus `starter_extra_mulligans`) and a **stratagem** — a deck names one, only the
 round-one starter gets it, on the board at the left end of its row where it **takes a place**
-(the owner confirmed), nothing acts on it, it survives round ends, is used once through
+(the owner confirmed), nothing acts on it, it is banished if still unused when round one ends
+(the owner confirmed), is used once through
 `use_order` and is then banished. So `use_order`, `cancel_choice` and `order_used` exist since B,
 ready for stratagems only. `data/` uses only phase-B words, except every leader's activated ability. Still open
 for C: whether activated abilities stay usable after the turn's card is played — ADR 0009 and

@@ -97,9 +97,9 @@ What each kind is:
   a deck names one, and only the player who starts round one gets theirs. It starts on their
   side of the board, at the left end of the first row it allows, and takes a place there like
   any card; it has no power, only `on_activate` abilities, and nothing acts on it — no selector
-  offers it, row effects and auras pass it by, and the end of a round does not clear it. Its
-  activated ability is ready from the first turn; once used, it leaves the board for its owner's
-  banished zone. It is never in a deck or a hand.
+  offers it, row effects and auras pass it by. Its activated ability is ready from the first
+  turn; once used — or, unused, when round one's board is cleared — it leaves the board for its
+  owner's banished zone. It is never in a deck, a hand or a graveyard.
 
 ## 4. Rules
 
@@ -523,8 +523,8 @@ unless it was locked at that moment, its `on_destroyed` abilities are queued.
   1. the `on_round_end` abilities of every card on the board resolve, in board order;
   2. the scores are compared: the higher wins the round, and a tie follows `tie_rule`;
   3. the board is cleared: every card goes to its owner's graveyard, or is banished — except
-     cards with `kept_at_round_end`, which stay as they are and lose that status, and an unused
-     stratagem; row effects are removed and both players' passes are reset;
+     cards with `kept_at_round_end`, which stay as they are and lose that status; an unused
+     stratagem is banished; row effects are removed and both players' passes are reset;
   4. the match ends once a player has `rounds_to_win` round wins or `max_rounds` rounds have
      been played: the player with more round wins wins the match, and equal wins are a draw;
   5. otherwise the next round starts, begun by the player `next_round_starter` names.
@@ -632,7 +632,7 @@ own words (`.agent/context/04-legal.md`); never from a client, a data dump or da
   stratagem chosen at deck building, on the board from the start, used once: the Mulligan
   Update patch notes above, the developer's *Merchants of Ofir* announcement (December 2019),
   KeenGamer's guide above and the community wiki's description of stratagems; that a stratagem
-  takes a place on its row, from the owner's play experience.
+  takes a place on its row and is gone when round one ends, from the owner's play experience.
 - Growing, status-proof, guarding, the enemy-side marker, heal, reset, drain, duel, consume,
   discard, create, take control, immunity against choices only: community glossaries of the
   standalone game (the unofficial glossary on the developer's forums, July 2021) and

@@ -635,9 +635,11 @@ class _Ctx:
             self.damage(card.instance, effect.amount, effect.effect.value, None)
 
     def banished_on_leave(self, card: CardInstance) -> bool:
-        """A card with ``banish_on_leave`` is banished whenever it leaves the board, and so is a
-        token whatever its statuses: it never reaches a hand, deck or graveyard (§3, §9)."""
-        return card.has(Status.BANISH_ON_LEAVE) or self.defn(card).token
+        """A card with ``banish_on_leave`` is banished whenever it leaves the board, and so are a
+        token whatever its statuses and a stratagem: they never reach a hand, deck or graveyard
+        (§3, §9, ADR 0011)."""
+        d = self.defn(card)
+        return card.has(Status.BANISH_ON_LEAVE) or d.token or d.kind is Kind.STRATAGEM
 
     def leave(self, loc: Loc) -> bool:
         """Take a card off the board to its owner's graveyard, or banish it (see
@@ -1337,7 +1339,7 @@ class _Ctx:
         kept: list[str] = []
         for loc in self.board():
             card = loc.card
-            if card.has(Status.KEPT_AT_ROUND_END) or self.defn(card).kind is Kind.STRATAGEM:
+            if card.has(Status.KEPT_AT_ROUND_END):
                 kept.append(card.instance)
                 continue
             self.s.players[loc.seat].rows[loc.row].cards.remove(card)
