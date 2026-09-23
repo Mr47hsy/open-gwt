@@ -1,0 +1,13 @@
+# Client strings and prompts shared with the server's choice events.
+choice.destroy: Choose a unit to destroy
+choice.boost: Choose a unit to boost
+choice.set-power: Choose a unit
+choice.return-from-discard: Choose a unit to return from your discard pile
+choice.swap-with-board-unit: Choose one of your units to return to your hand
+ui.row.melee: Melee
+ui.row.ranged: Ranged
+ui.row.siege: Siege
+ui.board.pass: Pass
+ui.board.leader: Leader
+ui.hand.count.one: "{count} card in hand"
+ui.hand.count.other: "{count} cards in hand"

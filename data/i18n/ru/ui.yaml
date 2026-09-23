@@ -1,0 +1,15 @@
+# Строки клиента и подсказки, общие с событиями выбора на сервере.
+choice.destroy: Выберите отряд для уничтожения
+choice.boost: Выберите отряд для усиления
+choice.set-power: Выберите отряд
+choice.return-from-discard: Выберите отряд, который вернётся из сброса
+choice.swap-with-board-unit: Выберите свой отряд, который вернётся в руку
+ui.row.melee: Ближний
+ui.row.ranged: Дальний
+ui.row.siege: Осадный
+ui.board.pass: Пас
+ui.board.leader: Лидер
+ui.hand.count.one: "{count} карта в руке"
+ui.hand.count.few: "{count} карты в руке"
+ui.hand.count.many: "{count} карт в руке"
+ui.hand.count.other: "{count} карт в руке"

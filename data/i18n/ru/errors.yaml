@@ -1,0 +1,21 @@
+# Сообщения об ошибках сервера — резервный `message`, рендерится на сервере (docs/protocol/i18n.md §8).
+error.unauthorised: Войдите, чтобы сделать это.
+error.invalid-request: Запрос некорректен.
+error.locale-unsupported: Локаль {locale} не поддерживается.
+error.deck-not-found: Колода {deck} не найдена.
+error.deck-illegal: Эта колода недопустима.
+error.match-not-found: Такого матча нет.
+error.match-not-started: Матч ещё не начался.
+error.match-not-finished: Матч ещё идёт.
+error.match-over: Матч окончен.
+error.not-a-player: Вы не участник этого матча.
+error.room-not-found: Комнаты с таким кодом нет.
+error.room-full: В этой комнате уже два игрока.
+error.own-room: Нельзя войти в собственную комнату.
+error.room-code-exhausted: Не удалось выделить код комнаты, попробуйте ещё раз.
+error.illegal-intent: Сейчас так ходить нельзя.
+error.not-your-turn: Сейчас не ваш ход.
+error.choice-pending: Сначала сделайте ожидающий выбор.
+error.unknown-instance: Эта карта недоступна.
+error.unknown-message: Неизвестный тип сообщения {type}.
+error.rate-limited: Слишком много ходов подряд.
