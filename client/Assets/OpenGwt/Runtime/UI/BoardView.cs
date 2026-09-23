@@ -530,29 +530,36 @@ namespace OpenGwt.UI
 
         private JObject Def(string cardId) => client.Cards.TryGetValue(cardId, out var def) ? def : null;
 
-        private static bool IsImmune(JObject def) => def?["traits"] is JArray traits && traits.Any(t => (string)t == "immune");
+        private static List<string> Words(JObject def, string field) =>
+            def?[field] is JArray list ? list.Select(w => (string)w).ToList() : new List<string>();
 
-        /// <summary>Everything a card shows, rendered in the current language. <paramref name="power"/>
+        /// <summary>The key's text when the tables have it, else empty — for vocabulary names that
+        /// arrive with the interface texts of a later phase.</summary>
+        private string Known(string key) => client.I18n.Lookup(client.Locale, key) != null ? T(key) : "";
+
+        /// <summary>Everything a card shows, rendered in the current language: kind, rows and
+        /// statuses from the pack as the server serves it (`opengwt.pack/2`). <paramref name="power"/>
         /// and <paramref name="basePower"/> come from the view for a card on the board; a card
-        /// elsewhere shows the printed power from the pack.</summary>
+        /// elsewhere shows the printed power.</summary>
         private CardFace Face(string cardId, int? power = null, int? basePower = null)
         {
             var def = Def(cardId);
             var kind = (string)def?["kind"] ?? "";
-            var rows = def?["rows"] is JArray list ? list.Select(r => (string)r).ToList() : new List<string>();
+            var rows = Words(def, "rows");
+            var statuses = Words(def, "statuses");
             var face = new CardFace
             {
                 Card = cardId,
                 Kind = kind,
                 Rows = rows,
+                Statuses = statuses,
                 Power = power ?? (int?)def?["power"],
                 BasePower = basePower,
-                Immune = IsImmune(def),
                 Name = client.CardName(cardId),
                 Text = client.CardText(cardId),
                 KindLabel = kind.Length == 0 ? "" : T("ui.kind." + kind),
                 RowLabels = rows.Select(r => T("ui.row." + r)).ToList(),
-                ImmuneLabel = T("ui.preview.immune"),
+                StatusLabels = statuses.Select(st => Known("status." + st.Replace('_', '-') + ".name")).ToList(),
             };
             if (power.HasValue && basePower.HasValue && power.Value != basePower.Value)
             {

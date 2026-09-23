@@ -11,6 +11,10 @@ a server first.
 
 ## Run it
 
+**Until ADR 0009 phase E** the client speaks match protocol 1 while the server speaks protocol 2
+(since phase B): it signs in, loads the content pack and reaches the lobby, but cannot play a
+match. `BoardViewTests` (below) exercises the board without a server meanwhile.
+
 ```bash
 cd server && uv run opengwt-server            # http://127.0.0.1:8000, SQLite, memory backends
 ```

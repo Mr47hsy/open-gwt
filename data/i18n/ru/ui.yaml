@@ -56,7 +56,8 @@ ui.row.siege: Осадный
 ui.kind.unit: Отряд
 ui.kind.special: Особая карта
 ui.kind.leader: Лидер
-ui.preview.immune: Иммунитет
+ui.kind.artifact: Артефакт
+ui.kind.stratagem: Стратагема
 ui.preview.base-power: "Базовая сила {power}"
 ui.hand.count.one: "{count} карта в руке"
 ui.hand.count.few: "{count} карты в руке"

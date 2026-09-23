@@ -3,7 +3,9 @@
 // and vector art resolve, a played card travels from the hand to its row, a destroyed card burns
 // out, ghosts never outlive their motion, and the preview shows a card in full. Set
 // OPENGWT_TEST_SCREENSHOTS to a directory to also write a PNG per stage (needs graphics, so not
-// with -nographics).
+// with -nographics). Card definitions have the shape of the pack the server serves
+// (`opengwt.pack/2`); views and events are protocol 1, which the client speaks until ADR 0009
+// phase E moves it to protocol 2.
 using System;
 using System.Collections;
 using System.IO;
@@ -56,7 +58,7 @@ namespace OpenGwt.Tests
 
             client = new MatchClient();
             client.Cards[Unit] = JObject.Parse("{\"id\":\"t-u-0001\",\"kind\":\"unit\",\"rows\":[\"melee\"],\"power\":5}");
-            client.Cards[Guard] = JObject.Parse("{\"id\":\"t-u-0002\",\"kind\":\"unit\",\"rows\":[\"melee\",\"ranged\"],\"power\":7,\"traits\":[\"immune\"]}");
+            client.Cards[Guard] = JObject.Parse("{\"id\":\"t-u-0002\",\"kind\":\"unit\",\"rows\":[\"melee\",\"ranged\"],\"power\":7,\"statuses\":[\"immune\",\"banish_on_leave\"]}");
             client.Cards[Special] = JObject.Parse("{\"id\":\"t-s-0001\",\"kind\":\"special\"}");
             client.I18n.MergeTable("en", new System.Collections.Generic.Dictionary<string, string>
             {
@@ -66,6 +68,8 @@ namespace OpenGwt.Tests
                 ["card.t-u-0002.text"] = "A unit that cannot be targeted.",
                 ["card.t-s-0001.name"] = "Test special",
                 ["card.t-s-0001.text"] = "Does something once.",
+                // Status names arrive with phase E's interface texts; until then only those in the tables show.
+                ["status.immune.name"] = "Test immune",
             });
             root = document.rootVisualElement;
             board = new BoardView(root, client, "http://127.0.0.1:1");
@@ -100,6 +104,7 @@ namespace OpenGwt.Tests
             var icon = root.Q("my-row-melee").Q("icon");
             Assert.IsNotNull(icon.resolvedStyle.backgroundImage.vectorImage, "row icons are vector images");
             Assert.IsTrue(HandCard("h2").ClassListContains("card--special"));
+            Assert.IsTrue(HandCard("h1").ClassListContains("card--unit"));
             Assert.IsTrue(HandCard("h2").Q(className: "card__power").ClassListContains("card__power--none"));
             yield return Seconds(0.3f);
             yield return Screenshot("01-hand");
@@ -213,7 +218,9 @@ namespace OpenGwt.Tests
             var texts = preview.Query<Label>().ToList().Select(l => l.text).ToList();
             CollectionAssert.Contains(texts, "Test guard");
             CollectionAssert.Contains(texts, "A unit that cannot be targeted.");
-            CollectionAssert.Contains(texts, client.Text("ui.preview.immune"));
+            CollectionAssert.Contains(texts, "Test immune", "a status name the tables have");
+            Assert.IsNotNull(preview.Q(className: "preview__details").Q(className: "icon--immune"), "and its icon");
+            Assert.IsFalse(texts.Any(t => t.StartsWith("status.")), "a status without a name shows no key");
             CollectionAssert.Contains(texts, client.Text("ui.preview.base-power", MatchClient.P("power", 7)));
             Assert.IsTrue(preview.Q<CardElement>().ClassListContains("card--large"));
             yield return Seconds(0.3f);

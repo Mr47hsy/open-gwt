@@ -54,7 +54,8 @@ ui.row.siege: Siege
 ui.kind.unit: Unit
 ui.kind.special: Special
 ui.kind.leader: Leader
-ui.preview.immune: Immune
+ui.kind.artifact: Artifact
+ui.kind.stratagem: Stratagem
 ui.preview.base-power: "Base power {power}"
 ui.hand.count.one: "{count} card in hand"
 ui.hand.count.other: "{count} cards in hand"

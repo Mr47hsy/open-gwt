@@ -58,7 +58,10 @@ namespace OpenGwt.UI
             tags.Clear();
             AddTag(face.KindLabel, face.Kind == "special" ? "icon--special" : null);
             for (var i = 0; i < face.Rows.Count; i++) AddTag(i < face.RowLabels.Count ? face.RowLabels[i] : face.Rows[i], "icon--" + face.Rows[i]);
-            if (face.Immune) AddTag(face.ImmuneLabel, "icon--immune");
+            for (var i = 0; i < face.Statuses.Count; i++)
+            {
+                AddTag(i < face.StatusLabels.Count ? face.StatusLabels[i] : "", CardElement.StatusIcon(face.Statuses[i]));
+            }
             powerNote.text = face.PowerNote;
             powerNote.EnableInClassList("hidden", string.IsNullOrEmpty(face.PowerNote));
             text.text = face.Text;
@@ -86,13 +89,20 @@ namespace OpenGwt.UI
             if (heldByTouch) Hide();
         }
 
+        /// <summary>An icon, a label, or both, kept together on one line; nothing when there is neither.</summary>
         private void AddTag(string label, string icon)
         {
-            if (string.IsNullOrEmpty(label)) return;
-            if (icon != null) tags.Add(CardElement.Part("preview__icon", icon));
-            var chip = new Label(label) { pickingMode = PickingMode.Ignore };
-            chip.AddToClassList("preview__chip");
-            tags.Add(chip);
+            var hasLabel = !string.IsNullOrEmpty(label);
+            if (icon == null && !hasLabel) return;
+            var tag = CardElement.Part("preview__tag");
+            if (icon != null) tag.Add(CardElement.Part("preview__icon", icon));
+            if (hasLabel)
+            {
+                var chip = new Label(label) { pickingMode = PickingMode.Ignore };
+                chip.AddToClassList("preview__chip");
+                tag.Add(chip);
+            }
+            tags.Add(tag);
         }
     }
 

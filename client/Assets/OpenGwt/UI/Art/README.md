@@ -9,9 +9,9 @@ recall any official card, frame or icon.
 | --- | --- |
 | `card-frame.svg` | every card; white at low opacity over the card's USS background colour |
 | `power-badge.svg` | a card's power and a row's total; USS tints the rim |
-| `row-melee.svg`, `row-ranged.svg`, `row-siege.svg` | row heads, card headers, card watermarks, the preview |
+| `row-melee.svg`, `row-ranged.svg` | the two rows (`Rules.rows`): row heads, card headers, card watermarks, the preview |
 | `kind-special.svg` | special cards |
-| `status-immune.svg` | the immune trait |
+| `status-immune.svg` | the `immune` status; other statuses show their name only until they get art |
 
 Icons are drawn in white so `-unity-background-image-tint-color` gives them any token colour.
 `Editor/SvgImportSettings.cs` imports every SVG here as a UI Toolkit `VectorImage` with

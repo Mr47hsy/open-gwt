@@ -39,6 +39,8 @@
     --color-card-unit-hover: rgb(66, 74, 88);
     --color-card-special: rgb(58, 52, 74);
     --color-card-leader: rgb(70, 60, 44);
+    --color-card-artifact: rgb(44, 62, 64);
+    --color-card-stratagem: rgb(64, 50, 58);
     --color-card-border: rgb(90, 98, 112);
     --color-card-watermark: rgba(255, 255, 255, 0.16);
     --color-badge: rgb(200, 205, 215);
@@ -90,8 +92,9 @@
     --size-hand-height: 124px;
     --size-event-log-height: 46px;
 
-    /* Motion. BoardView waits for the transition's end event, with a fallback timer longer
-       than the slowest of these, so they can be tuned here alone. */
+    /* Motion. BoardMotion waits for each transition's end event (with a fallback timer longer
+       than the slowest of these), so they can be tuned here alone; BoardView holds a step whose
+       cards move for 0.55 s, a little longer than --duration-slow. */
     --duration-fast: 0.12s;
     --duration-base: 0.25s;
     --duration-slow: 0.45s;

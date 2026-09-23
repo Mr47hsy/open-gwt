@@ -87,7 +87,6 @@
 /* Row icons, shared by row heads, cards and the preview. */
 .icon--melee { background-image: url("/Assets/OpenGwt/UI/Art/row-melee.svg"); }
 .icon--ranged { background-image: url("/Assets/OpenGwt/UI/Art/row-ranged.svg"); }
-.icon--siege { background-image: url("/Assets/OpenGwt/UI/Art/row-siege.svg"); }
 .icon--special { background-image: url("/Assets/OpenGwt/UI/Art/kind-special.svg"); }
 .icon--immune { background-image: url("/Assets/OpenGwt/UI/Art/status-immune.svg"); }
 
@@ -127,6 +126,8 @@
 .hand .card, .modal__options .card { transition-duration: var(--duration-base); }
 .card--special { background-color: var(--color-card-special); }
 .card--leader { background-color: var(--color-card-leader); }
+.card--artifact { background-color: var(--color-card-artifact); }
+.card--stratagem { background-color: var(--color-card-stratagem); }
 .card--playable { border-color: var(--color-positive); }
 .card--playable:hover { background-color: var(--color-card-unit-hover); scale: 1.04 1.04; }
 .card--selected { border-color: var(--color-accent); background-color: var(--color-accent-soft); }
@@ -277,6 +278,8 @@
 }
 .preview__name { font-size: var(--font-size-lg); -unity-font-style: bold; white-space: normal; margin-bottom: var(--space-2); }
 .preview__line { flex-direction: row; align-items: center; flex-wrap: wrap; margin-bottom: var(--space-2); }
+.preview__tag { flex-direction: row; align-items: center; margin-right: var(--space-4); margin-bottom: var(--space-1); }
+.preview__tag .preview__chip { margin-right: 0; }
 .preview__icon {
     width: var(--size-icon-md);
     height: var(--size-icon-md);
