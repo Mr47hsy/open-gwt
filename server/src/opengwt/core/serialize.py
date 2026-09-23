@@ -303,6 +303,7 @@ def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
         "cancellable": p.cancellable,
         "order": p.order,
         "order_started": p.order_started,
+        "resolved": p.resolved,
     }
 
 
@@ -317,6 +318,7 @@ def _pending_from_dict(d: dict[str, Any]) -> PendingChoice:
         cancellable=bool(d["cancellable"]),
         order=None if d["order"] is None else str(d["order"]),
         order_started=bool(d["order_started"]),
+        resolved=int(d["resolved"]),
     )
 
 

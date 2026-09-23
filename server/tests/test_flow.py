@@ -402,3 +402,31 @@ def test_the_view_shows_the_leaders_order() -> None:
     assert player_view(LIB, s, 1)["me"]["leader"]["order"]["ready"] is False  # not their turn
     leader = s.players[0].leader
     assert leader is not None and UseOrder(leader.instance) in legal_intents(LIB, s, 0)
+
+
+def test_an_order_that_picks_a_card_needs_one_to_pick() -> None:
+    """§6.3: a first ability that chooses — here a card from the graveyard — needs a candidate,
+    or the order would spend its charge and commit the turn for nothing."""
+    lib = make_library(
+        {
+            **CARDS,
+            "raiser": {
+                "kind": "leader",
+                "provision_bonus": 15,
+                "activation": {"charges": 1},
+                "abilities": [
+                    {
+                        "when": "on_activate",
+                        "do": "play_from_graveyard",
+                        "cards": {"pick": "chosen", "where": {"kind": ["unit"]}},
+                    }
+                ],
+            },
+        }
+    )
+    s = Builder(lib).state(leaders=("raiser", None))
+    leader = s.players[0].leader
+    assert leader is not None and UseOrder(leader.instance) not in legal_intents(lib, s, 0)
+    s = Builder(lib).state(grave0=["plain3"], leaders=("raiser", None))
+    leader = s.players[0].leader
+    assert leader is not None and UseOrder(leader.instance) in legal_intents(lib, s, 0)

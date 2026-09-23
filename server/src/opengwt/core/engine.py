@@ -328,7 +328,7 @@ def order_ready(lib: Library, state: MatchState, seat: int, card: CardInstance) 
     """Whether ``seat`` may use this card's activated ability now (§6.3): its controller's turn,
     not passed, no choice pending, the card on their side of the board and not locked — or
     their leader — a charge left, no cooldown, and a candidate for its first ability if that
-    one asks for a unit or a row of units."""
+    one asks for a choice — a unit, a row of units, a card, or a card to create."""
     d = lib[card.card]
     if d.activation is None:
         return False
@@ -349,6 +349,10 @@ def order_ready(lib: Library, state: MatchState, seat: int, card: CardInstance) 
     t = first.target
     if t is not None and t.units in (Units.CHOSEN, Units.CHOSEN_ROW):
         return bool(_Ctx(lib, state).unit_candidates(seat, card, t, first.do))
+    if first.cards is not None and first.cards.pick is CardPick.CHOSEN:
+        return bool(_Ctx(lib, state).zone_cands(seat, card, first))
+    if first.do is Action.CREATE:
+        return bool(_Ctx(lib, state).create_pool(seat, card, first))
     return True
 
 
@@ -1297,12 +1301,17 @@ class _Ctx:
         return self.pick_cards(cands, a.cards)
 
     def create_offer(self, seat: int, acting: CardInstance | None, a: Ability) -> list[str]:
-        """§8 ``create``: ``offer`` distinct card ids drawn with the seeded PRNG from the cards of
-        the acting player's faction and neutral that match ``pool`` — never tokens, leaders or
-        stratagems — in card id order."""
+        """§8 ``create``: ``offer`` distinct card ids drawn with the seeded PRNG from the pool, in
+        card id order."""
+        ids = self.create_pool(seat, acting, a)
+        return [ids[i] for i in self.draw_distinct(len(ids), a.offer or CREATE_OFFER)]
+
+    def create_pool(self, seat: int, acting: CardInstance | None, a: Ability) -> list[str]:
+        """The card ids ``create`` draws from: the acting player's faction and neutral, matching
+        ``pool`` — never tokens, leaders or stratagems — by card id."""
         pool = a.pool or Where()
         faction = self.s.players[seat].faction
-        ids = [
+        return [
             cid
             for cid in sorted(self.lib)
             if (d := self.lib[cid]).faction in (faction, NEUTRAL)
@@ -1311,7 +1320,6 @@ class _Ctx:
             and (pool.kind is None or d.kind in pool.kind)
             and self.where_ok(CardInstance("", cid, seat), pool, acting)
         ]
-        return [ids[i] for i in self.draw_distinct(len(ids), a.offer or CREATE_OFFER)]
 
     def place_stratagem(self, seat: int, card_id: str) -> None:
         """ADR 0011: the round-one starter's stratagem starts on their side of the board, at the
@@ -1516,6 +1524,7 @@ class _Ctx:
             if kept_loc is not None and kept_loc.card.has(Status.KEPT_AT_ROUND_END):
                 self.drop_status(kept_loc, Status.KEPT_AT_ROUND_END, "kept", None)
         self.check_destruction()
+        self.settle_unasked()
         wins = [p.rounds_won for p in s.players]
         if max(wins) >= s.rules.rounds_to_win or s.round >= s.rules.max_rounds:
             s.phase = Phase.MATCH_OVER
@@ -1593,6 +1602,7 @@ class _Ctx:
         if defn.placed:
             self.fire_ally_played(inst, seat)
         self.may_ask = True
+        self.resolved = 0
         if not self.settle():
             self.finish_play(seat)
 
@@ -1622,6 +1632,7 @@ class _Ctx:
             raise IllegalIntent("illegal_intent", "error.order.not-ready")
         self.order, self.order_started = card.instance, False
         self.may_ask = True
+        self.resolved = 0
         self.fire(card, Trigger.ON_ACTIVATE, seat)
         self.settle()
 
@@ -1676,6 +1687,7 @@ class _Ctx:
         self.emit("choice_made", seat=seat, option=option)
         self.queue = pending.queue
         self.order, self.order_started = pending.order, pending.order_started
+        self.resolved = pending.resolved
         self.may_ask = True
         picked = pending.options[option]
         step = pending.step
@@ -1794,7 +1806,6 @@ class _Ctx:
     def settle(self) -> bool:
         """Resolve the queue; once it is empty, finish the activated ability that filled it.
         True when a choice paused it."""
-        self.resolved = 0
         while True:
             if self.run():
                 return True
@@ -1808,6 +1819,7 @@ class _Ctx:
         """Resolve what a turn start, a turn end or a round end queued. Nothing there asks a
         player (the schema keeps choices to ``on_play`` and ``on_activate``), so nothing pauses."""
         self.may_ask = False
+        self.resolved = 0
         paused = self.settle()
         assert not paused
 
@@ -1816,7 +1828,7 @@ class _Ctx:
         the queue then waits in the pending choice."""
         while self.queue:
             if self.resolved >= QUEUE_STEPS_MAX:
-                self.queue.clear()  # content that keeps triggering itself stops here
+                self.drop_queue()  # content that keeps triggering itself stops here
                 return False
             self.resolved += 1
             step = self.queue.pop(0)
@@ -1825,6 +1837,7 @@ class _Ctx:
                     return True
                 continue
             inv = step
+            self.rebind(inv)
             ability = self.ability(inv)
             acting = self.acting_card(inv)
             if not self.may_fire(inv, acting, ability):
@@ -1845,6 +1858,26 @@ class _Ctx:
             self.perform(inv, acting, ability, targets)
             self.hand_on(inv, targets)
         return False
+
+    def drop_queue(self) -> None:
+        """Drop what is left of the queue; a card created for it never enters the match."""
+        for step in self.queue:
+            if isinstance(step, Placement) and step.zone == "created":
+                card = self.placement_card(step)
+                if card is not None:
+                    self.s.resolving.remove(card)
+        self.queue.clear()
+
+    def rebind(self, inv: Invocation) -> None:
+        """The acting player of a triggered ability is the card's controller when it resolves
+        (§6) — it may have changed sides since it was queued. A played card's abilities act for
+        whoever played it, an activated ability for whoever used it, and ``on_destroyed`` for
+        the controller it had when it was destroyed."""
+        if self.ability(inv).when in (Trigger.ON_PLAY, Trigger.ON_ACTIVATE, Trigger.ON_DESTROYED):
+            return
+        loc = self.loc(inv.instance)
+        if loc is not None:
+            inv.seat = loc.seat
 
     def choice_of(
         self, inv: Invocation, acting: CardInstance | None, a: Ability
@@ -1914,6 +1947,7 @@ class _Ctx:
             cancellable=cancellable,
             order=self.order,
             order_started=self.order_started,
+            resolved=self.resolved,
         )
         self.queue = []
         self.order, self.order_started = None, True

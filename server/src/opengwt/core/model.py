@@ -759,7 +759,8 @@ class PendingChoice:
     for a choice of kind ``place``. ``queue`` is the rest of the resolution queue, which resolves
     once the pick is made (§11.3). ``order`` is the card whose activated ability is resolving,
     if any, and ``order_started`` whether it has spent its charge yet — until then the choice
-    may be cancelled (cards.md §6.3). Without an ``order`` a played card is resolving."""
+    may be cancelled (cards.md §6.3). Without an ``order`` a played card is resolving.
+    ``resolved`` counts the steps the resolution has resolved so far (§11.3)."""
 
     seat: int
     kind: ChoiceKind
@@ -770,6 +771,7 @@ class PendingChoice:
     cancellable: bool = False
     order: str | None = None
     order_started: bool = False
+    resolved: int = 0
 
 
 @dataclass
@@ -835,6 +837,7 @@ class MatchState:
                     p.cancellable,
                     p.order,
                     p.order_started,
+                    p.resolved,
                 )
                 if p
                 else None

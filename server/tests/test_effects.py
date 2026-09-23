@@ -38,6 +38,7 @@ def lib_with(**extra: dict[str, Any]) -> Any:
 
 THIS = {"units": "this"}
 ALL_ENEMIES = {"units": "all", "side": "opponent"}
+CHOSEN_ENEMY_UNIT = {"units": "chosen", "side": "opponent"}
 
 
 def _unit_card(power: int, abilities: list[dict[str, Any]]) -> dict[str, Any]:
@@ -604,9 +605,9 @@ def test_a_trigger_loop_stops_after_the_most_abilities_one_resolution_resolves()
     )
     s = Builder(lib).state(hand0=["boost3", "plain5"], board0={"melee": ["vain"]})
     s, events = play(lib, s, 0, "boost3")
-    s, events = choose(lib, s, 0, 0)  # the boost, then its triggers up to the limit
-    assert len(events_of(events, "unit_boosted")) == 1 + QUEUE_STEPS_MAX
-    assert powers_on(lib, s, 0, MELEE) == [1 + 3 + QUEUE_STEPS_MAX]
+    s, events = choose(lib, s, 0, 0)  # the special's ability was the first step
+    assert len(events_of(events, "unit_boosted")) == QUEUE_STEPS_MAX
+    assert powers_on(lib, s, 0, MELEE) == [1 + 3 + QUEUE_STEPS_MAX - 1]
     assert s.turn == 1 and s.phase is Phase.PLAYING
 
 
@@ -632,3 +633,53 @@ def test_the_leader_order_waits_for_the_rest_of_phase_c() -> None:
     with pytest.raises(IllegalIntent) as info:
         apply(LIB, s, 0, UseOrder(s.players[0].leader.instance))  # type: ignore[union-attr]
     assert info.value.reason == "error.order.not-ready"
+
+
+def test_a_kept_unit_destroyed_as_the_board_clears_fires_at_once() -> None:
+    """§11.2, §11.5 step 3: a kept unit that loses the aura holding it up is destroyed when the
+    board is cleared, and its on_destroyed resolves before the next round starts."""
+    lib = lib_with(
+        stubborn={
+            **_unit_card(2, [{"when": "on_destroyed", "do": "draw", "count": 1}]),
+            "statuses": ["kept_at_round_end"],
+        }
+    )
+    s = Builder(lib).state(deck0=["plain3"], board0={"melee": ["aura-adj", "stubborn"]})
+    s.players[0].rows[MELEE].cards[1].power = -1  # 1 with the neighbour's aura of 2
+    s, _ = apply(lib, s, 0, Pass())
+    s, events = apply(lib, s, 1, Pass())
+    types = event_types(events)
+    cleared, started = types.index("board_cleared"), types.index("round_started")
+    assert "card_destroyed" in types[cleared:started]
+    assert "card_drawn" in types[cleared:started]
+
+
+def test_the_acting_player_is_the_controller_when_the_ability_resolves() -> None:
+    """§6: a unit taken over before its triggered ability resolves acts for its new controller —
+    its 'enemy' is now its old side."""
+    lib = lib_with(
+        striker=_unit_card(
+            5,
+            [
+                {
+                    "when": "on_damaged",
+                    "do": "damage",
+                    "amount": 1,
+                    "target": {"units": "all", "side": "opponent"},
+                }
+            ],
+        ),
+        grab=_special_card(
+            {"when": "on_play", "do": "damage", "amount": 1, "target": CHOSEN_ENEMY_UNIT},
+            {"when": "on_play", "do": "take_control", "target": {"units": "previous_targets"}},
+        ),
+    )
+    s = Builder(lib).state(
+        hand0=["grab", "plain5"],
+        board0={"melee": ["plain5"]},
+        board1={"melee": ["striker", "plain8"]},
+    )
+    s, _ = play(lib, s, 0, "grab", end=False)
+    s, _ = choose(lib, s, 0, 0)  # the striker: damaged, taken over, then it strikes
+    assert powers_on(lib, s, 0, MELEE) == [5, 4]
+    assert powers_on(lib, s, 1, MELEE) == [7]

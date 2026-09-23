@@ -7,8 +7,9 @@ from typing import Any
 
 import pytest
 
-from opengwt.core.engine import IllegalIntent, apply
-from opengwt.core.intents import CancelChoice, Choose
+from opengwt.core.engine import QUEUE_STEPS_MAX, IllegalIntent, apply
+from opengwt.core.events import event_for_seat
+from opengwt.core.intents import CancelChoice, Choose, EndTurn
 from opengwt.core.model import ChoiceKind, MatchState, Placement, Rules
 from opengwt.core.serialize import canonical_json, state_from_dict, state_to_dict
 from opengwt.core.view import player_view
@@ -127,3 +128,37 @@ def test_scenarios_exist_for_every_kind_of_choice() -> None:
             if event.get("type") == "choice_requested" and "kind" in event:
                 kinds.add(event["kind"])
     assert kinds >= {"row", "place", "card"}
+
+
+def test_a_chain_of_choices_stops_at_the_resolution_limit() -> None:
+    """§11.3: the limit counts every step of one resolution, across its choices — a card that
+    creates a copy of itself, which creates another, stops."""
+    lib = make_library(
+        {
+            **CARDS,
+            "echo": {
+                "kind": "special",
+                "color": "bronze",
+                "provisions": 4,
+                "tags": ["loop"],
+                "abilities": [{"when": "on_play", "do": "create", "pool": {"tags_any": ["loop"]}}],
+            },
+        }
+    )
+    s = Builder(lib).state(hand0=["echo", "plain5"])
+    s, _ = play(lib, s, 0, "echo", end=False)
+    for _ in range(QUEUE_STEPS_MAX + 10):
+        if s.pending is None:
+            break
+        s, _ = apply(lib, s, 0, Choose(0))
+    assert s.pending is None and s.resolving == []
+    s, _ = apply(lib, s, 0, EndTurn())
+    assert s.turn == 1
+
+
+def test_only_the_chooser_sees_which_option_was_chosen() -> None:
+    played = _paused("play-from-deck", 1)
+    _, events = apply(played.lib, played.state, 0, Choose(0))
+    made = next(e for e in events if e.type == "choice_made")
+    assert event_for_seat(made, 0).data == {"seat": 0, "option": 0}
+    assert event_for_seat(made, 1).data == {"seat": 0}
