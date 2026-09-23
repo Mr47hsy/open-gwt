@@ -41,7 +41,8 @@ appears. Stop the server afterwards.
 
 ## 5. Python side, if `data/` or `server/` changed
 
-`cd server && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run lint-imports && uv run pytest -q`
+`server/scripts/check.sh` runs everything CI runs, in CI's order. Run it for **any** file under
+`server/`, scripts included — CI lints the whole tree.
 
 ## 6. Clean up and commit
 

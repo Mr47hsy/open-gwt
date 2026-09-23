@@ -6,6 +6,7 @@ Python 3.10.15 or newer, uv 0.12.5 or newer. Layers, enforced by import-linter:
 
 ```bash
 uv sync                                   # environment and lockfile
+scripts/check.sh                          # everything CI runs, in CI's order
 uv run pytest -q                          # tests
 uv run ruff check . && uv run ruff format --check .
 uv run mypy

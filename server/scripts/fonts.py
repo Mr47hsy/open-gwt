@@ -1,6 +1,9 @@
-"""Build the client's font files from the Noto variable fonts (client/Assets/OpenGwt/Fonts/README.md).
+"""Build the client's font files from the Noto variable fonts.
 
-    uv run --with fonttools python server/scripts/fonts.py --src <downloads> --out client/Assets/OpenGwt/Fonts --data data
+Documented in client/Assets/OpenGwt/Fonts/README.md. Run from the repository root:
+
+    uv run --with fonttools python server/scripts/fonts.py \
+        --src <downloads> --out client/Assets/OpenGwt/Fonts --data data
 
 Static instances are cut from the variable fonts and subset to the scripts the game uses; the CJK
 fonts keep GB 2312 plus every character that appears in data/i18n/zh-CN. Nothing else about the
@@ -23,7 +26,7 @@ LATIN_CYRILLIC = [
     (0x0370, 0x03FF),  # Greek
     (0x0400, 0x052F),  # Cyrillic and Cyrillic Supplement
     (0x1E00, 0x1EFF),  # Latin Extended Additional
-    (0x2000, 0x206F),  # general punctuation: … – — quotes
+    (0x2000, 0x206F),  # general punctuation: ellipsis, dashes, quotes
     (0x20A0, 0x20CF),  # currency
     (0x2100, 0x214F),  # letterlike: ™ №
     (0x2190, 0x21FF),  # arrows: →
@@ -43,7 +46,7 @@ CJK_EXTRA = [
 
 
 def gb2312() -> set[int]:
-    """Every character of GB 2312: rows 0xA1–0xF7, columns 0xA1–0xFE."""
+    """Every character of GB 2312: rows 0xA1-0xF7, columns 0xA1-0xFE."""
     chars: set[int] = set()
     for row in range(0xA1, 0xF8):
         for col in range(0xA1, 0xFF):
