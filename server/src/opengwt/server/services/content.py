@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from opengwt.core.model import Deck, Library
-from opengwt.core.serialize import canonical_json
+from opengwt.core.model import DEFAULT_RULES, Deck, Library
+from opengwt.core.serialize import canonical_json, rules_to_dict
 from opengwt.data import load_cards_raw, load_data
 from opengwt.i18n import Renderer
 
-PACK_SCHEMA = "opengwt.pack/1"
+PACK_SCHEMA = "opengwt.pack/2"
 
 
 @dataclass
@@ -36,6 +36,8 @@ def load_content(data_dir: Path) -> Content:
     raw = load_cards_raw(data_dir / "cards")
     body: dict[str, Any] = {
         "schema": PACK_SCHEMA,
+        # the Rules the server plays with; clients read row capacity and hand limit from here
+        "rules": rules_to_dict(DEFAULT_RULES),
         "factions": sorted({d.faction for d in data.library.values()}),
         "cards": [{"id": cid, **mapping} for cid, mapping in raw.items()],
         "decks": [

@@ -41,7 +41,9 @@ class MatchRow(Base):
     mode: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), index=True)
     room_code: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
-    seed: Mapped[int] = mapped_column(Integer)
+    # 64 lowercase hex characters (ADR 0010); a match from before ADR 0009 phase B keeps its old
+    # 31-bit integer seed, written in decimal
+    seed: Mapped[str] = mapped_column(String(64))
     seat0_player_id: Mapped[str] = mapped_column(String(32), index=True)
     seat1_player_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     decks: Mapped[list[Any]] = mapped_column(JSON)

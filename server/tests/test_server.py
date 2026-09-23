@@ -2,35 +2,51 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
-import secrets
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
+from alembic import command
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from starlette.testclient import WebSocketTestSession
 
+from opengwt.bots import RandomBot
+from opengwt.core.engine import apply, legal_intents, new_match
 from opengwt.core.replay import record_from_dict, replay
+from opengwt.core.rng import bot_stream
 from opengwt.core.serialize import state_hash
 from opengwt.data import load_data
 from opengwt.server.app import create_app
 from opengwt.server.config import ConfigError, Settings
+from opengwt.server.db.session import alembic_config, make_engine
+from opengwt.server.services import matches as match_service
+from opengwt.server.services.auth import create_token
 
 REPO = Path(__file__).resolve().parents[2]
-PINNED_SEED = 1_234_567_890
+PINNED_SEED = "0123456789abcdef" * 4
+
+
+SECRET = "test-secret-long-enough-for-hmac-sha256-keys"
+
+
+def _settings(tmp_path: Path, **overrides: Any) -> Settings:
+    return Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
+        data_dir=REPO / "data",
+        auth_secret=SECRET,
+        **overrides,
+    )
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
-    settings = Settings(
-        database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
-        data_dir=REPO / "data",
-        auth_secret="test-secret-long-enough-for-hmac-sha256-keys",
-    )
-    with TestClient(create_app(settings)) as test_client:
+    with TestClient(create_app(_settings(tmp_path))) as test_client:
         yield test_client
 
 
@@ -42,8 +58,9 @@ def _guest(client: TestClient, name: str = "guest") -> tuple[dict[str, str], str
 
 
 class Scripted:
-    """A scripted client: plays the first legal card, otherwise passes; never sees more than
-    its view, and asserts on every message that hidden information stayed hidden."""
+    """A scripted client: redraws once in each mulligan, then plays the first legal card at the
+    left end of its row, otherwise passes; never sees more than its view, and asserts on every
+    message that hidden information stayed hidden."""
 
     def __init__(self, ws: WebSocketTestSession, seat: int) -> None:
         self.ws = ws
@@ -54,6 +71,7 @@ class Scripted:
         self.sent = 0
         self.events: list[dict[str, Any]] = []
         self.messages: list[dict[str, Any]] = []
+        self.redrew_in_round = 0
 
     def receive(self) -> dict[str, Any]:
         message: dict[str, Any] = self.ws.receive_json()
@@ -68,7 +86,8 @@ class Scripted:
         elif kind == "events":
             for event in message["events"]:
                 self.events.append(event)
-                if event["type"] == "card_drawn" and event["seat"] != self.seat:
+                private = event["type"] in ("card_drawn", "card_redrawn")
+                if private and event["seat"] != self.seat:
                     assert "card" not in event and "instance" not in event
                 if event["type"] == "choice_requested" and event["seat"] != self.seat:
                     assert "options" not in event
@@ -86,11 +105,20 @@ class Scripted:
         if not legal:
             return None
         if view["phase"] == "mulligan":
-            return {"kind": "mulligan", "cards": [c["instance"] for c in view["me"]["hand"][:1]]}
+            redraws = [i for i in legal if i["kind"] == "mulligan"]
+            if redraws and self.redrew_in_round != view["round"]:
+                self.redrew_in_round = view["round"]
+                return redraws[0]
+            return {"kind": "end_mulligan"}
         if view["phase"] == "choosing":
             return legal[0]
         plays = [i for i in legal if i["kind"] == "play_card"]
-        return plays[0] if plays else {"kind": "pass"}
+        if not plays:
+            return {"kind": "pass"}
+        play = dict(plays[0])
+        if "row" in play:
+            play["position"] = 0
+        return play
 
     def step(self) -> None:
         """Act on the current view if it is this seat's move, then wait for the next view."""
@@ -111,7 +139,7 @@ class Scripted:
 
 def _handshake(ws: WebSocketTestSession, expect_view: bool = True) -> tuple[int, dict[str, Any]]:
     hello = ws.receive_json()
-    assert hello["type"] == "hello" and hello["protocol"] == 1
+    assert hello["type"] == "hello" and hello["protocol"] == 2
     if not expect_view:
         return hello["seat"], hello
     view = ws.receive_json()
@@ -122,13 +150,14 @@ def _handshake(ws: WebSocketTestSession, expect_view: bool = True) -> tuple[int,
 def test_health_pack_and_i18n(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok"}
     pack = client.get("/content/pack")
-    assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/1"
+    assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/2"
+    assert pack.json()["rules"]["row_capacity"] == 9
     etag = pack.headers["etag"]
     assert client.get("/content/pack", headers={"If-None-Match": etag}).status_code == 304
     locales = client.get("/content/i18n").json()
     assert locales["locales"] == ["en", "ru", "zh-CN"] and locales["pack_hash"] == etag.strip('"')
     table = client.get("/content/i18n/zh-CN").json()
-    assert table["card.a-u-0001.name"] == "占位 A 单位 1"
+    assert table["card.u-1001.name"] == "占位 A 单位 1"
     missing = client.get("/content/i18n/fr")
     assert missing.status_code == 404
     error = missing.json()["error"]
@@ -154,18 +183,31 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
     bad = client.put(
         "/decks/mine",
         headers=headers,
-        json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "a-u-0001", "count": 3}]},
+        json={
+            "name": "x",
+            "faction": "placeholder-a",
+            "leader": "l-1001",
+            "cards": [{"id": "u-1001", "count": 3}, {"id": "u-2001", "count": 1}],
+        },
     )
     assert bad.status_code == 422
-    assert "error.deck.too-few-units" in bad.json()["error"]["details"]["problems"]
+    problems = bad.json()["error"]["details"]["problems"]
+    assert problems == ["error.deck.wrong-faction:u-2001", "error.deck.too-few-cards"]
+    no_leader = client.put(
+        "/decks/mine",
+        headers=headers,
+        json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "u-1001", "count": 25}]},
+    )
+    assert no_leader.status_code == 422
+    starter = yaml.safe_load((REPO / "data" / "decks" / "starter-a.deck.yaml").read_text())
     good = client.put(
         "/decks/mine",
         headers=headers,
         json={
             "name": "mine",
             "faction": "placeholder-a",
-            "leader": "a-l-0001",
-            "cards": [{"id": "a-u-0001", "count": 22}, {"id": "n-s-0009", "count": 1}],
+            "leader": starter["leader"],
+            "cards": starter["cards"],
         },
     )
     assert good.status_code == 200 and good.json()["deck_id"] == "mine"
@@ -211,7 +253,7 @@ def test_the_seed_reaches_no_client_before_the_match_ends(
     """With the seed and the open-source shuffle a client rebuilds both decks' order, so no
     message may carry it while the match runs, resync from the first event included (match.md
     §11). The replay record, served only after the end, is where it belongs."""
-    monkeypatch.setattr(secrets, "randbits", lambda bits: PINNED_SEED)
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
     headers, token = _guest(client)
     created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})
     match_id = created.json()["match_id"]
@@ -232,9 +274,113 @@ def test_the_seed_reaches_no_client_before_the_match_ends(
 
     for message in [created.json(), first, *me.messages]:
         text = json.dumps(message)
-        assert '"seed"' not in text and str(PINNED_SEED) not in text, message
+        assert '"seed"' not in text and PINNED_SEED not in text, message
     record = client.get(f"/matches/{match_id}/replay", headers=headers).json()["record"]
     assert record["seed"] == PINNED_SEED
+
+
+def _play_bot_match(client: TestClient) -> tuple[dict[str, str], str, Scripted]:
+    headers, token = _guest(client)
+    created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})
+    match_id = created.json()["match_id"]
+    with client.websocket_connect(f"/ws/matches/{match_id}?token={token}") as ws:
+        seat, first = _handshake(ws)
+        me = Scripted(ws, seat)
+        me.view, me.seq = first["view"], first["seq"]
+        for _ in range(400):
+            if me.result is not None:
+                break
+            me.step()
+        assert me.result is not None, "the match did not finish"
+    return headers, match_id, me
+
+
+def test_the_bot_draws_from_its_own_stream_for_each_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 0010: decision ``i`` of the intent log is made by a fresh bot on the stream labelled
+    ``i``, so the bot keeps no state between calls and its choices are not the match's stream."""
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
+    with TestClient(create_app(_settings(tmp_path, bot="random"))) as client:
+        headers, match_id, me = _play_bot_match(client)
+        body = client.get(f"/matches/{match_id}/replay", headers=headers).json()
+    record = record_from_dict(body["record"])
+    library = load_data(REPO / "data").library
+    state, _ = new_match(library, record.decks, record.seed, record.rules)
+    bot_decisions = 0
+    for index, (seat, intent) in enumerate(record.intents):
+        if seat != me.seat:
+            bot = RandomBot(bot_stream(PINNED_SEED, index))
+            assert intent == bot.choose(library, state, seat, legal_intents(library, state, seat))
+            bot_decisions += 1
+        state, _ = apply(library, state, seat, intent)
+    assert bot_decisions > 5 and state_hash(state) == body["result"]["final_hash"]
+
+
+def test_matches_from_before_phase_b_stay_as_history(tmp_path: Path) -> None:
+    """Migration 0002 turns ``matches.seed`` into text; a v1 match keeps its decimal seed and is
+    served as its ``opengwt.record/1`` data."""
+    url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
+    v1_deck = {"faction": "placeholder-a", "leader": "a-l-0001", "cards": ["a-u-0001"]}
+
+    async def old_database() -> str:
+        engine = make_engine(url)
+        config = alembic_config()
+
+        def upgrade(revision: str) -> Any:
+            def run(connection: Any) -> None:
+                config.attributes["connection"] = connection
+                command.upgrade(config, revision)
+
+            return run
+
+        async with engine.begin() as connection:
+            await connection.run_sync(upgrade("0001"))
+            await connection.execute(
+                text(
+                    "INSERT INTO players (id, display_name, locale, created_at) "
+                    "VALUES ('p1', 'old', NULL, '2026-09-01 00:00:00')"
+                )
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO matches (id, mode, status, room_code, seed, seat0_player_id, "
+                    "seat1_player_id, decks, rules, result, created_at, finished_at) VALUES "
+                    "('m1', 'bot', 'finished', NULL, 1234567, 'p1', 'bot', :decks, :rules, "
+                    ":result, '2026-09-01 00:00:00', '2026-09-01 00:10:00')"
+                ),
+                {
+                    "decks": json.dumps([v1_deck, v1_deck]),
+                    "rules": json.dumps({"hand_size": 10, "lives": 2}),
+                    "result": json.dumps({"winner": 0}),
+                },
+            )
+            await connection.execute(
+                text(
+                    'INSERT INTO match_intents (match_id, "index", seat, intent) '
+                    "VALUES ('m1', 0, 0, :intent)"
+                ),
+                {"intent": json.dumps({"kind": "pass"})},
+            )
+        async with engine.begin() as connection:
+            await connection.run_sync(upgrade("head"))
+            seed = (await connection.execute(text("SELECT seed FROM matches"))).scalar_one()
+        await engine.dispose()
+        return str(seed)
+
+    assert asyncio.run(old_database()) == "1234567"
+    token = create_token("p1", SECRET, 600)
+    headers = {"Authorization": f"Bearer {token}"}
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        assert client.get("/matches/m1", headers=headers).json()["status"] == "finished"
+        body = client.get("/matches/m1/replay", headers=headers).json()
+    assert body["record"] == {
+        "schema": "opengwt.record/1",
+        "seed": 1234567,
+        "rules": {"hand_size": 10, "lives": 2},
+        "decks": [v1_deck, v1_deck],
+        "intents": [{"seat": 0, "intent": {"kind": "pass"}}],
+    }
 
 
 def test_two_clients_play_through_a_room_and_one_reconnects(client: TestClient) -> None:
