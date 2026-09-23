@@ -1,0 +1,58 @@
+"""``opengwt-data``: content tooling that does not belong in the server process."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections.abc import Sequence
+from pathlib import Path
+
+import yaml
+
+CONFORMANCE_SCHEMA = "opengwt.i18n-conformance/1"
+
+
+def conformance_json(data_dir: Path) -> str:
+    """The conformance suite as JSON, exactly the YAML's content, for renderers without YAML."""
+    doc = yaml.safe_load((data_dir / "i18n" / "conformance.yaml").read_text(encoding="utf-8"))
+    if doc.get("schema") != CONFORMANCE_SCHEMA:
+        raise ValueError(f"unexpected conformance schema {doc.get('schema')!r}")
+    return json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="opengwt-data", description=__doc__)
+    parser.add_argument("--data", default=None, help="path to the data/ directory")
+    sub = parser.add_subparsers(dest="command", required=True)
+    conf = sub.add_parser("conformance-json", help="write data/i18n/conformance.json from the YAML")
+    conf.add_argument("--check", action="store_true", help="fail if the JSON is stale instead")
+    conf.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+
+    explicit = args.data or getattr(args, "data_sub", None)
+    data_dir = Path(explicit) if explicit else _find_data()
+    if args.command == "conformance-json":
+        target = data_dir / "i18n" / "conformance.json"
+        fresh = conformance_json(data_dir)
+        if args.check:
+            current = target.read_text(encoding="utf-8") if target.exists() else ""
+            if current != fresh:
+                print(f"{target} is stale; run `opengwt-data conformance-json`", file=sys.stderr)
+                return 1
+            print(f"{target} is up to date")
+            return 0
+        target.write_text(fresh, encoding="utf-8")
+        print(f"wrote {target}")
+    return 0
+
+
+def _find_data() -> Path:
+    for candidate in (Path("data"), Path("..") / "data"):
+        if (candidate / "cards").is_dir():
+            return candidate
+    raise SystemExit("cannot find data/; pass --data")
+
+
+if __name__ == "__main__":
+    sys.exit(main())

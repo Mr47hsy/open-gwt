@@ -26,6 +26,7 @@ redis = ["redis>=5.2"]
 [project.scripts]
 opengwt-sim = "opengwt.sim.cli:main"
 opengwt-server = "opengwt.server.cli:main"
+opengwt-data = "opengwt.data.cli:main"
 
 [dependency-groups]
 dev = [
