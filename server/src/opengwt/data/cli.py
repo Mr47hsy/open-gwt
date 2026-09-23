@@ -21,6 +21,20 @@ def conformance_json(data_dir: Path) -> str:
     return json.dumps(doc, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
 
 
+CLIENT_PREFIXES = ("ui.", "choice.", "error.")
+
+
+def client_i18n(data_dir: Path) -> dict[str, str]:
+    """Per locale, the strings the client needs before it has a server, as JSON text."""
+    from opengwt.data.loader import load_i18n
+
+    out: dict[str, str] = {}
+    for locale, table in sorted(load_i18n(data_dir / "i18n").items()):
+        subset = {k: v for k, v in sorted(table.items()) if k.startswith(CLIENT_PREFIXES)}
+        out[locale] = json.dumps(subset, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    return out
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="opengwt-data", description=__doc__)
     parser.add_argument("--data", default=None, help="path to the data/ directory")
@@ -28,6 +42,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     conf = sub.add_parser("conformance-json", help="write data/i18n/conformance.json from the YAML")
     conf.add_argument("--check", action="store_true", help="fail if the JSON is stale instead")
     conf.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
+    client = sub.add_parser(
+        "client-i18n", help="export the ui/error/choice strings as JSON for the client build"
+    )
+    client.add_argument("--out", required=True, help="directory for <locale>.json files")
+    client.add_argument("--check", action="store_true", help="fail if any file is stale instead")
+    client.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     explicit = args.data or getattr(args, "data_sub", None)
@@ -44,6 +64,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         target.write_text(fresh, encoding="utf-8")
         print(f"wrote {target}")
+    elif args.command == "client-i18n":
+        out = Path(args.out)
+        stale = []
+        for locale, text in client_i18n(data_dir).items():
+            target = out / f"{locale}.json"
+            if args.check:
+                current = target.read_text(encoding="utf-8") if target.exists() else ""
+                if current != text:
+                    stale.append(str(target))
+                continue
+            out.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+            print(f"wrote {target}")
+        if stale:
+            print(
+                "stale: " + ", ".join(stale) + "; run `opengwt-data client-i18n`", file=sys.stderr
+            )
+            return 1
     return 0
 
 

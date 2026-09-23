@@ -89,3 +89,20 @@ def test_conformance_json_matches_the_yaml() -> None:
     target = REPO / "data" / "i18n" / "conformance.json"
     assert target.exists(), "run `opengwt-data conformance-json --data ../data`"
     assert target.read_text(encoding="utf-8") == conformance_json(REPO / "data")
+
+
+def test_client_i18n_export_is_fresh() -> None:
+    """The client embeds ui/choice/error strings; the JSON must match data/i18n."""
+    from opengwt.data.cli import client_i18n
+
+    out = REPO / "client" / "Assets" / "OpenGwt" / "Resources" / "i18n"
+    exported = client_i18n(REPO / "data")
+    assert set(exported) == {"en", "ru", "zh-CN"}
+    for locale, text in exported.items():
+        target = out / f"{locale}.json"
+        assert target.exists(), (
+            "run `opengwt-data client-i18n --out ../client/Assets/OpenGwt/Resources/i18n`"
+        )
+        assert target.read_text(encoding="utf-8") == text, f"{target} is stale"
+    assert '"ui.language.name": "简体中文"' in exported["zh-CN"]
+    assert "card." not in exported["en"]
