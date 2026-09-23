@@ -42,7 +42,9 @@ OPENGWT_TEST_SCREENSHOTS=/tmp/shots "$UNITY" -batchmode -projectPath "$PWD/clien
 ```
 
 No `-nographics`: the board renders into a 1600×900 texture and each stage is written as a PNG.
-Open them and check the change the way a player would see it.
+Open them and check the change the way a player would see it. A run with graphics rewrites the
+dynamic font assets (`Fonts/*-SDF.asset`); unless fonts were your change, restore them with
+`git checkout -- client/Assets/OpenGwt/Fonts/`.
 
 ## 4. Optional macOS build
 
