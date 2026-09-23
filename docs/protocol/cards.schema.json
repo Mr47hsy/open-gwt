@@ -483,7 +483,8 @@
             "unit",
             "special",
             "artifact",
-            "leader"
+            "leader",
+            "stratagem"
           ]
         },
         "color": {
@@ -773,6 +774,95 @@
                   ]
                 }
               ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "stratagem"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "abilities"
+            ],
+            "allOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "color"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "provisions"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "provision_bonus"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "token"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "power"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "armor"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "side"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "statuses"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "tags"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "properties": {
+              "abilities": {
+                "items": {
+                  "properties": {
+                    "when": {
+                      "const": "on_activate"
+                    }
+                  }
+                }
+              },
+              "activation": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "ready_on_play"
+                      ]
+                    }
+                  ]
+                }
+              }
             }
           }
         },

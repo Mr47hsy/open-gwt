@@ -10,7 +10,7 @@ sends intents; every decision is made on the server. Version 2 carries the two-r
 > **Transition.** Since ADR 0009 phase B the server speaks protocol 2: views, intents and events
 > come from the v2 rules core. The Unity client on `develop` still speaks protocol 1 (`git show
 > b68be93:docs/protocol/match.md`) until phase E; between the two it cannot play, by the owner's
-> decision. Until phase C no activated ability is ever ready, so `use_order` is never legal and
+> decision. Until phase C only a stratagem's activated ability is ever ready (ADR 0011), and
 > every pending choice is of kind `unit`.
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
@@ -42,8 +42,8 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
-| `GET /decks` | → `[{deck_id, name, faction, leader, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
-| `PUT /decks/{deck_id}` | `{name, faction, leader, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` is required. |
+| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
+| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` and `stratagem` are required. |
 | `DELETE /decks/{deck_id}` | → `204` | |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. |
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
@@ -179,7 +179,7 @@ and the like are shortened for the examples, and a client never parses them.
 | `graveyard`, `banished` | Public zones, oldest first. |
 | `leader` | The leader's instance and card, and its `order` (below); `null` for a deck without one. |
 | `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished; otherwise `null`. |
-| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. |
+| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. The starter's stratagem is one of these cards until it is used, with its `order`. |
 
 A card on the board:
 
@@ -233,6 +233,7 @@ whose ability caused it, or `null` for a status or a row effect.
 | `type` | Fields | Notes |
 | --- | --- | --- |
 | `match_started` | `{starter}` | Never carries the seed (section 11). |
+| `stratagem_placed` | `{seat, instance, card, row, position}` | The starter's stratagem starts on their board (ADR 0011). |
 | `round_started` | `{round, starter}` | |
 | `card_drawn` | `{seat, instance?, card?}` | `instance` and `card` only for the receiving player's own draws. |
 | `draw_skipped` | `{seat, reason, count}` | `reason` is `hand_full` or `deck_empty`; `count` draws of one draw action did not happen. |
@@ -242,7 +243,7 @@ whose ability caused it, or `null` for a status or a row effect.
 | `turn_started` | `{seat}` | |
 | `turn_ended` | `{seat}` | |
 | `card_played` | `{seat, instance, card, from, row?, position?, side?}` | `from` is `hand`, `deck` or `graveyard`; `row`, `position`, `side` for a unit or artifact. |
-| `order_used` | `{seat, instance, card, charges, cooldown}` | After the fact: remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
+| `order_used` | `{seat, instance, card, charges, cooldown}` | When the order's first ability starts to act (after its choice, if it asks one): remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
 | `card_summoned` | `{seat, instance, card, from, row, position, side}` | Onto the board without being played; `from` is `deck` or `created`. |
 | `card_moved` | `{seat, instance, card, from_row, to_row, position}` | |
 | `card_returned` | `{seat, instance, card}` | From the board to its owner's hand. |

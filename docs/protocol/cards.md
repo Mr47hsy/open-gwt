@@ -13,8 +13,9 @@ normative, this document explains them and fixes the semantics the rules core im
 > `previous_targets`, `row_target.pick: chosen`, `cards.pick: chosen`, `if.trigger_unit`,
 > `play_from_deck`, `play_from_graveyard` and `create` — load and do nothing until phase C
 > gives them behaviour: their triggers never fire, their abilities are skipped and no activated
-> ability is ready. `data/` uses only the phase-B words, except that every leader carries its
-> activated ability. The vocabulary was revised in phase B against public descriptions of the
+> ability is ready — except a stratagem's, which phase B implements with the compensation for
+> going first ([ADR 0011](../adr/0011-first-player-compensation.md)). `data/` uses only the
+> phase-B words, except that every leader carries its activated ability. The vocabulary was revised in phase B against public descriptions of the
 > standalone game (section 16); `opengwt.cards/1` is gone.
 
 Everything here describes *mechanics*, which are not copyrightable. Names, ids and texts are
@@ -59,26 +60,27 @@ cards:
 | `cards` | yes | Map of card id → card. Ids match `^[a-z][a-z0-9-]{1,63}$` and are unique across **all** files. |
 
 Ids are opaque. The convention `u-` (unit), `s-` (special), `a-` (artifact), `t-` (token),
-`l-` (leader) followed by a number is recommended for placeholder content but not enforced. Ids
+`l-` (leader), `g-` (stratagem) followed by a number is recommended for placeholder content but
+not enforced. Ids
 never encode a name.
 
 ## 3. Card
 
 | Key | Applies to | Required | Meaning |
 | --- | --- | --- | --- |
-| `kind` | all | yes | `unit`, `special`, `artifact` or `leader`. |
+| `kind` | all | yes | `unit`, `special`, `artifact`, `leader` or `stratagem`. |
 | `color` | unit, special, artifact | yes, except tokens | `bronze` or `gold`; sets the copy limit in a deck (section 12). |
 | `provisions` | unit, special, artifact | yes, except tokens | Provision cost, integer ≥ 0, counted against the deck's budget. |
 | `provision_bonus` | leader | yes | Added to `Rules.provision_base` to give the budget of a deck led by this leader. |
 | `token` | unit, artifact | no | `true`: the card is never in a deck and only reaches the board through `place_new_card`; it is banished whenever it leaves the board, whatever its statuses. A token has no `color` and no `provisions`. |
 | `power` | unit | yes | Base power, integer ≥ 1. |
 | `armor` | unit | no | Armour the unit has whenever it enters the board, integer ≥ 1. |
-| `rows` | unit, artifact | no | Rows the card may be played on: one or both of `melee`, `ranged`. Default: any row. |
+| `rows` | unit, artifact, stratagem | no | Rows the card may be played on — for a stratagem, the row it starts on is the first of them: one or both of `melee`, `ranged`. Default: any row. |
 | `side` | unit | no | `self` (default) or `opponent`: the side of the board the unit lands on when it is played or summoned (`place_new_card` sets the side itself). |
 | `statuses` | unit, artifact | no | Statuses the card has whenever it enters the board: `shielded`, `immune`, `banish_on_leave`, `kept_at_round_end`, `status_proof`, `guarding` (artifacts: not `shielded` or `guarding`). |
 | `tags` | unit, special, artifact | no | Free-form tag ids (`^[a-z][a-z0-9-]{1,31}$`), original words, used by `where` filters. |
-| `activation` | unit, artifact, leader | no | How the card's activated ability may be used (section 6.3). Only on a card with an `on_activate` ability. |
-| `abilities` | all | special and leader: yes | Ordered list of abilities (section 6). |
+| `activation` | unit, artifact, leader, stratagem | no | How the card's activated ability may be used (section 6.3). Only on a card with an `on_activate` ability. A stratagem without one has a single charge. |
+| `abilities` | all | special, leader and stratagem: yes | Ordered list of abilities (section 6). |
 
 What each kind is:
 
@@ -91,6 +93,13 @@ What each kind is:
 - A **leader** is not in the deck and never on the board. It carries the deck's provision bonus
   and one activated ability — its `on_activate` abilities, the only kind it may have — usable
   from the first turn, with the charges its `activation` gives it for the whole match.
+- A **stratagem** is the compensation for going first ([ADR 0011](../adr/0011-first-player-compensation.md)):
+  a deck names one, and only the player who starts round one gets theirs. It starts on their
+  side of the board, at the left end of the first row it allows, and takes a place there like
+  any card; it has no power, only `on_activate` abilities, and nothing acts on it — no selector
+  offers it, row effects and auras pass it by, and the end of a round does not clear it. Its
+  activated ability is ready from the first turn; once used, it leaves the board for its owner's
+  banished zone. It is never in a deck or a hand.
 
 ## 4. Rules
 
@@ -102,11 +111,13 @@ existing replay.
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `rows` | `[melee, ranged]` | Each side's rows, in board order. The row vocabulary of the schema is exactly these two. |
-| `row_capacity` | `9` | Cards — units and artifacts — one row of one side holds. |
+| `row_capacity` | `9` | Cards — units, artifacts and a stratagem — one row of one side holds. |
 | `hand_limit` | `10` | Most cards a hand holds; a draw into a full hand does not happen (section 11.5). |
 | `draws_per_round` | `[10, 3, 3]` | Cards each player draws at the start of round *n*: entry *n − 1*, the last entry for later rounds. |
-| `mulligans_per_round` | `[3, 2, 2]` | Redraws each player may make in the mulligan of round *n*, indexed the same way. |
+| `mulligans_per_round` | `[2, 2, 2]` | Redraws each player may make in the mulligan of round *n*, indexed the same way. |
 | `mulligans_per_skipped_draw` | `1` | Extra redraws in a round's mulligan for each of its draws that a full hand prevented; `0` for none. |
+| `starter_extra_mulligans` | `1` | Extra redraws for the player who starts round one, in round one's mulligan (ADR 0011). |
+| `starter_stratagem` | `true` | Whether the player who starts round one starts with their deck's stratagem on the board (ADR 0011). |
 | `rounds_to_win` | `2` | Round wins that end the match. |
 | `max_rounds` | `3` | Rounds after which the match ends in any case. |
 | `tie_rule` | `both_win` | A tied round counts as won by both players (`both_win`) or by neither (`neither_wins`). |
@@ -121,11 +132,10 @@ existing replay.
 The defaults follow public descriptions of the standalone game (section 16), confirmed in phase
 B: two rows of nine, ten cards and then three per round up to a hand of ten, a draw a full hand
 prevents turned into a redraw, the round's winner starting the next round and a tied round won
-by both. The standalone game gives the player who starts round one one redraw more than the
-other; that belongs with the coin-toss compensation ADR 0009 leaves out, so both players redraw
-alike here. Who starts after a tied round is this project's choice; no public source was found.
+by both, and the compensation for going first — a redraw more in round one and a stratagem
+(ADR 0011). Who starts after a tied round is this project's choice; no public source was found.
 The deck-building fields are checked from phase D on. `deck_max_cards`, `rounds_to_win`,
-`max_rounds` and `mulligans_per_skipped_draw` are not in the ADR's list; they exist so that
+`max_rounds`, `mulligans_per_skipped_draw` and the two `starter_*` fields are not in the ADR's list; they exist so that
 nothing about the shape is hard-coded.
 
 ## 5. Board, zones and card instances
@@ -230,7 +240,7 @@ All `on_activate` abilities of a card form its one **activated ability**, used w
 | --- | --- |
 | `charges` | Uses available. Each use spends one; at zero the ability cannot be used. Default: `1` without `cooldown`, unlimited with it. |
 | `cooldown` | After each use, how many of its controller's turn starts must pass before it is ready again. |
-| `ready_on_play` | `true`: usable on the turn the card enters the board. Otherwise a unit or artifact enters with a cooldown of 1. Not for leaders, which are ready from the first turn. |
+| `ready_on_play` | `true`: usable on the turn the card enters the board. Otherwise a unit or artifact enters with a cooldown of 1. Not for leaders and stratagems, which are ready from the first turn. |
 
 The activated ability is **ready** when all of these hold: it is its controller's turn; the
 controller has not passed; no choice is pending; the card is on the board (or is the leader) and
@@ -239,8 +249,9 @@ ability selects with `chosen` or `chosen_row`, there is at least one candidate.
 
 Using it spends a charge and starts the cooldown when its first ability starts to act — after
 that ability's choice, if it asks one. Until then the choice may be cancelled, which leaves the
-match exactly as before the `use_order`. `add_charges` on an ability with unlimited charges does
-nothing.
+match exactly as before the `use_order`. Once its abilities have resolved, a stratagem leaves the
+board for its owner's banished zone. `add_charges` on an ability with unlimited charges does
+nothing. Until phase C only a stratagem's activated ability is ever ready.
 
 ## 7. Targets
 
@@ -259,7 +270,7 @@ target:
 
 For every value of `units` except `this`, targets are taken from the **candidates**: the cards on
 the given side and rows that match `where`, excluding the acting card itself, and artifacts
-unless `where.kind` lists `artifact`. Power actions (`damage`, `boost`, `add_armor`, `heal`,
+unless `where.kind` lists `artifact`; a stratagem is never one. Power actions (`damage`, `boost`, `add_armor`, `heal`,
 `reset_power`, `raise_base_power`, `drain`, `duel`, `consume`) never affect an artifact.
 
 A player's **choice** — `chosen` — is narrower: it never offers an `immune` unit, and while a
@@ -495,13 +506,14 @@ unless it was locked at that moment, its `on_destroyed` abilities are queued.
 ### 11.5 Rounds, draws and the match
 
 - **Match start.** Instances are allocated (section 5), each deck is shuffled with the seeded
-  PRNG, and the PRNG decides who starts round one.
+  PRNG, and the PRNG decides who starts round one. With `starter_stratagem`, the starter's
+  stratagem is then placed on their board (section 3).
 - **Round start.** Each player, the starter first, draws `draws_per_round` cards. A draw into a
   hand already holding `hand_limit` cards does not happen and the card stays on top of the deck;
   a draw from an empty deck does nothing.
 - **Mulligan.** Both players redraw at the same time, each up to `mulligans_per_round` times plus
-  `mulligans_per_skipped_draw` for every draw of this round start their full hand prevented, and
-  may stop early; a player with no redraws, an empty hand or an empty deck is done at once. A
+  `mulligans_per_skipped_draw` for every draw of this round start their full hand prevented —
+  and in round one the starter `starter_extra_mulligans` more — and may stop early; a player with no redraws, an empty hand or an empty deck is done at once. A
   redraw returns one card from the hand to the deck and draws a replacement into its place: the
   first card from the top whose card id differs from every card that player has returned in
   this mulligan — the top card if there is none. The returned card is then inserted into the
@@ -511,8 +523,8 @@ unless it was locked at that moment, its `on_destroyed` abilities are queued.
   1. the `on_round_end` abilities of every card on the board resolve, in board order;
   2. the scores are compared: the higher wins the round, and a tie follows `tie_rule`;
   3. the board is cleared: every card goes to its owner's graveyard, or is banished — except
-     cards with `kept_at_round_end`, which stay as they are and lose that status; row effects
-     are removed and both players' passes are reset;
+     cards with `kept_at_round_end`, which stay as they are and lose that status, and an unused
+     stratagem; row effects are removed and both players' passes are reset;
   4. the match ends once a player has `rounds_to_win` round wins or `max_rounds` rounds have
      been played: the player with more round wins wins the match, and equal wins are a draw;
   5. otherwise the next round starts, begun by the player `next_round_starter` names.
@@ -524,22 +536,25 @@ schema: opengwt.deck/2
 id: starter-a
 faction: placeholder-a
 leader: l-0001
+stratagem: g-0101
 cards:
   - { id: u-0001, count: 2 }
   - { id: s-0001, count: 1 }
 ```
 
-`leader` is required in v2: the leader sets the deck's provision budget. The schema checks the
-shape; the rules core checks legality against `Rules` and reports every problem by key. The
-phase-B core checks the first five rules; the unit minimum, the copy limits and the budget
-follow in phase D.
+`leader` and `stratagem` are required in v2: the leader sets the deck's provision budget, the
+stratagem is what the deck brings for going first (ADR 0011) and costs no provisions. The schema
+checks the shape; the rules core checks legality against `Rules` and reports every problem by
+key. The phase-B core checks the first six rules; the unit minimum, the copy limits and the
+budget follow in phase D.
 
 | Rule | Problem key |
 | --- | --- |
 | Every card id exists. | `error.deck.unknown-card:<id>` |
 | The leader is a `leader` card. | `error.deck.leader-not-leader:<id>` |
-| The leader and every card belong to the deck's faction or to `neutral`. | `error.deck.wrong-faction:<id>` |
-| No leader and no token among the cards. | `error.deck.leader-in-deck:<id>`, `error.deck.token-in-deck:<id>` |
+| The stratagem is a `stratagem` card. | `error.deck.stratagem-not-stratagem:<id>` |
+| The leader, the stratagem and every card belong to the deck's faction or to `neutral`. | `error.deck.wrong-faction:<id>` |
+| No leader, stratagem or token among the cards. | `error.deck.leader-in-deck:<id>`, `error.deck.stratagem-in-deck:<id>`, `error.deck.token-in-deck:<id>` |
 | Between `deck_min_cards` and `deck_max_cards` cards. | `error.deck.too-few-cards`, `error.deck.too-many-cards` |
 | At least `deck_min_units` unit cards. | `error.deck.too-few-units` |
 | At most `copies_bronze` copies of a bronze card, `copies_gold` of a gold one. | `error.deck.too-many-copies:<id>` |
@@ -613,6 +628,11 @@ own words (`.agent/context/04-legal.md`); never from a client, a data dump or da
   the standalone game; confirmed from the owner's play experience.
 - Bleeding at its controller's turn end, not absorbed by armour, cancelling growing turn for
   turn: the developer's *Update 4.0* patch notes (September 2019).
+- The compensation for going first — one more redraw in round one for the starter, a
+  stratagem chosen at deck building, on the board from the start, used once: the Mulligan
+  Update patch notes above, the developer's *Merchants of Ofir* announcement (December 2019),
+  KeenGamer's guide above and the community wiki's description of stratagems; that a stratagem
+  takes a place on its row, from the owner's play experience.
 - Growing, status-proof, guarding, the enemy-side marker, heal, reset, drain, duel, consume,
   discard, create, take control, immunity against choices only: community glossaries of the
   standalone game (the unofficial glossary on the developer's forums, July 2021) and

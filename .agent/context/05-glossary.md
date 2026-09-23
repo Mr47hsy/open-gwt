@@ -41,6 +41,8 @@ names appear here.
 | bronze / gold | 铜卡 / 金卡 | бронзовая / золотая карта | Card colours that set the copy limit in a deck |
 | unit / special / artifact | 单位 / 特殊牌 / 器物 | отряд / особая карта / артефакт | A card with power on a row; a card that acts once and goes to the graveyard; a card on a row without power |
 | leader / leader ability | 领袖 / 领袖能力 | лидер / способность лидера | Not a card on the board: the provision bonus and the activated ability a deck is built around |
+| stratagem | 计策 | стратагема | The card a deck brings for going first: only the round-one starter gets it, on the board, used once (ADR 0011) |
+| going first / starter | 先手 | первый ход / начинающий игрок | The player who starts a round; round one's starter is compensated with a redraw more and a stratagem |
 | token | 衍生卡 | токен | A card created during a match, never in a deck; banished when it leaves the board |
 | tag | 标签 | метка | A free-form original word on a card that other cards' effects refer to |
 | graveyard / banish | 墓地 / 放逐 | кладбище / изгнание | Where destroyed cards go, and removal from the match entirely |

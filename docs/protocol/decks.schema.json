@@ -3,13 +3,14 @@
   "$id": "urn:opengwt:protocol:deck:2",
   "title": "open-gwt deck file (schema opengwt.deck/2)",
   "type": "object",
-  "required": ["schema", "id", "faction", "leader", "cards"],
+  "required": ["schema", "id", "faction", "leader", "stratagem", "cards"],
   "additionalProperties": false,
   "properties": {
     "schema": { "const": "opengwt.deck/2" },
     "id": { "$ref": "#/$defs/id" },
     "faction": { "$ref": "#/$defs/id" },
     "leader": { "$ref": "#/$defs/id" },
+    "stratagem": { "$ref": "#/$defs/id" },
     "cards": {
       "type": "array",
       "minItems": 1,

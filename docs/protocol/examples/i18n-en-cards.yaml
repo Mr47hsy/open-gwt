@@ -136,5 +136,7 @@ card.u-0102.name: Placeholder neutral unit two
 card.u-0102.text: Banished whenever it leaves the board.
 card.u-0103.name: Placeholder neutral unit three
 card.u-0103.text: Shielded.
+card.g-0101.name: Placeholder stratagem one
+card.g-0101.text: Starts on your board if you go first. Once, boost one of your units by 3.
 card.s-0101.name: Placeholder neutral special one
 card.s-0101.text: Draw 2 cards.
