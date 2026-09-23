@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
+from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -18,15 +21,24 @@ from starlette.testclient import WebSocketTestSession
 
 from opengwt.bots import RandomBot
 from opengwt.core.engine import apply, legal_intents, new_match
+from opengwt.core.intents import CancelChoice, Choose, EndMulligan, Intent, Pass, PlayCard
+from opengwt.core.model import MatchState
 from opengwt.core.replay import record_from_dict, replay
 from opengwt.core.rng import bot_stream
-from opengwt.core.serialize import state_hash
+from opengwt.core.serialize import state_from_dict, state_hash
 from opengwt.data import load_data
 from opengwt.server.app import create_app
+from opengwt.server.backends import (
+    InlineTaskRunner,
+    MemoryEventBus,
+    MemoryMatchStore,
+    VersionConflict,
+)
 from opengwt.server.config import ConfigError, Settings
 from opengwt.server.db.session import alembic_config, make_engine
 from opengwt.server.services import matches as match_service
 from opengwt.server.services.auth import create_token
+from opengwt.server.services.matches import MatchService
 
 REPO = Path(__file__).resolve().parents[2]
 PINNED_SEED = "0123456789abcdef" * 4
@@ -481,6 +493,162 @@ def test_socket_rejects_strangers(client: TestClient) -> None:
         client.websocket_connect(f"/ws/matches/{match_id}?token=garbage") as ws,
     ):
         ws.receive_json()
+
+
+def test_the_turn_timer_plays_for_a_player_who_never_moves(tmp_path: Path) -> None:
+    """match.md §9: a player who does not move within the turn timeout has their mulligan ended
+    and their turns passed by the server, so a match against the bot still runs to its end."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=0.05))) as client:
+        headers, _ = _guest(client)
+        created = client.post(
+            "/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"}
+        )
+        match_id = created.json()["match_id"]
+        give_up = time.monotonic() + 30
+        while (status := client.get(f"/matches/{match_id}", headers=headers).json())[
+            "status"
+        ] != "finished":
+            assert time.monotonic() < give_up, "the turn timer did not finish the match"
+            time.sleep(0.05)
+        body = client.get(f"/matches/{match_id}/replay", headers=headers).json()
+    record = record_from_dict(body["record"])
+    mine = [intent for seat, intent in record.intents if seat == status["seat"]]
+    assert EndMulligan() in mine and Pass() in mine
+    assert all(i in (EndMulligan(), CancelChoice(), Choose(0), Pass()) for i in mine), mine
+    final, _ = replay(load_data(REPO / "data").library, record)
+    assert state_hash(final) == body["result"]["final_hash"]
+
+
+def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> None:
+    """The opponent has passed, so the player keeps the turn after playing a card. The timer set
+    before that card must not pass on the player's next turn; only the one the card re-armed
+    may."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        h0, _ = _guest(client, "a")
+        h1, _ = _guest(client, "b")
+        room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"})
+        match_id = room.json()["match_id"]
+        joined = client.post(
+            "/matches/join",
+            headers=h1,
+            json={"room_code": room.json()["room_code"], "deck_id": "starter-b"},
+        )
+        assert joined.status_code == 200
+        service: MatchService = client.app.state.matches  # type: ignore[attr-defined]
+        portal = client.portal
+        assert portal is not None
+
+        def state() -> MatchState:
+            loaded = portal.call(service.store.load, match_id)
+            assert loaded is not None
+            return state_from_dict(loaded[0]["state"])
+
+        def move(seat: int, intent: Intent) -> None:
+            portal.call(service.apply, match_id, seat, intent)
+
+        starter = state().starter
+        player = 1 - starter
+        move(starter, EndMulligan())
+        move(player, EndMulligan())
+        move(starter, Pass())
+        stale = service._deadlines[match_id]
+        assert (stale.seat, stale.seq) == (player, state().seq)
+
+        play = next(
+            i
+            for i in legal_intents(service.content.library, state(), player)
+            if isinstance(i, PlayCard) and i.row is not None
+        )
+        move(player, replace(play, position=0))
+        after = state()
+        assert after.turn == player
+        fresh = service._deadlines[match_id]
+        assert (fresh.seat, fresh.seq) == (player, after.seq)
+
+        portal.call(service.timeout_move, match_id, stale.seat, stale.seq)
+        assert state().seq == after.seq and not state().players[player].passed
+
+        portal.call(service.timeout_move, match_id, fresh.seat, fresh.seq)
+        events = [e for p in portal.call(service.history, match_id, after.seq) for e in p["events"]]
+        assert {"type": "player_passed", "seat": player} in [
+            {"type": e["type"], "seat": e.get("seat")} for e in events
+        ]
+
+
+def _timer_service(monkeypatch: pytest.MonkeyPatch, timeout_move: Any) -> MatchService:
+    """A ``MatchService`` for driving ``run_timers`` alone, with its move replaced."""
+    service = MatchService(
+        content=cast(Any, None),
+        store=MemoryMatchStore(),
+        bus=MemoryEventBus(),
+        sessions=cast(Any, None),
+        tasks=InlineTaskRunner(),
+        settings=Settings(),
+    )
+    monkeypatch.setattr(service, "timeout_move", timeout_move)
+    return service
+
+
+async def _until(condition: Callable[[], bool], within: float = 5.0) -> None:
+    give_up = asyncio.get_running_loop().time() + within
+    while not condition():
+        assert asyncio.get_running_loop().time() < give_up, "timed out"
+        await asyncio.sleep(0.001)
+
+
+async def test_the_timer_loop_outlives_a_failing_match(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """One loop serves every match on the worker: a store conflict or a bot that never yields in
+    one match is logged, and the others still time out."""
+    failures = {"conflict": VersionConflict("stale"), "runaway": RuntimeError("no yield")}
+    moved: list[str] = []
+
+    async def timeout_move(match_id: str, seat: int, seq: int) -> None:
+        moved.append(match_id)
+        if match_id in failures:
+            raise failures[match_id]
+
+    service = _timer_service(monkeypatch, timeout_move)
+    for match_id in ("conflict", "runaway", "fine"):
+        service._deadlines[match_id] = match_service._Deadline(0.0, 0, 1)
+    loop = asyncio.create_task(service.run_timers(0.001))
+    try:
+        await _until(lambda: "fine" in moved)
+        service._deadlines["later"] = match_service._Deadline(0.0, 0, 1)
+        await _until(lambda: "later" in moved)
+        assert not loop.done()
+    finally:
+        loop.cancel()
+    assert moved == ["conflict", "runaway", "fine", "later"]
+    errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    assert errors == ["timer for conflict failed", "timer for runaway failed"]
+
+
+async def test_a_timer_re_armed_while_the_loop_runs_is_kept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """While the loop moves for one match, a player's move on another re-arms that match's
+    timer. The loop listed the old timer before; it must skip it and keep the new one."""
+    moved: list[tuple[str, int]] = []
+    fresh = match_service._Deadline(asyncio.get_running_loop().time() + 3600, 1, 7)
+
+    async def timeout_move(match_id: str, seat: int, seq: int) -> None:
+        moved.append((match_id, seq))
+        if match_id == "first":
+            service._deadlines["second"] = fresh
+
+    service = _timer_service(monkeypatch, timeout_move)
+    service._deadlines["first"] = match_service._Deadline(0.0, 0, 1)
+    service._deadlines["second"] = match_service._Deadline(0.0, 0, 3)
+    loop = asyncio.create_task(service.run_timers(0.001))
+    try:
+        await _until(lambda: bool(moved))
+        await asyncio.sleep(0.02)
+    finally:
+        loop.cancel()
+    assert moved == [("first", 1)]
+    assert service._deadlines == {"second": fresh}
 
 
 def test_settings_layers_and_deployment_checks(

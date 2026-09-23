@@ -45,7 +45,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.matches = service
     if settings.turn_timeout_seconds > 0:
-        tasks.spawn(service.run_timers(), name="turn-timers")
+        interval = min(1.0, settings.turn_timeout_seconds)
+        tasks.spawn(service.run_timers(interval), name="turn-timers")
     logger.info(
         "open-gwt server: env=%s db=%s store=%s bus=%s pack=%s",
         settings.env,

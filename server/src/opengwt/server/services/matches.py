@@ -15,9 +15,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -123,6 +124,15 @@ class MatchInfo:
         return self.status != STATUS_WAITING
 
 
+class _Deadline(NamedTuple):
+    """A turn timer: when it runs out, whose it is and the ``seq`` of the state it was set
+    for."""
+
+    at: float
+    seat: int
+    seq: int
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -157,7 +167,7 @@ class MatchService:
         self.sessions = sessions
         self.tasks = tasks
         self.settings = settings
-        self._deadlines: dict[str, tuple[float, int]] = {}
+        self._deadlines: dict[str, _Deadline] = {}
 
     # --- lookups ---------------------------------------------------------------------------
 
@@ -317,6 +327,36 @@ class MatchService:
     async def apply(
         self, match_id: str, seat: int, intent: Intent, intent_id: str | None = None
     ) -> None:
+        await self._move(match_id, seat, lambda state: intent, intent_id)
+
+    async def timeout_move(self, match_id: str, seat: int, seq: int) -> None:
+        """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
+        first option, otherwise pass. The timer was set for the state at ``seq``; the move is
+        decided under the match lock and only if no intent has moved the match on since, so a
+        player's own intent that lands first is never followed by a move they did not make."""
+
+        def decide(state: MatchState) -> Intent | None:
+            if state.seq != seq or seat not in acting_seats(state):
+                return None
+            legal = legal_intents(self.content.library, state, seat)
+            if not legal:
+                return None
+            for intent in (EndMulligan(), CancelChoice(), Choose(0)):
+                if intent in legal:
+                    return intent
+            return Pass()
+
+        await self._move(match_id, seat, decide)
+
+    async def _move(
+        self,
+        match_id: str,
+        seat: int,
+        decide: Callable[[MatchState], Intent | None],
+        intent_id: str | None = None,
+    ) -> None:
+        """Apply the intent ``decide`` picks from the current state, all under the match lock;
+        ``None`` leaves the match as it is."""
         info = await self.get_info(match_id)
         if not info.started:
             raise AppError("match_not_started", 409)
@@ -330,6 +370,9 @@ class MatchService:
             if intent_id is not None and intent_id in data["intent_ids"]:
                 return
             state = state_from_dict(data["state"])
+            intent = decide(state)
+            if intent is None:
+                return
             try:
                 state, events = apply(self.content.library, state, seat, intent)
             except IllegalIntent as e:
@@ -345,29 +388,6 @@ class MatchService:
                 data["intent_ids"] = [*data["intent_ids"], intent_id][-RECENT_INTENT_IDS:]
             await self._persist(match_id, data, state, accepted, version)
             await self._publish(info, state, events)
-
-    async def timeout_move(self, match_id: str, seat: int) -> None:
-        """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
-        first option, otherwise pass."""
-        loaded = await self.store.load(match_id)
-        if loaded is None:
-            return
-        state = state_from_dict(loaded[0]["state"])
-        if seat not in acting_seats(state):
-            return
-        legal = legal_intents(self.content.library, state, seat)
-        if not legal:
-            return
-        chosen: Intent
-        if EndMulligan() in legal:
-            chosen = EndMulligan()
-        elif CancelChoice() in legal:
-            chosen = CancelChoice()
-        elif Choose(0) in legal:
-            chosen = Choose(0)
-        else:
-            chosen = Pass()
-        await self.apply(match_id, seat, chosen)
 
     async def _bot_moves(
         self, info: MatchInfo, state: MatchState, events: list[Event], log_index: int
@@ -482,16 +502,23 @@ class MatchService:
         if seat is None:
             self._deadlines.pop(info.match_id, None)
             return
-        self._deadlines[info.match_id] = (asyncio.get_running_loop().time() + timeout, seat)
+        at = asyncio.get_running_loop().time() + timeout
+        self._deadlines[info.match_id] = _Deadline(at, seat, state.seq)
 
     async def run_timers(self, interval: float = 1.0) -> None:
+        """Move for every player whose timer ran out. One match's failure is logged and the loop
+        goes on: it serves every match on this worker."""
         while True:
             await asyncio.sleep(interval)
             now = asyncio.get_running_loop().time()
-            due = [(m, seat) for m, (deadline, seat) in self._deadlines.items() if deadline <= now]
-            for match_id, seat in due:
-                self._deadlines.pop(match_id, None)
+            due = [(m, d) for m, d in self._deadlines.items() if d.at <= now]
+            for match_id, deadline in due:
+                if self._deadlines.get(match_id) != deadline:
+                    continue  # re-armed by a move while an earlier timer here was running
+                del self._deadlines[match_id]
                 try:
-                    await self.timeout_move(match_id, seat)
+                    await self.timeout_move(match_id, deadline.seat, deadline.seq)
                 except AppError as e:
                     logger.info("timer for %s could not move: %s", match_id, e.code)
+                except Exception:
+                    logger.exception("timer for %s failed", match_id)
