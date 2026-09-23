@@ -21,14 +21,22 @@ complete since B: a later phase adds behaviour, not words.
   choice UIs for every kind — unit, row, place (the view names the card being placed) and card
   (a `create` offer has no instance); statuses and armour on cards; order buttons; stratagem
   choice in decks; the interface texts for statuses, row effects and every `choice.<action>`
-  prompt (and `choice.place`) in three languages.
+  prompt (and `choice.place`) in three languages. Remove the client's protocol-1 leftovers with
+  it (owner, 2026-09-23): the lives shown as hearts, the `ui.effect.*` row-effect texts (v2 uses
+  `row-effect.<id>.name`), the mulligan modal that picks several cards at once (v2 redraws one at
+  a time, then `end_mulligan`), and the leader's "used" label (v2 shows the order's charges and
+  cooldown).
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per
   faction. The owner will export a card set of their own design to import instead (2026-09-24).
 
 **Client**
-- Event-driven animation: cards flash today; playing, destroying, returning and row effects
-  should move (USS transitions or a small tween on `VisualElement`). Presenter seam exists in
-  `BoardView.OnEvent`; keep rendering from the view.
+- Motion still missing: row effects appearing and clearing, power changes (a flash today), the
+  opponent's draws and passes. Playing, destroying, returning and specials move since the visual
+  baseline (`BoardMotion`, driven by `BoardView`'s step queue); add the rest there, rendering from
+  the view. `BoardMotion` diffs renders and takes only two notes from events (played by whom,
+  destroyed), so phase E maps protocol 2's `card_destroyed` onto the latter and gets the rest —
+  `card_summoned`, `card_moved`, `card_returned`, `card_banished`, `stratagem_placed` — from the
+  diff.
 - Deck builder: the server has `GET/PUT/DELETE /decks` and validates legality; the client only
   offers starter decks.
 - Replay viewer: `GET /matches/{id}/replay` exists; the client has no way to watch one.

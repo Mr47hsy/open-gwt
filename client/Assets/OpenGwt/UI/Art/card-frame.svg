@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 112" width="84" height="112">
+  <!-- open-gwt original art, CC BY 4.0 (LICENSE-ASSETS). A neutral card frame in white at low
+       opacity: the card's background colour (USS) shows through and sets its tone. The regions
+       line up with the percentages in Board.uss: header 0-21%, art window 21-64%, plate 68-97%. -->
+  <rect x="3.5" y="3.5" width="77" height="105" rx="3.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+  <rect x="7" y="24" width="70" height="48" rx="2" fill="#000000" fill-opacity="0.2"/>
+  <rect x="7.5" y="24.5" width="69" height="47" rx="1.5" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1"/>
+  <path d="M4 76 H80 V105 Q80 108 77 108 H7 Q4 108 4 105 Z" fill="#ffffff" fill-opacity="0.07"/>
+  <rect x="10" y="75.5" width="64" height="1" fill="#ffffff" fill-opacity="0.3"/>
+  <polygon points="42,72.5 45.5,76 42,79.5 38.5,76" fill="#ffffff" fill-opacity="0.5"/>
+  <path d="M74 7 H77 V10" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
+  <path d="M7 102 V105 H10" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
+  <path d="M77 102 V105 H74" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>
+</svg>
