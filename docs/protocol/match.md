@@ -1,21 +1,32 @@
-# Match protocol — v1
+# Match protocol — v2
 
 The wire contract between a client and the server: a small HTTP API for everything outside a
 match, and one WebSocket per player per match. Companion to
 [ADR 0001](../adr/0001-python-server-unity-thin-client.md): the client renders what it receives and
-sends intents; every decision is made on the server.
+sends intents; every decision is made on the server. Version 2 carries the two-row ruleset of
+[ADR 0009](../adr/0009-two-row-standalone-ruleset.md), whose rules are defined in
+[`cards.md`](cards.md).
+
+> **Transition.** This is phase A of ADR 0009: the protocol is written before the code. Until
+> phase E lands, the server and the client on `develop` still speak protocol 1, described by the
+> previous revision of this file (`git show b68be93:docs/protocol/match.md`).
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
 rendered to a human carries keys or codes, never sentences ([ADR 0006](../adr/0006-i18n-keys-and-unity-localization.md)).
 
 ## 1. Versioning
 
-The server announces `protocol: 1` and the content pack hash in the WebSocket `hello` message. A
+The server announces `protocol: 2` and the content pack hash in the WebSocket `hello` message. A
 client built for another protocol version disconnects and tells the player to update. A client
 whose cached pack hash differs re-fetches the pack before rendering.
 
 Breaking changes bump the version. Adding an optional field or a new event type does not; clients
 ignore unknown fields and unknown event types.
+
+What changed from protocol 1: two rows, positions on a row and artifacts; the `use_order`,
+`cancel_choice` and `end_mulligan` intents, one-card `mulligan`, and `use_leader` folded into
+`use_order`; a generalised `pending_choice`; power, armour, statuses and readiness in the view;
+tied rounds with several winners; the events of section 8.
 
 ## 2. HTTP API
 
@@ -25,12 +36,12 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | --- | --- | --- |
 | `GET /health` | → `{status}` | Liveness. |
 | `POST /auth/guest` | `{display_name?}` → `{token, player_id}` | MVP sign-in. Real accounts come later behind the same token. |
-| `GET /content/pack` | → the content pack | `ETag` is the pack hash; supports `If-None-Match`. |
+| `GET /content/pack` | → the content pack | `ETag` is the pack hash; supports `If-None-Match`. The pack carries the `Rules` in force (`cards.md` §14). |
 | `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
-| `GET /decks` | → `[{deck_id, name, faction, cards}]` | The caller's decks. |
-| `PUT /decks/{deck_id}` | `{name, faction, leader?, cards}` → the deck | Validated against the pack and the rules core's deck legality. |
+| `GET /decks` | → `[{deck_id, name, faction, leader, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
+| `PUT /decks/{deck_id}` | `{name, faction, leader, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` is required. |
 | `DELETE /decks/{deck_id}` | → `204` | |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. |
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
@@ -55,12 +66,13 @@ not seated in it; `4429` more than twenty intents arrived within one second. A n
 
 On connect the server sends, in order:
 
-1. `hello` — `{type: "hello", protocol: 1, pack_hash, match_id, player_id, seat, locale}`;
+1. `hello` — `{type: "hello", protocol: 2, pack_hash, match_id, player_id, seat, locale}`;
 2. `view` — the full current view for this player (section 7);
 3. nothing more until something happens.
 
 From then on the server pushes `events` batches, each followed by the `view` they lead to, and the
-client sends `intent` messages when it is this player's turn or a choice is pending.
+client sends `intent` messages when it is this player's turn, during the mulligan, or while a
+choice of theirs is pending.
 
 ## 4. Server → client messages
 
@@ -70,7 +82,7 @@ client sends `intent` messages when it is this player's turn or a choice is pend
 | `view` | `{seq, view}` | Full per-player snapshot after all events up to `seq`. Always safe to render from scratch. |
 | `events` | `{from_seq, events: [...]}` | Ordered events since the last batch; `from_seq` is the `seq` of the first. |
 | `error` | `{code, message_key, params, message, intent_id?, details?}` | The intent named by `intent_id` was rejected; the view is unchanged. `message` as in section 2. |
-| `match_over` | `{seq, result}` | Final; `result` is `{winner: seat \| null, rounds: [...]}`. The socket closes shortly after. |
+| `match_over` | `{seq, result}` | Final; `result` is `{winner: seat \| null, rounds: [{round, winners, scores}]}`. The socket closes shortly after. |
 
 `seq` is a per-match counter over events. A client that renders `view` after every `events` batch
 needs no other bookkeeping; a client that animates events may skip the `view` and only use it to
@@ -90,14 +102,22 @@ Exactly what the rules core accepts; the server only adds authentication and rou
 
 | `kind` | Fields | When legal |
 | --- | --- | --- |
-| `mulligan` | `{cards: [card_instance_id]}` | During the mulligan phase; may be empty to keep the hand. |
-| `play_card` | `{card: card_instance_id, row?: "melee" \| "ranged" \| "siege"}` | On this player's turn. `row` is required when the card allows more than one row. |
-| `use_leader` | `{}` | On this player's turn, once per match. |
-| `pass` | `{}` | On this player's turn. |
-| `choose` | `{option: index}` | Only while a choice is pending for this player. Every other intent is illegal until the choice is made. |
+| `mulligan` | `{card: instance}` | During the mulligan, while this player has redraws left and has not ended their mulligan: return this card from hand and draw a replacement (`cards.md` §11.5). |
+| `end_mulligan` | `{}` | During the mulligan, until this player's mulligan is over. It ends by itself when the redraws run out. |
+| `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end). Playing a card ends the turn once it has resolved. |
+| `use_order` | `{instance}` | On this player's turn, with no choice pending, for a card of theirs on the board or their leader whose activated ability is ready (`cards.md` §6.3). Does not end the turn. |
+| `pass` | `{}` | On this player's turn, with no choice pending. |
+| `choose` | `{option: index}` | Only while a choice is pending for this player. Every other intent except `cancel_choice` is illegal until the choice is made. |
+| `cancel_choice` | `{}` | Only while a choice of this player is pending and `cancellable`. |
 
-The view carries `legal_intents`: the exact set the server would accept now, in the same shape.
-The client enables controls from that list and never derives legality itself.
+Both players mulligan at the same time; the server applies their intents in the order it
+accepts them, and that order is what the replay record keeps.
+
+The view carries `legal_intents`: the exact set the server would accept now, in the same shape,
+with two compressions to keep it short. A `play_card` entry lists a legal `card` and `row` without
+`position`: every position from `0` to the number of cards on that row-side is legal. And every
+card in hand has one `mulligan` entry while redraws are left. The client enables controls from
+that list and never derives legality itself.
 
 ## 7. View
 
@@ -106,67 +126,157 @@ serialisation; it does not exist in the message.
 
 ```json
 {
-  "match_id": "…", "seq": 42, "protocol": 1,
-  "phase": "mulligan" | "playing" | "choosing" | "round_over" | "match_over",
-  "round": 1, "turn": "me" | "opponent" | null,
+  "protocol": 2, "match_id": "…", "seq": 42,
+  "phase": "playing",
+  "round": 2, "turn": "me", "winner": null,
   "me": {
-    "seat": 0, "score": 17, "rounds_won": 0, "passed": false,
-    "hand": [ { "instance": "c17", "card": "u-0001" } ],
-    "deck_count": 12, "discard": [ { "instance": "c03", "card": "s-0002" } ],
-    "leader": { "card": "l-0001", "used": false },
+    "seat": 0, "faction": "placeholder-a",
+    "score": 17, "rounds_won": 1, "passed": false,
+    "hand": [ { "instance": "c17", "card": "u-0002" } ],
+    "hand_count": 1, "deck_count": 12,
+    "graveyard": [ { "instance": "c03", "card": "s-0001" } ],
+    "banished": [],
+    "leader": { "instance": "c29", "card": "l-0001",
+                "order": { "ready": true, "charges": 1, "cooldown": 0 } },
+    "mulligan": null,
     "rows": {
-      "melee":  { "effects": [],               "units": [ { "instance": "c09", "card": "u-0001", "power": 5, "base": 5 } ] },
-      "ranged": { "effects": ["power_to_one"], "units": [] },
-      "siege":  { "effects": [],               "units": [] }
+      "melee": {
+        "effect": null,
+        "cards": [
+          { "instance": "c09", "card": "u-0003", "owner": 0,
+            "power": 6, "base": 4, "boost": 2, "aura": 1, "damage": 1, "armor": 2,
+            "statuses": [ { "status": "bleeding", "turns": 2 }, { "status": "shielded" } ],
+            "order": null },
+          { "instance": "c11", "card": "a-0001", "owner": 0,
+            "statuses": [],
+            "order": { "ready": false, "charges": 2, "cooldown": 1 } }
+        ]
+      },
+      "ranged": { "effect": { "effect": "damage_weakest", "amount": 2 }, "cards": [] }
     }
   },
-  "opponent": { "seat": 1, "score": 12, "rounds_won": 0, "passed": false,
-                "hand_count": 8, "deck_count": 13, "discard": [], "leader": {…}, "rows": {…} },
-  "legal_intents": [ { "kind": "pass" }, { "kind": "play_card", "card": "c17", "row": "melee" } ],
-  "pending_choice": { "prompt_key": "choice.return_from_discard", "options": [ { "instance": "c03", "card": "s-0002" } ] } | null
+  "opponent": { "seat": 1, "faction": "placeholder-b", "score": 12, "rounds_won": 1,
+                "passed": false, "hand_count": 8, "deck_count": 13, "graveyard": [],
+                "banished": [], "leader": {…}, "mulligan": null, "rows": {…} },
+  "legal_intents": [ { "kind": "pass" },
+                     { "kind": "play_card", "card": "c17", "row": "melee" },
+                     { "kind": "use_order", "instance": "c29" } ],
+  "pending_choice": null
 }
 ```
 
-`power` is effective power; `base` is current power before row effects and passives. `opponent`
-never contains a `hand` array or any deck order; only counts.
+| Field | Meaning |
+| --- | --- |
+| `phase` | `mulligan`, `playing`, `choosing` (a choice is pending) or `match_over`. |
+| `turn` | `me`, `opponent`, or `null` during the mulligan and after the match. |
+| `winner` | After the match: `me`, `opponent` or `draw`; otherwise `null`. |
+| `hand` | Own hand only. `opponent` never has a `hand` array or any deck order — only counts. |
+| `graveyard`, `banished` | Public zones, oldest first. |
+| `leader` | The leader's instance and card, and its `order` (below); `null` for a deck without one. |
+| `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished; otherwise `null`. |
+| `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. |
+
+A card on the board:
+
+| Field | Meaning |
+| --- | --- |
+| `instance`, `card`, `owner` | Instance id, card id, and the seat of the owner (the controller is the side it is listed under). |
+| `power`, `base`, `boost`, `aura`, `damage`, `armor` | Units only: `power = base + boost + aura − damage` (`cards.md` §11.1), and armour apart. |
+| `statuses` | In order of arrival: `{status}` or `{status, turns}` for a timed one. |
+| `order` | `null` for a card without an activated ability; otherwise `{ready, charges, cooldown}`, where `charges` is `null` when unlimited and `ready` follows `cards.md` §6.3 — so it is only ever `true` for this player's cards on their turn. |
+
+`pending_choice` is `null` unless a choice of **this** player is pending:
+
+```json
+{
+  "kind": "unit",
+  "prompt_key": "choice.damage",
+  "source": { "instance": "c21", "card": "u-0002" },
+  "cancellable": false,
+  "options": [
+    { "side": "opponent", "row": "melee", "position": 0, "instance": "c40", "card": "u-0101" },
+    { "side": "opponent", "row": "ranged", "position": 2, "instance": "c44", "card": "u-0010" }
+  ]
+}
+```
+
+| `kind` | Asks for | Option shape |
+| --- | --- | --- |
+| `unit` | a card on the board (`units: chosen`) | `{side, row, position, instance, card}` |
+| `row` | a row-side (`units: chosen_row`, `row_target.pick: chosen`) | `{side, row}` |
+| `place` | where to put a card played by an ability | `{side, row, position}` |
+| `card` | a card from a deck or graveyard (`cards.pick: chosen`) | `{instance, card}` |
+
+`side` is `me` or `opponent`. `source` is the card whose ability asks. `prompt_key` is
+`choice.<action>` with the action's underscores as hyphens (`choice.play-from-deck`), or
+`choice.place` for a placement. `cancellable` is `true` only for the first choice of a
+`use_order`, before anything has changed (`cards.md` §6.3). Options from a deck are listed by card
+id, then instance id. The answer is `choose {option}`, the option's index.
 
 ## 8. Events
 
 Each event is `{seq, type, ...}`. Events are what the client animates. The set is open-ended by
 adding types; the fields of an existing type are only ever extended.
 
+`seat` is the player an event concerns: the acting player for intents, choices and passes, the
+controller — the side it stands on — for a card on the board. `side` is `self` or `opponent`
+relative to `seat`. `reason` names what caused a change: an action (`damage`), a status
+(`bleeding`, `growing`), a row effect (`damage_weakest`), or `aura`. `source` is the instance
+whose ability caused it, or `null` for a status or a row effect.
+
 | `type` | Fields | Notes |
 | --- | --- | --- |
-| `turn_started` | `{seat}` | |
+| `match_started` | `{starter}` | Never carries the seed (section 11). |
+| `round_started` | `{round, starter}` | |
 | `card_drawn` | `{seat, instance?, card?}` | `instance` and `card` only for the receiving player's own draws. |
+| `draw_skipped` | `{seat, reason}` | `reason` is `hand_full` or `deck_empty`. |
+| `mulligan_started` | `{round, redraws: [n0, n1]}` | Both players at once. |
+| `card_redrawn` | `{seat, instance?, card?}` | A card went back into the deck; its replacement follows as `card_drawn`. Identity for the owner only. |
 | `mulligan_done` | `{seat, count}` | |
-| `card_played` | `{seat, instance, card, row?, side}` | `side` is where the unit landed (`self` or `opponent` relative to `seat`). |
-| `leader_used` | `{seat, card}` | |
-| `unit_summoned` | `{seat, instance, card, row}` | From deck or discard. |
-| `unit_returned` | `{seat, instance, card, to: "hand"}` | |
-| `unit_destroyed` | `{seat, instance, card, row}` | |
-| `power_changed` | `{seat, instance, from, to, reason}` | Effective power; `reason` names the action or row effect. |
-| `row_effect_applied` | `{seat, row, effect}` | |
-| `row_effect_cleared` | `{seat, row, effect}` | One event per effect removed. |
-| `choice_requested` | `{seat, prompt_key, option_count}` | The options themselves are only in that player's view. |
+| `turn_started` | `{seat}` | |
+| `turn_ended` | `{seat}` | |
+| `card_played` | `{seat, instance, card, from, row?, position?, side?}` | `from` is `hand`, `deck` or `graveyard`; `row`, `position`, `side` for a unit or artifact. |
+| `order_used` | `{seat, instance, card, charges, cooldown}` | After the fact: remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
+| `card_summoned` | `{seat, instance, card, from, row, position, side}` | Onto the board without being played; `from` is `deck` or `created`. |
+| `card_moved` | `{seat, instance, card, from_row, to_row, position}` | |
+| `card_returned` | `{seat, instance, card}` | From the board to its owner's hand. |
+| `card_destroyed` | `{seat, instance, card, row, banished}` | `banished` is `true` when `banish_on_leave` sent it away instead of to the graveyard. |
+| `card_banished` | `{seat, instance, card}` | Removed from the board by `banish`, or by `banish_on_leave` when it was returned or cleared at round end. |
+| `unit_damaged` | `{seat, instance, card, amount, power, reason, source}` | `amount` reached power past armour; `power` is the new value. |
+| `damage_blocked` | `{seat, instance, card, amount, reason, source}` | A shield blocked it; `status_removed` follows. |
+| `unit_boosted` | `{seat, instance, card, amount, power, reason, source}` | |
+| `damage_removed` | `{seat, instance, card, amount, power, source}` | |
+| `base_power_changed` | `{seat, instance, card, from, to, power, source}` | |
+| `armor_changed` | `{seat, instance, card, from, to, reason, source}` | Gained, or used up absorbing damage. |
+| `power_changed` | `{seat, instance, card, from, to, reason}` | Any other change of power, such as an aura starting or ending. |
+| `status_added` | `{seat, instance, card, status, turns?, reason, source}` | `turns` is the timer after the addition. |
+| `status_removed` | `{seat, instance, card, status, reason, source}` | `reason` is an action, `expired`, `blocked` (a shield used up) or `kept` (`kept_at_round_end` used). |
+| `charges_changed` | `{seat, instance, card, from, to, source}` | By `add_charges`. |
+| `row_effect_set` | `{seat, row, effect, amount, count?, source}` | Replaces any previous one; no `row_effect_cleared` precedes it. |
+| `row_effect_cleared` | `{seat, row, effect, source}` | By `clear_row_effect`. The end of a round removes row effects without this event (`board_cleared`). |
+| `choice_requested` | `{seat, kind, prompt_key, option_count, source, cancellable}` | The options themselves are only in that player's view. |
 | `choice_made` | `{seat, option}` | |
-| `player_passed` | `{seat}` | |
-| `round_ended` | `{round, winner: seat \| null, scores: [a, b]}` | `null` is a draw. |
-| `match_ended` | `{winner: seat \| null, rounds}` | |
+| `choice_cancelled` | `{seat}` | The match is back where it was before the `use_order`. |
+| `player_passed` | `{seat, auto}` | `auto` is `true` for an automatic pass (`cards.md` §11.4). |
+| `round_ended` | `{round, winners: [seat...], scores: [a, b]}` | Two winners for a tie under `both_win`, none under `neither_wins`. |
+| `board_cleared` | `{round, kept: [instance...]}` | Every other card left the board; row effects are gone. |
+| `match_ended` | `{winner: seat \| null, rounds: [{round, winners, scores}]}` | `null` is a draw. |
 
 ## 9. Replay record and reconnect
 
-The server stores, per match: `seed`, both decks (as played, with instance ids), and the ordered
-list of **accepted** intents with the seat and `seq` they were applied at. Replaying that record
-through the rules core reproduces every event and view. The replay endpoint returns exactly that
-record plus the result; a replay viewer streams it through the same `events`/`view` messages.
+The server stores, per match, a record of schema `opengwt.record/2`: the `seed`, the `Rules`
+values the match was played with, both decks, and the ordered list of **accepted** intents with
+the seat that sent each. Replaying that record through the rules core reproduces every event and
+view. The replay endpoint returns exactly that record plus the result; a replay viewer streams it
+through the same `events`/`view` messages.
 
 Reconnect: the client opens a new socket, receives `hello` and a full `view`, then optionally
 sends `resync {since_seq}` to receive the events it missed for animation. If the client cannot
 animate a gap it simply renders the `view`.
 
 A player who stays disconnected keeps their turn until the match's turn timeout, a server setting,
-after which the server passes for them.
+after which the server passes for them — or, during the mulligan, ends their mulligan, and while a
+choice is pending, cancels it if it can or picks the first option.
 
 `resync` is answered from the match's event log. In a multi-worker deployment that log is shared
 (ADR 0008), so a reconnecting client may land on any worker and still receive the same events.
@@ -175,25 +285,38 @@ after which the server passes for them.
 
 | `code` | Meaning |
 | --- | --- |
-| `illegal_intent` | Not in `legal_intents`; `details.reason` is a key. |
+| `illegal_intent` | Not in `legal_intents`; `details.reason` is a key (below). |
 | `not_your_turn` | |
-| `choice_pending` | A `choose` intent is required first. |
+| `choice_pending` | A `choose` (or `cancel_choice`) intent is required first. |
 | `unknown_instance` | The card instance id does not exist in this player's visible zones. |
 | `match_over` | |
 | `match_not_started` | The room still waits for its second player. |
 | `protocol_version` | Client and server protocol versions differ. |
 | `unauthorised` | Token invalid, or not a player of this match. |
 | `not_a_player` | The caller is not seated in the match (replay, status). |
-| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the rule keys. |
+| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the rule keys of `cards.md` §12. |
 | `room_not_found`, `room_full`, `own_room` | Joining a room. |
 | `locale_unsupported`, `invalid_request`, `unknown_message` | Request shape and content. |
+
+Reason keys of `illegal_intent` new in protocol 2: `error.play.row-full`,
+`error.play.position-out-of-range`, `error.play.position-required`, `error.order.not-ready`,
+`error.choice.not-cancellable`, `error.mulligan.none-left`, `error.mulligan.over`. Protocol 1's
+keys for playing, passing and choosing keep their meaning.
 
 ## 11. Security notes
 
 - The opponent's hand, either deck's order and upcoming draws exist only in the rules core state
   held by the server. Views are produced by the core's `view(state, player)`; nothing else
   serialises state for a client.
-- A `choice_requested` event for the other player reveals the *number* of options, not the options.
+- The seed and the PRNG state never reach a client while the match runs: with them and the open
+  PRNG, a client could rebuild both decks' order. The seed is only in the replay record, which is
+  served after the match ended.
+- Options drawn from a hidden zone are listed by card id and instance id, never in zone order;
+  instance ids are allocated before the shuffle (`cards.md` §5), so neither reveals a position.
+- A `choice_requested` event for the other player reveals the kind, the number of options and
+  the source card — which is public — never the options.
+- Random picks — `random` targets, offers, tie breaks, mulligan insertion — are drawn on the
+  server with the seeded PRNG; a client never supplies randomness.
 - Tokens identify a player, not a match; the server checks the player is seated in the match on
   every socket message.
 - The server rate-limits intents per socket; a burst is closed, not queued.

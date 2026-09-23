@@ -29,7 +29,8 @@ On 2026-09-23 the owner decided to **replace the three-row ruleset with the two-
 ruleset** (ADR 0009, [[ruleset-v2]]). The code on `develop` still implements v1 until the ADR's
 phases A–F land, in order. Client polish and content work that depend on the rules wait for the
 relevant phase; the rest of [[backlog]] is open to parallel sessions, with the branch discipline
-in `AGENTS.md`.
+in `AGENTS.md`. Phase A — the v2 card and match protocols, documents only — is done; the code
+still speaks v1.
 
 **Why:** an agent that assumes either more or less than this will invent or miss module paths,
 APIs and acceptance results.

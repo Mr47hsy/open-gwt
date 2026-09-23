@@ -5,7 +5,7 @@ Background that is not a decision lives in `../context/` instead.
 
 - [Project status](project-status.md) — MVP M1–M3 merged (PRs #1–#6); client play-tested in Chinese; mobile builds deferred; M2b not started
 - [Backlog](backlog.md) — open work by layer for parallel feature sessions
-- [Ruleset v2](ruleset-v2.md) — two-row standalone ruleset adopted (ADR 0009); core stays v1 until phases A–F land in order
+- [Ruleset v2](ruleset-v2.md) — two-row standalone ruleset adopted (ADR 0009); phase A (protocol v2 documents) done, core stays v1 until phases B–F land in order
 - [Client workflow](client-workflow.md) — headless editor sequence, what to regenerate after which edit, what never to commit
 - [Server: Python, client: thin](server-python-thin-client.md) — rules core is a Python package in the server; the Unity client runs no rules and needs a server
 - [Card protocol in YAML](card-protocol-yaml.md) — closed vocabulary, JSON Schema, compiled to a content pack the server serves

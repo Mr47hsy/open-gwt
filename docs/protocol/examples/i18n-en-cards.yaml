@@ -1,29 +1,110 @@
-# Worked example for docs/protocol/cards.md section 8 — data/i18n/en/cards.yaml.
-# Every value is a placeholder; original names are TODO for a human writer.
+# Worked example for docs/protocol/cards.md section 13 — data/i18n/en/cards.yaml for the two
+# example card files. Every value is a placeholder; original names are TODO for a human writer.
+faction.neutral.name: Neutral
 faction.placeholder-a.name: Placeholder faction A
+tag.tag-a.name: Placeholder tag A
+tag.tag-b.name: Placeholder tag B
 card.u-0001.name: Placeholder unit one
 card.u-0001.text: A plain unit.
 card.u-0002.name: Placeholder unit two
-card.u-0002.text: Immune. Play on the ranged or the siege row.
+card.u-0002.text: Melee only. On play, damage an enemy unit by 3.
 card.u-0003.name: Placeholder unit three
-card.u-0003.text: Deploys on the opponent's side. Draw two cards.
+card.u-0003.text: Melee only. 3 armour. Whenever this unit is damaged, boost it by 1.
 card.u-0004.name: Placeholder unit four
-card.u-0004.text: Summons every other copy of itself from your deck.
+card.u-0004.text: Whenever you play a unit stronger than this one on your side, boost this unit by 1.
 card.u-0005.name: Placeholder unit five
-card.u-0005.text: Power is multiplied by the number of copies on this row.
+card.u-0005.text: On play, move every other copy of this card from your deck onto the board.
 card.u-0006.name: Placeholder unit six
-card.u-0006.text: Every other unit on this row gains 1.
+card.u-0006.text: On the melee row, gain 2 armour on play. On the ranged row, damage 2 random enemy units by 1 on play.
 card.u-0007.name: Placeholder unit seven
-card.u-0007.text: Return a non-immune unit from your discard pile to the board.
+card.u-0007.text: "Activated ability: damage an enemy unit by 1. Ready again after 2 turns."
+card.u-0008.name: Placeholder unit eight
+card.u-0008.text: "Activated ability, 2 charges, usable at once: boost an allied unit by 2."
+card.u-0009.name: Placeholder unit nine
+card.u-0009.text: At the start of your turn, boost the adjacent units by 1.
+card.u-0010.name: Placeholder unit ten
+card.u-0010.text: Ranged only. At the end of your turn, damage the strongest enemy unit by 1.
+card.u-0011.name: Placeholder unit eleven
+card.u-0011.text: Stays on the board at the end of one round. At round end, boost this unit by 2.
+card.u-0012.name: Placeholder unit twelve
+card.u-0012.text: When destroyed, place two Placeholder token one on its row.
+card.u-0013.name: Placeholder unit thirteen
+card.u-0013.text: Immune. On play, destroy the strongest enemy unit with 8 or more power.
+card.u-0014.name: Placeholder unit fourteen
+card.u-0014.text: On play, poison an enemy unit. A unit poisoned twice is destroyed.
+card.u-0015.name: Placeholder unit fifteen
+card.u-0015.text: On play, an enemy unit bleeds for 3 turns.
+card.u-0016.name: Placeholder unit sixteen
+card.u-0016.text: On play, this unit grows for 3 turns.
+card.u-0017.name: Placeholder unit seventeen
+card.u-0017.text: On play, lock an enemy unit or artifact, then damage it by 2.
+card.u-0018.name: Placeholder unit eighteen
+card.u-0018.text: The adjacent units have 1 more power.
+card.u-0019.name: Placeholder unit nineteen
+card.u-0019.text: Lands on your opponent's side. On play, draw a card.
+card.u-0020.name: Placeholder unit twenty
+card.u-0020.text: On play, return one of your other units that is not locked to your hand.
+card.u-0021.name: Placeholder unit twenty-one
+card.u-0021.text: On play, move an enemy unit to its other row.
+card.u-0022.name: Placeholder unit twenty-two
+card.u-0022.text: Whenever this unit is boosted, it gains 1 armour.
+card.u-0023.name: Placeholder unit twenty-three
+card.u-0023.text: On play, boost your other units with Placeholder tag A by 1.
+card.u-0024.name: Placeholder unit twenty-four
+card.u-0024.text: On play, damage the weakest enemy unit without Placeholder tag B by 2.
+card.u-0025.name: Placeholder unit twenty-five
+card.u-0025.text: On play, shield one of your other units that has no shield.
+card.u-0026.name: Placeholder unit twenty-six
+card.u-0026.text: On play, remove all damage from your other melee units.
+card.u-0027.name: Placeholder unit twenty-seven
+card.u-0027.text: On play, move the first two cards with Placeholder tag A from your deck to your ranged row. When destroyed, move a random unit with 3 or less power from your deck onto the board.
+card.u-0028.name: Placeholder unit twenty-eight
+card.u-0028.text: Whenever you play a unit with Placeholder tag A on your side, it gains 1 armour.
+card.t-0001.name: Placeholder token one
+card.t-0001.text: A token.
 card.s-0001.name: Placeholder special one
-card.s-0001.text: Every non-immune melee unit on both sides has power 1.
+card.s-0001.text: On an enemy row, at the start of each of its owner's turns, damage the weakest unit there by 2.
 card.s-0002.name: Placeholder special two
-card.s-0002.text: Clear the power-to-one effect from every row.
+card.s-0002.text: On an enemy row, damage every unit that arrives there by 2.
 card.s-0003.name: Placeholder special three
-card.s-0003.text: Destroy the strongest opponent units on rows totalling 10 or more.
+card.s-0003.text: On every enemy row, at the start of each of its owner's turns, damage 3 random units there by 1.
 card.s-0004.name: Placeholder special four
-card.s-0004.text: Swap places with one of your non-immune units, which returns to your hand.
+card.s-0004.text: On one of your rows, at the start of each of your turns, boost 2 random units there by 1.
 card.s-0005.name: Placeholder special five
-card.s-0005.text: Double the power of your ranged row.
+card.s-0005.text: Clear the row effects on both melee rows.
+card.s-0006.name: Placeholder special six
+card.s-0006.text: On an enemy row, at the start of each of its owner's turns, damage the strongest unit there by 2.
+card.s-0007.name: Placeholder special seven
+card.s-0007.text: Damage every unit on an enemy row by 1.
+card.s-0008.name: Placeholder special eight
+card.s-0008.text: Banish a locked unit.
+card.s-0009.name: Placeholder special nine
+card.s-0009.text: Play a bronze unit from your graveyard.
+card.s-0010.name: Placeholder special ten
+card.s-0010.text: Look at 3 random units with 4 or less power in your deck and play one.
+card.s-0011.name: Placeholder special eleven
+card.s-0011.text: Raise the base power of one of your units by 2.
+card.s-0012.name: Placeholder special twelve
+card.s-0012.text: Remove poison, bleeding and locks from your units.
+card.s-0013.name: Placeholder special thirteen
+card.s-0013.text: Your leader ability gains 1 charge.
+card.s-0014.name: Placeholder special fourteen
+card.s-0014.text: Play a random special card from your deck.
+card.s-0015.name: Placeholder special fifteen
+card.s-0015.text: Play a bronze special card from your opponent's graveyard.
+card.a-0001.name: Placeholder artifact one
+card.a-0001.text: "Activated ability, 3 charges: damage an enemy unit by 1. At round end, gain 1 charge."
+card.a-0002.name: Placeholder artifact two
+card.a-0002.text: Ranged only. The other units on this row have 1 more power.
+card.a-0003.name: Placeholder artifact three
+card.a-0003.text: Immune. At the start of your turn, clear the effect on this row.
 card.l-0001.name: Placeholder leader one
-card.l-0001.text: Once per match, clear all row effects.
+card.l-0001.text: "Activated ability, 2 charges: boost an allied unit by 2."
+card.u-0101.name: Placeholder neutral unit one
+card.u-0101.text: A plain unit.
+card.u-0102.name: Placeholder neutral unit two
+card.u-0102.text: Banished whenever it leaves the board.
+card.u-0103.name: Placeholder neutral unit three
+card.u-0103.text: Shielded.
+card.s-0101.name: Placeholder neutral special one
+card.s-0101.text: Draw 2 cards.

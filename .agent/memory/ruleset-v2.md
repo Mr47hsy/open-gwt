@@ -17,6 +17,12 @@ confirmed against public descriptions when implemented.
 quickest proof of the architecture, and the architecture (pure core, protocol, thin client)
 carries over unchanged.
 
+Phase A is done: `docs/protocol/cards.md` (`opengwt.cards/2`), `match.md` (protocol 2), their
+schemas and examples, glossary rows. Still to confirm against public descriptions when the phase
+that needs it is implemented: the `Rules` defaults (`next_round_starter` above all), and whether
+activated abilities stay usable after the turn's card is played — ADR 0009 and protocol 2 say
+playing a card ends the turn.
+
 **How to apply:** do not add v1 content or vocabulary; read ADR 0009 and take the next unfinished
 phase from [[backlog]]; vocabulary words describe behaviour and never reuse a distinctive official
 keyword; regenerate goldens when a phase changes rules and say so in the pull request. See
