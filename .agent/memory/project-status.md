@@ -25,8 +25,11 @@ text renders; the formal ten-match log of ADR 0007 was not kept. The iOS / Andro
 are **deferred by the owner until the application is complete**. Redis backends (M2b) do **not
 exist yet**.
 
-From here the owner works in **several sessions in parallel**, one feature each; see
-[[backlog]] for what is open and `AGENTS.md` for the branch discipline that makes that safe.
+On 2026-09-23 the owner decided to **replace the three-row ruleset with the two-row standalone
+ruleset** (ADR 0009, [[ruleset-v2]]). The code on `develop` still implements v1 until the ADR's
+phases A–F land, in order. Client polish and content work that depend on the rules wait for the
+relevant phase; the rest of [[backlog]] is open to parallel sessions, with the branch discipline
+in `AGENTS.md`.
 
 **Why:** an agent that assumes either more or less than this will invent or miss module paths,
 APIs and acceptance results.

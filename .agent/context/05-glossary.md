@@ -20,6 +20,13 @@ names appear here.
 | mulligan | 换牌 | мулиган | Replacing cards before a round |
 | points / power | 点数 / 战力 | очки / сила | A unit's contribution to the row total |
 | board | 战场 | поле | All rows for both players |
+| provision cost / budget | 构筑费用 / 预算 | стоимость / бюджет | What a card costs at deck-building time, and the total a leader allows (ADR 0009) |
+| base power / current power | 基础战力 / 当前战力 | базовая сила / текущая сила | The printed value, and the value after boosts and damage |
+| armour | 护甲 | броня | Absorbs damage before power does |
+| status | 状态 | статус | A marker on a unit that alters how rules apply to it, possibly with a timer |
+| activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn; using it does not end the turn |
+| bronze / gold | 铜卡 / 金卡 | бронзовая / золотая карта | Card colours that set the copy limit in a deck |
+| graveyard / banish | 墓地 / 放逐 | кладбище / изгнание | Where destroyed cards go, and removal from the match entirely |
 
 ## Project terms
 

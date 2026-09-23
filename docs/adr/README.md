@@ -16,6 +16,7 @@ Records are numbered in the order they were accepted. Numbers are never reused.
 | [0006](0006-i18n-keys-and-unity-localization.md) | Keys-only i18n with one message format rendered on both sides | accepted |
 | [0007](0007-mvp-order-and-acceptance.md) | MVP order: core, then server, then client | accepted |
 | [0008](0008-match-scaling-stateless-workers.md) | Match scaling: stateless workers over a shared match store | accepted |
+| [0009](0009-two-row-standalone-ruleset.md) | Adopt the two-row standalone ruleset as the game's shape | accepted |
 
 ## Writing a new record
 

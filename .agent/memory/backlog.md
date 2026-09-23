@@ -5,7 +5,20 @@ metadata:
   type: project
 ---
 
-Not ordered; the owner picks. One session per item, one pull request per concern.
+Not ordered except for the ruleset phases, which are strictly sequential. One session per item,
+one pull request per concern.
+
+**Ruleset v2 (ADR 0009) — in order, each blocks the next**
+- Phase A: `docs/protocol/cards.md` v2 + schemas, `match.md` v2, glossary rows.
+- Phase B: two rows with capacity, base / boost / damage / armour, statuses with timers,
+  per-round draws and mulligans, hand limit, tie rule, weather as per-turn damage; v1 actions
+  dropped; data rewritten to v2; goldens regenerated.
+- Phase C: `use_order` with charges / cooldown / immediate, leader charges, on-destroyed,
+  turn-start/end, ally-played, boosted/damaged, adjacency, generalised choices; bots use orders.
+- Phase D: provisions, colours, copy limits, minimum units; server validation; pack v2.
+- Phase E: intents and views v2 end to end in server and client; targeting UI; statuses and
+  armour on cards; order buttons.
+- Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
 
 **Client**
 - Event-driven animation: cards flash today; playing, destroying, returning and row effects
@@ -26,13 +39,11 @@ Not ordered; the owner picks. One session per item, one pull request per concern
 - Turn timeout is implemented but off by default and has no automated test.
 - Accounts beyond guest tokens are out of scope by decision; a display-name change exists.
 
-**Content and rules**
-- Real, original card set with names and texts in three languages (placeholders now); balance
-  passes with `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
+**Content and rules** (after phase F)
+- Real, original card set with names and texts in three languages; balance passes with
+  `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
 - Generated card text from ability templates (docs/protocol/i18n.md §10, deferred).
-- Vocabulary gaps of v1 (docs/protocol/cards.md): specials cannot ask the player for a row;
-  summoned or returned units go to their first row; choices only arise from `played` and
-  `activated`; `removed` does not fire on round clean-up.
+- Stratagems and coin-toss compensation, left out of ADR 0009's first revision.
 
 **Tooling**
 - Client CI (needs a Unity licence secret); until then the headless checklist is the gate.
