@@ -65,3 +65,12 @@ def test_golden_record_still_replays(library: Library) -> None:
         "the rules changed in a way that breaks replay of an existing record; "
         "if that is intended, regenerate the golden file and call it out in the pull request"
     )
+
+
+def test_no_event_carries_the_seed(library: Library, starter_decks: tuple[Deck, Deck]) -> None:
+    seed = 1_234_567_890
+    record, _, _ = run_match(library, starter_decks, seed, (RandomBot(1), RandomBot(2)))
+    _, events = replay(library, record)
+    assert events[0].type == "match_started"
+    for event in events:
+        assert "seed" not in event.data and seed not in event.data.values(), event
