@@ -23,6 +23,7 @@ def _out(row: DeckRow) -> DeckOut:
         name=row.name,
         faction=row.faction,
         leader=row.leader,
+        stratagem=row.stratagem,
         cards=[DeckCardEntry(**c) for c in row.cards],
     )
 
@@ -40,6 +41,7 @@ async def resolve_deck(
             faction=row.faction,
             cards=tuple(c["id"] for c in row.cards for _ in range(int(c["count"]))),
             leader=row.leader or "",
+            stratagem=row.stratagem or "",
         )
         problems = check_deck(content.library, deck, Rules())
         if problems:
@@ -72,6 +74,7 @@ async def put_deck(
         faction=body.faction,
         cards=tuple(c.id for c in body.cards for _ in range(c.count)),
         leader=body.leader,
+        stratagem=body.stratagem,
     )
     problems = check_deck(library, deck, Rules())
     if problems:
@@ -85,6 +88,7 @@ async def put_deck(
     row.name = body.name
     row.faction = body.faction
     row.leader = body.leader
+    row.stratagem = body.stratagem
     row.cards = [c.model_dump() for c in body.cards]
     row.updated_at = datetime.now(timezone.utc)
     await session.flush()

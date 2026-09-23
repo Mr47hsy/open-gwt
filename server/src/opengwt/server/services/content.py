@@ -41,7 +41,13 @@ def load_content(data_dir: Path) -> Content:
         "factions": sorted({d.faction for d in data.library.values()}),
         "cards": [{"id": cid, **mapping} for cid, mapping in raw.items()],
         "decks": [
-            {"id": deck_id, "faction": d.faction, "leader": d.leader, "cards": deck_entries(d)}
+            {
+                "id": deck_id,
+                "faction": d.faction,
+                "leader": d.leader,
+                "stratagem": d.stratagem,
+                "cards": deck_entries(d),
+            }
             for deck_id, d in sorted(data.decks.items())
         ],
         "i18n": data.i18n,

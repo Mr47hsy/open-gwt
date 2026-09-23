@@ -30,6 +30,8 @@ class DeckRow(Base):
     name: Mapped[str] = mapped_column(String(64))
     faction: Mapped[str] = mapped_column(String(64))
     leader: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # ADR 0011; decks saved before it have none and are refused until they name one
+    stratagem: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cards: Mapped[list[Any]] = mapped_column(JSON)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

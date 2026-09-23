@@ -25,6 +25,7 @@ from opengwt.data import load_data
 from opengwt.server.app import create_app
 from opengwt.server.config import ConfigError, Settings
 from opengwt.server.db.session import alembic_config, make_engine
+from opengwt.server.routers import ws as ws_router
 from opengwt.server.services import matches as match_service
 from opengwt.server.services.auth import create_token
 
@@ -42,6 +43,13 @@ def _settings(tmp_path: Path, **overrides: Any) -> Settings:
         auth_secret=SECRET,
         **overrides,
     )
+
+
+@pytest.fixture(autouse=True)
+def _scripts_play_faster_than_people(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A scripted client plays a whole match within a second, redraws included; the rate limit
+    is for people and would close its socket (4429)."""
+    monkeypatch.setattr(ws_router, "INTENTS_PER_SECOND", 10_000)
 
 
 @pytest.fixture
@@ -187,6 +195,7 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
             "name": "x",
             "faction": "placeholder-a",
             "leader": "l-1001",
+            "stratagem": "g-0002",
             "cards": [{"id": "u-1001", "count": 3}, {"id": "u-2001", "count": 1}],
         },
     )
@@ -198,7 +207,7 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
         headers=headers,
         json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "u-1001", "count": 25}]},
     )
-    assert no_leader.status_code == 422
+    assert no_leader.status_code == 422  # a deck names its leader and its stratagem
     starter = yaml.safe_load((REPO / "data" / "decks" / "starter-a.deck.yaml").read_text())
     good = client.put(
         "/decks/mine",
@@ -207,6 +216,7 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
             "name": "mine",
             "faction": "placeholder-a",
             "leader": starter["leader"],
+            "stratagem": starter["stratagem"],
             "cards": starter["cards"],
         },
     )
