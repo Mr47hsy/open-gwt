@@ -16,7 +16,8 @@ namespace OpenGwt.UI
 {
     public sealed class BoardView : IDisposable
     {
-        private static readonly string[] RowNames = { "melee", "ranged", "siege" };
+        // Rules.rows of the pack (`cards.md` §4); Board.uxml has one element per row and side.
+        private static readonly string[] RowNames = { "melee", "ranged" };
         private static readonly List<JObject> NoIntents = new List<JObject>();
 
         /// <summary>How long a step whose cards move stays on screen before the next is shown.</summary>

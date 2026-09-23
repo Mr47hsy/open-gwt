@@ -287,7 +287,7 @@ namespace OpenGwt.Tests
         private static JObject Side(int seat, (string instance, string card, int power, int basePower)[] melee)
         {
             var rows = new JObject();
-            foreach (var row in new[] { "melee", "ranged", "siege" }) rows[row] = new JObject { ["effects"] = new JArray(), ["units"] = new JArray() };
+            foreach (var row in new[] { "melee", "ranged" }) rows[row] = new JObject { ["effects"] = new JArray(), ["units"] = new JArray() };
             foreach (var (instance, card, power, basePower) in melee ?? Array.Empty<(string, string, int, int)>())
             {
                 ((JArray)rows["melee"]["units"]).Add(new JObject { ["instance"] = instance, ["card"] = card, ["owner"] = seat, ["power"] = power, ["base"] = basePower });

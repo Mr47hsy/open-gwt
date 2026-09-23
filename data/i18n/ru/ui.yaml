@@ -52,7 +52,6 @@ ui.effect.power-to-one: сила → 1
 ui.effect.double-power: ×2
 ui.row.melee: Ближний
 ui.row.ranged: Дальний
-ui.row.siege: Осадный
 ui.kind.unit: Отряд
 ui.kind.special: Особая карта
 ui.kind.leader: Лидер

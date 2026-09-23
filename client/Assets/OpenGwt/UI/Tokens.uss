@@ -77,18 +77,15 @@
     /* Sizes */
     --size-bar: 36px;
     --size-button: 30px;
-    --size-icon-xs: 10px;
     --size-icon-sm: 12px;
     --size-icon-md: 16px;
     --size-icon-lg: 22px;
     --size-card-width: 84px;
     --size-card-height: 112px;
-    --size-card-board-width: 66px;
-    --size-card-board-height: 88px;
     --size-card-large-width: 240px;
     --size-card-large-height: 320px;
     --size-preview-width: 264px;
-    --size-row-min-height: 96px;
+    --size-row-min-height: 120px;
     --size-hand-height: 124px;
     --size-event-log-height: 46px;
 

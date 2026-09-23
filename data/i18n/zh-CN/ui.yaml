@@ -49,7 +49,6 @@ ui.effect.power-to-one: 战力 → 1
 ui.effect.double-power: ×2
 ui.row.melee: 近战
 ui.row.ranged: 远程
-ui.row.siege: 攻城
 ui.kind.unit: 单位
 ui.kind.special: 特殊牌
 ui.kind.leader: 领袖

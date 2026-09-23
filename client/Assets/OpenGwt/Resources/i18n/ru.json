@@ -89,7 +89,6 @@
  "ui.result.won": "Вы выиграли матч",
  "ui.row.melee": "Ближний",
  "ui.row.ranged": "Дальний",
- "ui.row.siege": "Осадный",
  "ui.title": "open-gwt",
  "ui.turn.opponent": "ход соперника",
  "ui.turn.opponent-choice": "соперник выбирает",

@@ -15,7 +15,6 @@
             </ui:VisualElement>
 
             <ui:VisualElement name="opp-board" class="side side--opponent">
-                <ui:VisualElement name="opp-row-siege" class="row"><ui:VisualElement class="row__head"><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
                 <ui:VisualElement name="opp-row-ranged" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--ranged" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
                 <ui:VisualElement name="opp-row-melee" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--melee" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
@@ -28,7 +27,6 @@
             <ui:VisualElement name="my-board" class="side side--mine">
                 <ui:VisualElement name="my-row-melee" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--melee" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
                 <ui:VisualElement name="my-row-ranged" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--ranged" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
-                <ui:VisualElement name="my-row-siege" class="row"><ui:VisualElement class="row__head"><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="bottom-bar" class="bar">

@@ -1,6 +1,6 @@
 /* Board styles (ADR 0005). Every value comes from Tokens.uss through var(); the art is the
    vector images in Art/ (UI Toolkit VectorImage, tinted here). Card layout is in percentages
-   so one rule set serves the board, the hand and the large preview, whose sizes differ. */
+   so one rule set serves the board and hand cards and the large preview. */
 
 .board {
     flex-grow: 1;
@@ -45,8 +45,10 @@
 .side--opponent { margin-bottom: var(--space-1); }
 .side--mine { margin-top: var(--space-1); }
 
+/* Two rows a side (Rules.rows); they share the side's height. */
 .row {
     flex-direction: row;
+    flex-grow: 1;
     align-items: center;
     min-height: var(--size-row-min-height);
     margin: 1px 0;
@@ -122,7 +124,6 @@
     transition-duration: var(--duration-slow);
     transition-timing-function: ease-out-cubic;
 }
-.row__units .card { width: var(--size-card-board-width); height: var(--size-card-board-height); }
 .hand .card, .modal__options .card { transition-duration: var(--duration-base); }
 .card--special { background-color: var(--color-card-special); }
 .card--leader { background-color: var(--color-card-leader); }
@@ -142,7 +143,7 @@
     top: 1%;
     width: 34%;
     aspect-ratio: 1;
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-lg);
     -unity-font-style: bold;
     -unity-text-align: middle-center;
     color: var(--color-text);
@@ -150,7 +151,6 @@
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--color-badge);
 }
-.hand .card__power, .modal__options .card__power { font-size: var(--font-size-lg); }
 .card__power--none { display: none; }
 .card__power--boosted { color: var(--color-positive); -unity-background-image-tint-color: var(--color-badge-boosted); }
 .card__power--reduced { color: var(--color-negative); -unity-background-image-tint-color: var(--color-badge-reduced); }
@@ -183,15 +183,11 @@
     right: 5%;
     top: 69%;
     bottom: 3%;
-    font-size: var(--font-size-2xs);
+    font-size: var(--font-size-xs);
     white-space: normal;
     overflow: hidden;
     -unity-text-align: middle-center;
 }
-.hand .card__name, .modal__options .card__name { font-size: var(--font-size-xs); }
-/* Board cards are small: one line of name, smaller icons; the preview has the rest. */
-.row__units .card__name { white-space: nowrap; text-overflow: ellipsis; }
-.row__units .card__icon { width: var(--size-icon-xs); height: var(--size-icon-xs); }
 
 /* The large card in the preview. */
 .card--large {
@@ -211,7 +207,7 @@
 /* The opponent's card starts small and faint at their hand. */
 .card--enter-far { opacity: 0.4; scale: 0.5 0.5; }
 /* An element waiting for its ghost to land: hidden, and without transitions so it appears at once.
-   Two classes, so they win over `.hand .card` and `.row__units .card`. */
+   Two classes, so they win over `.hand .card`. */
 .card.card--instant { transition-duration: 0s; }
 .card.card--pending { opacity: 0; }
 
