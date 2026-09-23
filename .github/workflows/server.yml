@@ -27,6 +27,13 @@ jobs:
           --health-retries 10
     env:
       OPENGWT_TEST_POSTGRES_URL: postgresql+asyncpg://opengwt:opengwt@localhost:5432/opengwt
+      # Every uv command must use the matrix interpreter; without this, `uv run` reads the
+      # repository's .python-version (3.10), rebuilds the environment on that version and drops
+      # the extras that `uv sync` installed.
+      UV_PYTHON: ${{ matrix.python }}
+      # The environment is synced once, explicitly, with the postgres extra; `uv run` must not
+      # re-sync it afterwards.
+      UV_NO_SYNC: "1"
     defaults:
       run:
         working-directory: server
@@ -36,7 +43,10 @@ jobs:
         with:
           version: ">=0.12.5"
       - run: uv python install ${{ matrix.python }}
-      - run: uv sync --python ${{ matrix.python }} --group dev --extra postgres
+      - run: uv sync --group dev --extra postgres
+      - name: the environment really is the matrix interpreter with the postgres extra
+        run: |
+          uv run python -c "import sys, asyncpg; assert sys.version.startswith('${{ matrix.python }}.'), sys.version; print(sys.version, 'asyncpg', asyncpg.__version__)"
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
