@@ -87,7 +87,24 @@
         "bleeding",
         "growing",
         "banish_on_leave",
-        "kept_at_round_end"
+        "kept_at_round_end",
+        "status_proof",
+        "guarding",
+        "on_enemy_side"
+      ]
+    },
+    "statusChange": {
+      "enum": [
+        "locked",
+        "shielded",
+        "immune",
+        "poisoned",
+        "bleeding",
+        "growing",
+        "banish_on_leave",
+        "kept_at_round_end",
+        "status_proof",
+        "guarding"
       ]
     },
     "statuses": {
@@ -103,7 +120,9 @@
         "shielded",
         "immune",
         "banish_on_leave",
-        "kept_at_round_end"
+        "kept_at_round_end",
+        "status_proof",
+        "guarding"
       ]
     },
     "rowEffect": {
@@ -163,6 +182,37 @@
         },
         "trigger_unit": {
           "$ref": "#/$defs/where"
+        },
+        "this": {
+          "$ref": "#/$defs/where"
+        },
+        "hand_at_most": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "units_at_least": {
+          "type": "object",
+          "required": [
+            "count",
+            "side"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "$ref": "#/$defs/positiveInt"
+            },
+            "side": {
+              "$ref": "#/$defs/sides"
+            },
+            "rows": {
+              "$ref": "#/$defs/rows"
+            },
+            "where": {
+              "$ref": "#/$defs/where"
+            }
+          }
+        },
+        "starting_deck_without_neutral": {
+          "const": true
         }
       }
     },
@@ -208,6 +258,12 @@
           "$ref": "#/$defs/nonNegativeInt"
         },
         "stronger_than_this": {
+          "const": true
+        },
+        "boosted": {
+          "const": true
+        },
+        "damaged": {
           "const": true
         }
       }
@@ -609,7 +665,10 @@
               "statuses": {
                 "items": {
                   "not": {
-                    "const": "shielded"
+                    "enum": [
+                      "shielded",
+                      "guarding"
+                    ]
                   }
                 }
               }
@@ -814,7 +873,8 @@
             "damage",
             "boost",
             "add_armor",
-            "remove_damage",
+            "heal",
+            "reset_power",
             "raise_base_power",
             "destroy",
             "banish",
@@ -822,11 +882,17 @@
             "remove_statuses",
             "move_to_other_row",
             "return_to_hand",
+            "take_control",
+            "drain",
+            "duel",
+            "consume",
+            "discard",
             "draw",
             "play_from_deck",
             "play_from_graveyard",
             "summon_from_deck",
             "place_new_card",
+            "create",
             "add_charges",
             "set_row_effect",
             "clear_row_effect",
@@ -884,7 +950,7 @@
           "if": {
             "properties": {
               "do": {
-                "const": "remove_damage"
+                "const": "heal"
               }
             },
             "required": [
@@ -892,7 +958,22 @@
             ]
           },
           "then": {
-            "$ref": "#/$defs/do_remove_damage"
+            "$ref": "#/$defs/do_heal"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "reset_power"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_reset_power"
           }
         },
         {
@@ -1004,6 +1085,81 @@
           "if": {
             "properties": {
               "do": {
+                "const": "take_control"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_take_control"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "drain"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_drain"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "duel"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_duel"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "consume"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_consume"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "discard"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_discard"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
                 "const": "draw"
               }
             },
@@ -1073,6 +1229,21 @@
           },
           "then": {
             "$ref": "#/$defs/do_place_new_card"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "do": {
+                "const": "create"
+              }
+            },
+            "required": [
+              "do"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/do_create"
           }
         },
         {
@@ -1232,7 +1403,8 @@
                     "do": {
                       "enum": [
                         "play_from_deck",
-                        "play_from_graveyard"
+                        "play_from_graveyard",
+                        "create"
                       ]
                     }
                   },
@@ -1340,7 +1512,17 @@
         }
       }
     },
-    "do_remove_damage": {
+    "do_heal": {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/unitTarget"
+        }
+      }
+    },
+    "do_reset_power": {
       "required": [
         "target"
       ],
@@ -1394,7 +1576,7 @@
           "$ref": "#/$defs/unitTarget"
         },
         "status": {
-          "$ref": "#/$defs/status"
+          "$ref": "#/$defs/statusChange"
         },
         "turns": {
           "$ref": "#/$defs/positiveInt"
@@ -1456,7 +1638,7 @@
         "statuses": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/status"
+            "$ref": "#/$defs/statusChange"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -1480,6 +1662,60 @@
       "properties": {
         "target": {
           "$ref": "#/$defs/unitTarget"
+        }
+      }
+    },
+    "do_take_control": {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/unitTarget"
+        }
+      }
+    },
+    "do_drain": {
+      "required": [
+        "target",
+        "amount"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/unitTarget"
+        },
+        "amount": {
+          "$ref": "#/$defs/positiveInt"
+        }
+      }
+    },
+    "do_duel": {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/unitTarget"
+        }
+      }
+    },
+    "do_consume": {
+      "required": [
+        "target"
+      ],
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/unitTarget"
+        }
+      }
+    },
+    "do_discard": {
+      "required": [
+        "cards"
+      ],
+      "properties": {
+        "cards": {
+          "$ref": "#/$defs/cardSource"
         }
       }
     },
@@ -1543,6 +1779,20 @@
         },
         "row": {
           "$ref": "#/$defs/row"
+        }
+      }
+    },
+    "do_create": {
+      "required": [
+        "pool"
+      ],
+      "properties": {
+        "pool": {
+          "$ref": "#/$defs/where"
+        },
+        "offer": {
+          "type": "integer",
+          "minimum": 2
         }
       }
     },
@@ -1617,6 +1867,12 @@
       "properties": {
         "row_target": {
           "$ref": "#/$defs/rowTarget"
+        },
+        "only": {
+          "enum": [
+            "hazard",
+            "boon"
+          ]
         }
       }
     },

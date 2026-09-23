@@ -323,7 +323,7 @@ cards:
         status: shielded
         target: { units: chosen, side: self, where: { statuses_none: [shielded] } }
 
-  # On play, remove all damage from the player's melee units.
+  # On play, heal the player's damaged melee units back to their base power.
   u-0026:
     kind: unit
     color: bronze
@@ -331,8 +331,8 @@ cards:
     power: 4
     abilities:
       - when: on_play
-        do: remove_damage
-        target: { units: all, side: self, rows: [melee] }
+        do: heal
+        target: { units: all, side: self, rows: [melee], where: { damaged: true } }
 
   # On play, the first two tag-a cards from the top of the deck move onto the ranged row.
   # When destroyed, a random unit with 3 power or less moves from the deck onto the board.
@@ -362,6 +362,136 @@ cards:
         do: add_armor
         amount: 1
         target: { units: trigger_unit }
+
+  # Guards its row: the opponent cannot choose any other unit on this row-side.
+  u-0029:
+    kind: unit
+    color: gold
+    provisions: 8
+    power: 6
+    armor: 2
+    statuses: [guarding]
+
+  # No status can be added to it. On play, if the player holds 3 cards or fewer, boost itself by 3.
+  u-0030:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    statuses: [status_proof]
+    abilities:
+      - when: on_play
+        if: { hand_at_most: 3 }
+        do: boost
+        amount: 3
+        target: { units: this }
+
+  # On play, damage a chosen enemy by 3 and boost itself by the damage that got through.
+  u-0031:
+    kind: unit
+    color: bronze
+    provisions: 6
+    power: 3
+    abilities:
+      - when: on_play
+        do: drain
+        amount: 3
+        target: { units: chosen, side: opponent }
+
+  # On play, duel a chosen enemy: the two damage each other by their power in turn, this one first.
+  u-0032:
+    kind: unit
+    color: gold
+    provisions: 9
+    power: 7
+    abilities:
+      - when: on_play
+        do: duel
+        target: { units: chosen, side: opponent }
+
+  # On play, destroy a chosen ally with tag-b and boost itself by that ally's power.
+  u-0033:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_play
+        do: consume
+        target: { units: chosen, side: self, where: { tags_any: [tag-b] } }
+
+  # On play, move a chosen enemy with 3 power or less to the player's side of the board.
+  u-0034:
+    kind: unit
+    color: gold
+    provisions: 10
+    power: 4
+    abilities:
+      - when: on_play
+        do: take_control
+        target: { units: chosen, side: opponent, where: { power_at_most: 3 } }
+
+  # On play, if at least two enemy units are damaged, damage the strongest enemy by 3.
+  u-0035:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        if: { units_at_least: { count: 2, side: opponent, where: { damaged: true } } }
+        do: damage
+        amount: 3
+        target: { units: strongest, side: opponent }
+
+  # At the end of its controller's turn, while boosted above its base power, damage a random enemy by 1.
+  u-0036:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_turn_end
+        if: { this: { boosted: true } }
+        do: damage
+        amount: 1
+        target: { units: random, side: opponent }
+
+  # On play, if the player's starting deck held no neutral card, boost itself by 3.
+  u-0037:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        if: { starting_deck_without_neutral: true }
+        do: boost
+        amount: 3
+        target: { units: this }
+
+  # On play, return a chosen boosted unit on either side to its base power.
+  u-0038:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: reset_power
+        target: { units: chosen, side: both, where: { boosted: true } }
+
+  # On play, damage by 2 every unit on the player's side that belongs to the opponent.
+  u-0039:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: all, side: self, where: { statuses_any: [on_enemy_side] } }
 
   # A token: never in a deck, only placed on the board by an ability (u-0012).
   t-0001:
@@ -537,6 +667,51 @@ cards:
       - when: on_play
         do: play_from_graveyard
         cards: { pick: chosen, side: opponent, where: { kind: [special], color: bronze } }
+
+  # Discard two random cards from the hand, then draw two.
+  s-0016:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: discard
+        cards: { pick: random, count: 2 }
+      - when: on_play
+        do: draw
+        count: 2
+
+  # Offer three bronze units of the player's faction or neutral; the one picked is created and played.
+  s-0017:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: create
+        pool: { kind: [unit], color: bronze }
+
+  # Clear the hazards from the player's rows; boons stay.
+  s-0018:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: clear_row_effect
+        only: hazard
+        row_target: { pick: all, side: self }
+
+  # Clear the boons from the opponent's rows; hazards stay.
+  s-0019:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: clear_row_effect
+        only: boon
+        row_target: { pick: all, side: opponent }
 
   # --- artifacts --------------------------------------------------------------------------------
 

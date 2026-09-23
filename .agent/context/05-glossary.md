@@ -26,13 +26,18 @@ names appear here.
 | points / power | 点数 / 战力 | очки / сила | A unit's contribution to the row total |
 | board | 战场 | поле | All rows for both players |
 | provision cost / budget | 构筑费用 / 预算 | стоимость / бюджет | What a card costs at deck-building time, and the total a leader allows (ADR 0009) |
-| base power / current power | 基础战力 / 当前战力 | базовая сила / текущая сила | The printed value, and the value after boosts, continuous effects and damage |
+| base power / current power | 基础战力 / 当前战力 | базовая сила / текущая сила | The printed value (raised by base-power raises), and the value boosts raise and damage lowers; continuous effects add to it |
 | boost / damage | 增益 / 伤害 | усиление / урон | Raise and lower a unit's current power; damage meets shields and armour first |
 | armour | 护甲 | броня | Absorbs damage before power does |
+| heal / reset | 治疗 / 重置 | исцеление / сброс | Bring a damaged unit back up to its base power / bring any unit back to its base power |
+| boosted / damaged | 已增益 / 受伤 | усиленный / раненый | A unit whose current power is above / below its base power |
+| hazard / boon | 有害行效果 / 有益行效果 | вредный / полезный эффект ряда | A row effect that damages / boosts; `clear_row_effect` can clear just one kind |
+| guarding | 守护 | охрана | A status: the opponent cannot choose any other card on the guard's row |
+| status-proof | 状态免疫 | защита от статусов | A status: no status can be added to the card |
 | status | 状态 | статус | A marker on a unit that alters how rules apply to it, possibly with a timer |
 | activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn; using it does not end the turn (intent `use_order`) |
 | charges / cooldown / ready | 次数 / 冷却 / 就绪 | заряды / перезарядка / готова | Uses an activated ability has left, turns before it can be used again, and whether it can be used now |
-| timer | 计时 | таймер | Turns a status lasts; it ticks at its controller's turn start |
+| timer | 计时 | таймер | Turns a status lasts; it ticks at its controller's turn end |
 | bronze / gold | 铜卡 / 金卡 | бронзовая / золотая карта | Card colours that set the copy limit in a deck |
 | unit / special / artifact | 单位 / 特殊牌 / 器物 | отряд / особая карта / артефакт | A card with power on a row; a card that acts once and goes to the graveyard; a card on a row without power |
 | leader / leader ability | 领袖 / 领袖能力 | лидер / способность лидера | Not a card on the board: the provision bonus and the activated ability a deck is built around |

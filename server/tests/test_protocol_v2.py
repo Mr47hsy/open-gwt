@@ -1,5 +1,5 @@
-"""The normative v2 protocol in docs/protocol — schemas and examples — before the code implements it
-(ADR 0009 phase A). Validates with the docs' own schemas, not the packaged v1 copies."""
+"""The normative v2 protocol in docs/protocol — schemas and examples. Validates with the docs' own
+schemas; test_schema_parity keeps the packaged copies identical."""
 
 import json
 from pathlib import Path
@@ -60,7 +60,14 @@ def test_examples_use_every_vocabulary_word() -> None:
         "activation": set(defs["activation"]["properties"]),
         "card key": set(defs["card"]["properties"]),
     }
+    vocabulary["only"] = set(defs["do_clear_row_effect"]["properties"]["only"]["enum"])
     used: dict[str, set[str]] = {key: set() for key in vocabulary}
+
+    def filters(where: dict[str, Any]) -> None:
+        used["where"].update(where)
+        used["status"].update(where.get("statuses_any", ()))
+        used["status"].update(where.get("statuses_none", ()))
+
     for card in _example_cards().values():
         used["card key"].update(card)
         used["status"].update(card.get("statuses", ()))
@@ -68,19 +75,24 @@ def test_examples_use_every_vocabulary_word() -> None:
         for ability in card.get("abilities", ()):
             used["when"].add(ability["when"])
             used["do"].add(ability["do"])
-            used["if"].update(ability.get("if", {}))
-            used["where"].update(ability.get("if", {}).get("trigger_unit", {}))
+            conditions = ability.get("if", {})
+            used["if"].update(conditions)
+            for key in ("trigger_unit", "this"):
+                filters(conditions.get(key, {}))
+            filters(conditions.get("units_at_least", {}).get("where", {}))
+            filters(ability.get("pool", {}))
             used["status"].update([ability["status"]] if "status" in ability else [])
             used["status"].update(ability.get("statuses", ()))
             used["effect"].update([ability["effect"]] if "effect" in ability else [])
+            used["only"].update([ability["only"]] if "only" in ability else [])
             if "target" in ability:
                 used["units"].add(ability["target"]["units"])
-                used["where"].update(ability["target"].get("where", {}))
+                filters(ability["target"].get("where", {}))
             if "row_target" in ability:
                 used["row pick"].add(ability["row_target"]["pick"])
             if "cards" in ability:
                 used["cards pick"].add(ability["cards"]["pick"])
-                used["where"].update(ability["cards"].get("where", {}))
+                filters(ability["cards"].get("where", {}))
     unused = {key: sorted(words - used[key]) for key, words in vocabulary.items()}
     assert {key: words for key, words in unused.items() if words} == {}
 
@@ -120,6 +132,23 @@ UNIT = {"kind": "unit", "color": "bronze", "provisions": 4, "power": 3}
             "abilities": [
                 {"when": "on_play", "do": "boost", "amount": 1, "target": {"units": "trigger_unit"}}
             ],
+        },
+        # the side a card stands on is the board's to say, never an action's
+        {
+            **UNIT,
+            "abilities": [
+                {
+                    "when": "on_play",
+                    "do": "add_status",
+                    "status": "on_enemy_side",
+                    "target": {"units": "this"},
+                }
+            ],
+        },
+        # a choice is only asked during on_play and on_activate: create offers a choice
+        {
+            **UNIT,
+            "abilities": [{"when": "on_round_end", "do": "create", "pool": {"color": "gold"}}],
         },
         # a timed status without its timer
         {
