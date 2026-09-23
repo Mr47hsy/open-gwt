@@ -13,17 +13,20 @@ and B (power and board, ADR 0010's random streams) are done; the phases below im
 `docs/protocol/cards.md` and `match.md` as written, and change them in the same pull request
 where the code proves them wrong. The vocabulary is complete since B: a later phase adds
 behaviour, not words.
-- Phase C: give behaviour to the words `model.phase_c_words` lists — `use_order` with charges /
-  cooldown / `ready_on_play`, leader charges, `on_destroyed`, turn start / end, `on_ally_played`,
+- Phase C: give behaviour to the words `model.phase_c_words` lists — extend `use_order` (working
+  for stratagems since B, ADR 0011) to units, artifacts and leaders with charges / cooldown /
+  `ready_on_play`, leader charges, `on_destroyed`, turn start / end, `on_ally_played`,
   `on_boosted` / `on_damaged`, the `adjacent`, `trigger_unit` and `previous_targets` selectors,
   `play_from_deck` / `play_from_graveyard` / `create` / `add_charges`, choices of kind `row`,
   `place` and `card` and `cancel_choice`; track the row a card was last on for summons from
   `on_destroyed`; bots use orders.
 - Phase D: provisions, colours, copy limits, minimum units (and the owner's further deck-building
-  limits, to be discussed); server validation; pack v2 completed with deck provisions.
+  limits, to be discussed); server validation; pack v2 completed with deck provisions. Decks
+  already name a stratagem (ADR 0011).
 - Phase E: the client speaks protocol 2 (the server does since B); targeting UI; statuses and
-  armour on cards; order buttons; the interface texts for statuses, row effects and every
-  `choice.<action>` prompt in three languages.
+  armour on cards; order buttons (a stratagem's is usable already); stratagem choice in decks;
+  the interface texts for statuses, row effects and every `choice.<action>` prompt in three
+  languages.
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
 
 **Client**
@@ -49,7 +52,6 @@ behaviour, not words.
 - Real, original card set with names and texts in three languages; balance passes with
   `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
 - Generated card text from ability templates (docs/protocol/i18n.md §10, deferred).
-- Stratagems and coin-toss compensation, left out of ADR 0009's first revision.
 
 **Tooling**
 - Client CI (needs a Unity licence secret); until then the headless checklist is the gate.

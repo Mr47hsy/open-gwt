@@ -29,8 +29,9 @@ On 2026-09-23 the owner decided to **replace the three-row ruleset with the two-
 ruleset** (ADR 0009, [[ruleset-v2]]), in phases A–F. Phase A (the v2 protocols) and phase B are
 done: the core implements two rows, positions and capacity, the standalone power model, statuses
 with timers, draws and redraws each round, the hand limit and the tie rule, with the SHA-256
-random streams, 256-bit seeds, `opengwt.record/2` and opaque instance ids of ADR 0010; `data/`
-and the golden replay are v2 (a breaking replay change). Phase B acceptance: 10 000 random-bot
+random streams, 256-bit seeds, `opengwt.record/2` and opaque instance ids of ADR 0010, and the
+compensation for going first of ADR 0011 (an extra round-one redraw and a stratagem, with
+`use_order` for stratagems); `data/` and the golden replay are v2 (a breaking replay change). Phase B acceptance: 10 000 random-bot
 matches without an exception, 100 identical replays, canonical state round trips.
 
 The server speaks protocol 2. **The Unity client still speaks protocol 1 and cannot play until

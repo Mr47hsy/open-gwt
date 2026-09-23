@@ -31,10 +31,15 @@ new actions `take_control`, `drain`, `duel`, `consume`, `discard`, `create`, con
 `damaged`, `clear_row_effect.only`. Rules defaults confirmed by the owner: redraws `[3, 2, 2]`
 plus one per draw a full hand prevents, round winner starts the next round, a tie is won by
 both. The core loads every v2 word; the phase-C words are listed in `model.phase_c_words`, carried
-and inert. `data/` uses only phase-B words, except every leader's activated ability. Still open
+and inert. The owner then decided (ADR 0011) that the **compensation for going first** belongs
+to the game and to phase B: one more redraw in round one for the starter (`mulligans_per_round`
+`[2, 2, 2]` plus `starter_extra_mulligans`) and a **stratagem** — a deck names one, only the
+round-one starter gets it, on the board at the left end of its row where it **takes a place**
+(the owner confirmed), nothing acts on it, it survives round ends, is used once through
+`use_order` and is then banished. So `use_order`, `cancel_choice` and `order_used` exist since B,
+ready for stratagems only. `data/` uses only phase-B words, except every leader's activated ability. Still open
 for C: whether activated abilities stay usable after the turn's card is played — ADR 0009 and
-protocol 2 say playing a card ends the turn. The standalone round-one redraw bonus for the
-starting player belongs with the coin-toss compensation, out of scope.
+protocol 2 say playing a card ends the turn.
 
 **How to apply:** do not add v1 content or vocabulary; read ADR 0009 and take the next unfinished
 phase from [[backlog]]; vocabulary words describe behaviour and never reuse a distinctive official

@@ -3,7 +3,7 @@
 > **Status: decided; the rules core, data loader, i18n renderer, bots, simulator (M1), the server
 > with memory backends (M2) and the Unity thin client (M3, acceptance in progress) exist; the
 > Redis backends (M2b) do not.**
-> The decisions are recorded in `docs/adr/` (0001–0010) and the wire contracts in
+> The decisions are recorded in `docs/adr/` (0001–0011) and the wire contracts in
 > `docs/protocol/`. When code and this file disagree, the code wins — update this file in the
 > same pull request.
 
