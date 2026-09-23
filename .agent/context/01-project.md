@@ -37,8 +37,8 @@ Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1). Online-only.
 
 The repository contains documentation only: trilingual `README` and `CONTRIBUTING`, `LICENSE` (MIT,
 code) and `LICENSE-ASSETS` (CC BY 4.0, original art and audio), a `.gitignore` for Unity and .NET,
-this `.agent/` directory, `docs/adr/` (decisions 0001–0007) and `docs/protocol/` (card and match
-protocols with schemas and examples).
+this `.agent/` directory, `docs/adr/` (decisions 0001–0008) and `docs/protocol/` (card, match and
+i18n protocols with schemas and examples).
 
 `client/`, `server/` and `data/` do **not exist yet**. Any description of them in
 `02-architecture.md` is intended design, not something you can read out of the code. Do not tell

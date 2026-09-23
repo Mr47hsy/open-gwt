@@ -27,6 +27,8 @@ Accepted when:
 - ten thousand bot-versus-bot matches run without an exception;
 - one hundred of them, replayed from seed plus intents, reproduce the final state byte for byte;
 - adding a new card is a change under `data/` only;
+- the core state round-trips through canonical serialisation: serialise, deserialise, serialise
+  again yields identical bytes (needed by replay storage and by ADR 0008);
 - the import-linter contract for `opengwt.core` passes.
 
 ### M2 — server
@@ -41,7 +43,13 @@ Accepted when:
 - two scripted clients play each other through a room code;
 - a client that disconnects mid-match reconnects and receives the same view it would have had;
 - the opponent's hand never appears in any message captured on the wire;
+- every WebSocket message goes through `MatchService.apply` and the memory backends; no handler
+  holds match state (ADR 0008);
+- the i18n conformance suite passes in the Python renderer (ADR 0006);
 - the same server starts with PostgreSQL by changing one URL, and its migrations pass on both.
+
+Multi-worker operation over Redis is a milestone of its own, **M2b**, with its acceptance in
+ADR 0008. It follows M2 and does not block M3.
 
 ### M3 — Unity client
 
@@ -52,6 +60,8 @@ Accepted when:
 
 - ten complete matches are played on macOS against the server without a client-side error;
 - iOS and Android builds start and reach the board;
+- the i18n conformance suite passes in the C# renderer, and the client renders every string it
+  shows from keys;
 - the client contains no rules code: it never computes a score or checks legality.
 
 ## Consequences

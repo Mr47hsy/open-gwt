@@ -26,6 +26,9 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /health` | → `{status}` | Liveness. |
 | `POST /auth/guest` | `{display_name?}` → `{token, player_id}` | MVP sign-in. Real accounts come later behind the same token. |
 | `GET /content/pack` | → the content pack | `ETag` is the pack hash; supports `If-None-Match`. |
+| `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
+| `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
+| `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
 | `GET /decks` | → `[{deck_id, name, faction, cards}]` | The caller's decks. |
 | `PUT /decks/{deck_id}` | `{name, faction, leader?, cards}` → the deck | Validated against the pack and the rules core's deck legality. |
 | `DELETE /decks/{deck_id}` | → `204` | |
@@ -33,7 +36,10 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
 | `GET /matches/{match_id}/replay` | → replay record (section 9) | Only after the match ended; only for its players in the MVP. |
 
-Errors are `{error: {code, message_key, details?}}` with the appropriate HTTP status.
+Errors are `{error: {code, message_key, params, message, details?}}` with the appropriate HTTP
+status. `message` is `message_key` rendered on the server with `params` in the negotiated locale
+(player profile, then `Accept-Language`, then `en`; see [`i18n.md`](i18n.md)). A client that knows
+the key renders it itself and uses `message` only as a fallback.
 
 ## 3. WebSocket session
 
@@ -43,7 +49,7 @@ replaces the first.
 
 On connect the server sends, in order:
 
-1. `hello` — `{type: "hello", protocol: 1, pack_hash, match_id, player_id, seat}`;
+1. `hello` — `{type: "hello", protocol: 1, pack_hash, match_id, player_id, seat, locale}`;
 2. `view` — the full current view for this player (section 7);
 3. nothing more until something happens.
 
@@ -57,7 +63,7 @@ client sends `intent` messages when it is this player's turn or a choice is pend
 | `hello` | see above | Once, on connect. |
 | `view` | `{seq, view}` | Full per-player snapshot after all events up to `seq`. Always safe to render from scratch. |
 | `events` | `{from_seq, events: [...]}` | Ordered events since the last batch; `from_seq` is the `seq` of the first. |
-| `error` | `{code, message_key, intent_id?, details?}` | The intent named by `intent_id` was rejected; the view is unchanged. |
+| `error` | `{code, message_key, params, message, intent_id?, details?}` | The intent named by `intent_id` was rejected; the view is unchanged. `message` as in section 2. |
 | `match_over` | `{seq, result}` | Final; `result` is `{winner: seat \| null, rounds: [...]}`. The socket closes shortly after. |
 
 `seq` is a per-match counter over events. A client that renders `view` after every `events` batch
@@ -155,6 +161,9 @@ animate a gap it simply renders the `view`.
 
 A player who stays disconnected keeps their turn until the match's turn timeout, a server setting,
 after which the server passes for them.
+
+`resync` is answered from the match's event log. In a multi-worker deployment that log is shared
+(ADR 0008), so a reconnecting client may land on any worker and still receive the same events.
 
 ## 10. Errors
 
