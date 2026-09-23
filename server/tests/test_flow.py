@@ -15,10 +15,30 @@ from opengwt.core.intents import (
     PlayCard,
     UseOrder,
 )
-from opengwt.core.model import Deck, Library, MatchState, NextRoundStarter, Phase, Rules, TieRule
+from opengwt.core.model import (
+    Deck,
+    Library,
+    MatchState,
+    NextRoundStarter,
+    Phase,
+    Rules,
+    Status,
+    StatusEntry,
+    TieRule,
+)
 from opengwt.core.rng import seed_from_int
 from opengwt.core.view import player_view
-from tests.helpers import MELEE, RANGED, Builder, event_types, events_of, make_library, play
+from tests.helpers import (
+    CARDS,
+    MELEE,
+    RANGED,
+    Builder,
+    choose,
+    event_types,
+    events_of,
+    make_library,
+    play,
+)
 
 LIB = make_library()
 SEED = seed_from_int(5)
@@ -228,7 +248,7 @@ def test_a_stratagem_is_used_once_after_a_choice_that_can_be_cancelled() -> None
     assert s.phase is Phase.PLAYING and s.turn == 0 and s.pending is None
     assert s.players[0].rows[MELEE].cards[0].charges == 1
     s, _ = apply(LIB, s, 0, UseOrder(strat.instance))
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert event_types(events)[:3] == ["choice_made", "order_used", "unit_boosted"]
     assert events_of(events, "order_used")[0]["charges"] == 0
     assert [c.card for c in s.players[0].rows[MELEE].cards] == ["plain5"]
@@ -243,7 +263,7 @@ def test_a_stratagem_takes_a_place_and_nothing_acts_on_it() -> None:
     assert plays == []  # not seat 0's turn
     s, _ = play(LIB, s, 1, "zap2")
     assert s.pending is not None and len(s.pending.options) == 1  # only the unit
-    s, _ = apply(LIB, s, 1, Choose(0))
+    s, _ = choose(LIB, s, 1, 0)
     melee_plays = [
         i for i in legal_intents(LIB, s, 0) if isinstance(i, PlayCard) and i.row is MELEE
     ]
@@ -283,7 +303,7 @@ def test_a_stratagem_whose_first_ability_asks_nothing_starts_at_once() -> None:
     with pytest.raises(IllegalIntent) as info:
         apply(LIB, s, 0, CancelChoice())
     assert info.value.reason == "error.choice.not-cancellable"
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert "card_banished" in event_types(events) and s.turn == 0
 
 
@@ -294,3 +314,90 @@ def test_only_the_round_one_starter_gets_the_extra_redraw_and_the_stratagem(
     _, events = new_match(library, starter_decks, SEED, rules)
     assert events_of(events, "mulligan_started")[0]["redraws"] == [2, 2]
     assert "stratagem_placed" not in event_types(events)
+
+
+# --- activated abilities of units, artifacts and leaders (cards.md §6.3, §11.4) ----------------
+
+ORDERS = make_library(
+    {
+        **CARDS,
+        "gunner": {
+            "kind": "unit",
+            "color": "bronze",
+            "provisions": 5,
+            "power": 3,
+            "activation": {"charges": 2},
+            "abilities": [
+                {
+                    "when": "on_activate",
+                    "do": "damage",
+                    "amount": 1,
+                    "target": {"units": "chosen", "side": "opponent"},
+                }
+            ],
+        },
+        "tinker": {
+            "kind": "unit",
+            "color": "bronze",
+            "provisions": 5,
+            "power": 3,
+            "activation": {"cooldown": 1},
+            "abilities": [
+                {"when": "on_activate", "do": "boost", "amount": 1, "target": {"units": "this"}},
+                {"when": "on_activate", "do": "add_charges", "to": "this", "amount": 3},
+            ],
+        },
+    }
+)
+
+
+def test_a_locked_card_or_one_without_a_target_is_not_ready() -> None:
+    s = Builder(ORDERS).state(board0={"melee": ["gunner"]})
+    gunner = s.players[0].rows[MELEE].cards[0]
+    assert UseOrder(gunner.instance) not in legal_intents(ORDERS, s, 0)  # no enemy to choose
+    s = Builder(ORDERS).state(board0={"melee": ["gunner"]}, board1={"melee": ["plain5"]})
+    gunner = s.players[0].rows[MELEE].cards[0]
+    assert UseOrder(gunner.instance) in legal_intents(ORDERS, s, 0)
+    gunner.statuses.append(StatusEntry(Status.LOCKED))
+    assert UseOrder(gunner.instance) not in legal_intents(ORDERS, s, 0)
+
+
+def test_a_card_taken_over_serves_its_new_controller() -> None:
+    s = Builder(ORDERS).state(
+        board0={"melee": [("gunner", 1), "plain5"]}, board1={"melee": ["plain5"]}
+    )
+    gunner = s.players[0].rows[MELEE].cards[0]
+    assert UseOrder(gunner.instance) in legal_intents(ORDERS, s, 0)
+    s, _ = apply(ORDERS, s, 0, UseOrder(gunner.instance))
+    s, events = apply(ORDERS, s, 0, Choose(0))
+    assert events_of(events, "order_used")[0]["seat"] == 0
+
+
+def test_after_an_order_a_pass_is_legal_only_when_no_card_can_be_played() -> None:
+    s = Builder(ORDERS).state(hand0=[], board0={"melee": ["tinker"]})
+    tinker = s.players[0].rows[MELEE].cards[0]
+    s, _ = apply(ORDERS, s, 0, UseOrder(tinker.instance))
+    assert s.ordered and legal_intents(ORDERS, s, 0) == [Pass()]
+    s, events = apply(ORDERS, s, 0, Pass())
+    assert "player_passed" in event_types(events)
+
+
+def test_unlimited_charges_gain_nothing() -> None:
+    s = Builder(ORDERS).state(board0={"melee": ["tinker"]})
+    tinker = s.players[0].rows[MELEE].cards[0]
+    s, events = apply(ORDERS, s, 0, UseOrder(tinker.instance))
+    assert "charges_changed" not in event_types(events)
+    assert events_of(events, "order_used") == [
+        {"seat": 0, "instance": tinker.instance, "card": "tinker", "charges": None, "cooldown": 1}
+    ]
+
+
+def test_the_view_shows_the_leaders_order() -> None:
+    s = Builder(LIB).state(board0={"melee": ["plain5"]}, leaders=("leader", "leader"))
+    mine = player_view(LIB, s, 0)["me"]["leader"]["order"]
+    theirs = player_view(LIB, s, 1)["opponent"]["leader"]["order"]
+    assert mine == {"ready": True, "charges": 1, "cooldown": 0}
+    assert theirs == {"ready": False, "charges": 1, "cooldown": 0}  # only for its own player
+    assert player_view(LIB, s, 1)["me"]["leader"]["order"]["ready"] is False  # not their turn
+    leader = s.players[0].leader
+    assert leader is not None and UseOrder(leader.instance) in legal_intents(LIB, s, 0)

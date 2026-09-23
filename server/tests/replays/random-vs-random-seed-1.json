@@ -141,6 +141,38 @@
     }
    },
    {
+    "seat": 1,
+    "intent": {
+     "kind": "use_order",
+     "instance": "ce979080fc45d"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "cancel_choice"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "use_order",
+     "instance": "ce979080fc45d"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "cancel_choice"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
     "seat": 0,
     "intent": {
      "kind": "play_card",
@@ -150,16 +182,14 @@
     }
    },
    {
-    "seat": 1,
+    "seat": 0,
     "intent": {
-     "kind": "play_card",
-     "card": "c610d142a0d75",
-     "row": "ranged",
-     "position": 0
+     "kind": "use_order",
+     "instance": "c8bd0ec921b66"
     }
    },
    {
-    "seat": 1,
+    "seat": 0,
     "intent": {
      "kind": "choose",
      "option": 0
@@ -168,48 +198,7 @@
    {
     "seat": 0,
     "intent": {
-     "kind": "play_card",
-     "card": "c02f09ef13a22",
-     "row": "melee",
-     "position": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "cff6f1d714a39",
-     "row": "melee",
-     "position": 3
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "choose",
-     "option": 0
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "pass"
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c248ea8aa9420",
-     "row": "melee",
-     "position": 3
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c14efd7128260"
+     "kind": "end_turn"
     }
    },
    {
@@ -217,7 +206,7 @@
     "intent": {
      "kind": "play_card",
      "card": "cf96249abb6af",
-     "row": "ranged",
+     "row": "melee",
      "position": 0
     }
    },
@@ -225,16 +214,21 @@
     "seat": 1,
     "intent": {
      "kind": "choose",
-     "option": 0
+     "option": 1
     }
    },
    {
     "seat": 1,
     "intent": {
-     "kind": "play_card",
-     "card": "c0add3716c694",
-     "row": "melee",
-     "position": 0
+     "kind": "use_order",
+     "instance": "c36ba5ce3ad8b"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "choose",
+     "option": 0
     }
    },
    {
@@ -254,85 +248,36 @@
    {
     "seat": 1,
     "intent": {
-     "kind": "play_card",
-     "card": "c0a16894cbe61"
+     "kind": "end_turn"
     }
    },
    {
-    "seat": 1,
+    "seat": 0,
     "intent": {
      "kind": "play_card",
-     "card": "c32b40aa64ce8",
+     "card": "c02f09ef13a22",
      "row": "ranged",
-     "position": 0
+     "position": 1
     }
    },
    {
-    "seat": 1,
+    "seat": 0,
     "intent": {
-     "kind": "play_card",
-     "card": "cf0a1400fd1b3",
-     "row": "melee",
-     "position": 5
+     "kind": "use_order",
+     "instance": "c8bd0ec921b66"
     }
    },
    {
-    "seat": 1,
+    "seat": 0,
     "intent": {
      "kind": "choose",
      "option": 0
     }
    },
    {
-    "seat": 1,
-    "intent": {
-     "kind": "mulligan",
-     "card": "c00a74dbabefb"
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "end_mulligan"
-    }
-   },
-   {
     "seat": 0,
     "intent": {
-     "kind": "mulligan",
-     "card": "c99de7cf74465"
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "mulligan",
-     "card": "c422e98c8092b"
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "mulligan",
-     "card": "cc64834e5ef0f"
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c329a2dbc7747",
-     "row": "ranged",
-     "position": 0
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "play_card",
-     "card": "cb4a3a5839e57",
-     "row": "ranged",
-     "position": 1
+     "kind": "end_turn"
     }
    },
    {
@@ -345,7 +290,7 @@
     "seat": 0,
     "intent": {
      "kind": "play_card",
-     "card": "cbb372339ddb1",
+     "card": "c422e98c8092b",
      "row": "melee",
      "position": 0
     }
@@ -353,19 +298,22 @@
    {
     "seat": 0,
     "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
      "kind": "play_card",
-     "card": "c9dc4c4afbc29",
+     "card": "c99de7cf74465",
      "row": "ranged",
-     "position": 1
+     "position": 2
     }
    },
    {
     "seat": 0,
     "intent": {
-     "kind": "play_card",
-     "card": "c775e1c8c503e",
-     "row": "melee",
-     "position": 0
+     "kind": "end_turn"
     }
    },
    {
@@ -373,35 +321,14 @@
     "intent": {
      "kind": "play_card",
      "card": "c31ff7699b2f6",
-     "row": "ranged",
-     "position": 0
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "play_card",
-     "card": "ca2cf689c1617",
-     "row": "ranged",
-     "position": 1
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "play_card",
-     "card": "cc9e05c9be92d",
      "row": "melee",
-     "position": 0
+     "position": 2
     }
    },
    {
     "seat": 0,
     "intent": {
-     "kind": "play_card",
-     "card": "c56154ea6137e",
-     "row": "ranged",
-     "position": 0
+     "kind": "end_turn"
     }
    },
    {
@@ -410,20 +337,56 @@
      "kind": "play_card",
      "card": "c86dd3e7f7d1b",
      "row": "ranged",
-     "position": 6
+     "position": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "choose",
+     "option": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "c9dc4c4afbc29",
+     "row": "ranged",
+     "position": 3
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "cbb372339ddb1",
+     "row": "ranged",
+     "position": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
     }
    },
    {
     "seat": 0,
     "intent": {
      "kind": "pass"
-    }
-   },
-   {
-    "seat": 0,
-    "intent": {
-     "kind": "mulligan",
-     "card": "cec57ad98d23a"
     }
    },
    {
@@ -436,14 +399,102 @@
     "seat": 1,
     "intent": {
      "kind": "mulligan",
-     "card": "c4f6b6bd1e292"
+     "card": "c0a16894cbe61"
     }
    },
    {
     "seat": 1,
     "intent": {
      "kind": "mulligan",
-     "card": "c9d1076775628"
+     "card": "cf0a1400fd1b3"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "mulligan",
+     "card": "cff6f1d714a39"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "cb4a3a5839e57",
+     "row": "melee",
+     "position": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "play_card",
+     "card": "c32b40aa64ce8",
+     "row": "melee",
+     "position": 0
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "ca2cf689c1617",
+     "row": "ranged",
+     "position": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 1,
+    "intent": {
+     "kind": "pass"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "cc9e05c9be92d",
+     "row": "ranged",
+     "position": 1
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "play_card",
+     "card": "c775e1c8c503e",
+     "row": "ranged",
+     "position": 0
+    }
+   },
+   {
+    "seat": 0,
+    "intent": {
+     "kind": "end_turn"
     }
    },
    {
@@ -451,74 +502,8 @@
     "intent": {
      "kind": "pass"
     }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c91108e7eb17b",
-     "row": "melee",
-     "position": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "choose",
-     "option": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c68f692328a02",
-     "row": "ranged",
-     "position": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "choose",
-     "option": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "ce171d9e4445f",
-     "row": "melee",
-     "position": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c2aba48b327c6",
-     "row": "melee",
-     "position": 0
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "cc7804354b276"
-    }
-   },
-   {
-    "seat": 1,
-    "intent": {
-     "kind": "play_card",
-     "card": "c00a74dbabefb",
-     "row": "ranged",
-     "position": 0
-    }
    }
   ]
  },
- "final_hash": "sha256:841c16805ce4aa57e65f82980e780834642df925826feb5d8eab4266c2528de1"
+ "final_hash": "sha256:173e6e9b617104fc75c3722aa66fef72a1969d8243029e418897cc809c7f08af"
 }

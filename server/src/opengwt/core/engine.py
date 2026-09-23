@@ -18,6 +18,7 @@ from .intents import (
     CancelChoice,
     Choose,
     EndMulligan,
+    EndTurn,
     Intent,
     Mulligan,
     Pass,
@@ -28,7 +29,6 @@ from .model import (
     ARTIFACT_STATUSES,
     AUTOMATIC_STATUSES,
     DEFAULT_RULES,
-    PHASE_C_ACTIONS,
     POWER_ACTIONS,
     Ability,
     Action,
@@ -36,6 +36,7 @@ from .model import (
     CardInstance,
     CardPick,
     CardSource,
+    ChargeTarget,
     ChoiceKind,
     Conditions,
     Deck,
@@ -217,7 +218,11 @@ def apply(
         elif isinstance(intent, UseOrder):
             ctx.use_order(seat, intent.instance)
         elif isinstance(intent, Pass):
-            ctx.do_pass(seat)
+            ctx.pass_turn(seat)
+        elif isinstance(intent, EndTurn):
+            if not new.played:
+                raise IllegalIntent("illegal_intent", "error.end-turn.no-card-played")
+            ctx.end_turn(seat)
         else:
             raise IllegalIntent("illegal_intent", "error.intent.unknown")
     ctx.save_rng()
@@ -250,11 +255,28 @@ def legal_intents(lib: Library, state: MatchState, seat: int) -> list[Intent]:
         return choices
     if state.turn != seat:
         return []
-    plays: list[Intent] = [Pass()]
+    cards = _card_plays(lib, state, seat)
+    turn: list[Intent] = []
+    if state.played:
+        turn.append(EndTurn())
+    elif not state.ordered or not cards:
+        turn.append(Pass())
     for loc in board(state, seat):
         if loc.seat == seat and order_ready(lib, state, seat, loc.card):
-            plays.append(UseOrder(loc.card.instance))
-    for inst in player.hand:
+            turn.append(UseOrder(loc.card.instance))
+    leader = player.leader
+    if leader is not None and order_ready(lib, state, seat, leader):
+        turn.append(UseOrder(leader.instance))
+    turn.extend(cards)
+    return turn
+
+
+def _card_plays(lib: Library, state: MatchState, seat: int) -> list[Intent]:
+    """The turn's card, compressed as ``legal_intents`` lists it; none once it is played."""
+    if state.played:
+        return []
+    plays: list[Intent] = []
+    for inst in state.players[seat].hand:
         defn = lib[inst.card]
         if defn.placed:
             land = _landing_seat(state, seat, defn)
@@ -298,27 +320,29 @@ def acting_seat(state: MatchState) -> int | None:
 
 def order_ready(lib: Library, state: MatchState, seat: int, card: CardInstance) -> bool:
     """Whether ``seat`` may use this card's activated ability now (§6.3): its controller's turn,
-    not passed, no choice pending, the card on their side of the board, not locked, a charge
-    left, no cooldown, and a candidate for its first ability if that one asks for a choice.
-
-    Activated abilities are ADR 0009 phase C; since ADR 0011 a stratagem's is used in phase B,
-    so only a stratagem is ever ready until phase C."""
+    not passed, no choice pending, the card on their side of the board and not locked — or
+    their leader — a charge left, no cooldown, and a candidate for its first ability if that
+    one asks for a unit or a row of units."""
     d = lib[card.card]
-    if d.kind is not Kind.STRATAGEM or d.activation is None:
-        return False
-    if state.phase is not Phase.PLAYING or state.turn != seat or state.players[seat].passed:
-        return False
-    if card.has(Status.LOCKED) or card.cooldown > 0:
-        return False
-    if card.charges is not None and card.charges <= 0:
-        return False
-    if all(c is not card for side in state.players[seat].rows.values() for c in side.cards):
+    if d.activation is None:
         return False
     first = next((a for a in d.abilities if a.when is Trigger.ON_ACTIVATE), None)
     if first is None:
         return False
-    if first.target is not None and first.target.units is Units.CHOSEN:
-        return bool(_Ctx(lib, state).unit_candidates(seat, card, first.target, first.do))
+    player = state.players[seat]
+    if state.phase is not Phase.PLAYING or state.turn != seat or player.passed:
+        return False
+    if card.cooldown > 0 or (card.charges is not None and card.charges <= 0):
+        return False
+    leader = player.leader is not None and player.leader.instance == card.instance
+    if not leader:
+        if all(c is not card for side in player.rows.values() for c in side.cards):
+            return False
+        if card.has(Status.LOCKED):
+            return False
+    t = first.target
+    if t is not None and t.units in (Units.CHOSEN, Units.CHOSEN_ROW):
+        return bool(_Ctx(lib, state).unit_candidates(seat, card, t, first.do))
     return True
 
 
@@ -1330,6 +1354,7 @@ class _Ctx:
         each step resolves with what it causes before the next."""
         s = self.s
         s.turn = s.active = seat
+        s.played = s.ordered = False
         self.emit("turn_started", seat=seat)
         player = s.players[seat]
         for loc in self.board():
@@ -1351,6 +1376,16 @@ class _Ctx:
         if player.leader is not None:
             cards.append(player.leader)
         return any(order_ready(self.lib, self.s, seat, c) for c in cards)
+
+    def pass_turn(self, seat: int) -> None:
+        """A pass is the turn's alternative to a card: not once the card is played, and not after
+        an activated ability while a card can still be played (§11.4 step 5)."""
+        s = self.s
+        if s.played:
+            raise IllegalIntent("illegal_intent", "error.pass.card-played")
+        if s.ordered and _card_plays(self.lib, s, seat):
+            raise IllegalIntent("illegal_intent", "error.pass.order-used")
+        self.do_pass(seat)
 
     def do_pass(self, seat: int, auto: bool = False) -> None:
         player = self.s.players[seat]
@@ -1452,6 +1487,8 @@ class _Ctx:
         s = self.s
         player = s.players[seat]
         inst = _hand_card(s, seat, iid)
+        if s.played:
+            raise IllegalIntent("illegal_intent", "error.play.card-already-played")
         defn = self.defn(inst)
         if defn.placed:
             if row is None:
@@ -1491,6 +1528,7 @@ class _Ctx:
             )
         else:
             raise IllegalIntent("illegal_intent", "error.play.not-playable")
+        s.played = True
         self.fire(inst, Trigger.ON_PLAY, seat, row=row)
         if defn.placed:
             self.fire_ally_played(inst, seat)
@@ -1500,16 +1538,14 @@ class _Ctx:
 
     def finish_play(self, seat: int) -> None:
         """After a played card and everything it caused resolved: specials go to their owner's
-        graveyard, and the turn ends."""
+        graveyard. The turn goes on until ``seat`` ends it (§11.4 step 5)."""
         for special in list(self.s.resolving):
             self.s.resolving.remove(special)
             self.reset(special)
             self.s.players[special.owner].graveyard.append(special)
-        self.end_turn(seat)
 
     def use_order(self, seat: int, iid: str) -> None:
-        """§6.3: queue the card's ``on_activate`` abilities; the turn goes on afterwards. Only a
-        stratagem is ever ready before phase C (``order_ready``)."""
+        """§6.3: queue the card's ``on_activate`` abilities; the turn goes on afterwards."""
         s = self.s
         loc = self.loc(iid)
         leader = s.players[seat].leader
@@ -1533,6 +1569,7 @@ class _Ctx:
         if card.charges is not None:
             card.charges -= 1
         card.cooldown = activation.cooldown if activation is not None else 0
+        self.s.ordered = True
         loc = self.loc(iid)
         self.emit(
             "order_used",
@@ -1743,15 +1780,18 @@ class _Ctx:
         """§11.3: skipped when the card is locked, when it must be on the board and is not — every
         ability but ``on_destroyed`` and a special's ``on_play`` — or when its conditions fail.
         Words still waiting for the rest of phase C are skipped too."""
-        if acting is None or a.do in PHASE_C_ACTIONS:
+        if acting is None or a.do in _NOT_YET:
             return False
         if a.row_target is not None and a.row_target.pick is RowPick.CHOSEN:
             return False
         if a.cards is not None and a.cards.pick is CardPick.CHOSEN:
             return False
         loc = self.loc(acting.instance)
-        off_board = a.when is Trigger.ON_DESTROYED or (
-            self.defn(acting).kind is Kind.SPECIAL and a.when is Trigger.ON_PLAY
+        kind = self.defn(acting).kind
+        off_board = (
+            a.when is Trigger.ON_DESTROYED
+            or kind is Kind.LEADER
+            or (kind is Kind.SPECIAL and a.when is Trigger.ON_PLAY)
         )
         if not off_board and loc is None:
             return False
@@ -1811,7 +1851,38 @@ class _Ctx:
             self.set_row_effect(seat, acting, a, src)
         elif do is Action.CLEAR_ROW_EFFECT:
             self.clear_row_effect(seat, acting, a, src)
+        elif do is Action.ADD_CHARGES:
+            self.add_charges(seat, acting, a, src)
         # continuous_boost acts through power (§11.1)
+
+    def add_charges(self, seat: int, acting: CardInstance | None, a: Ability, source: str) -> None:
+        """§8: the acting card's — on the board, or the leader — or the acting player's leader's
+        activated ability gains charges; one with unlimited charges gains nothing."""
+        leader = self.s.players[seat].leader
+        if a.to is ChargeTarget.LEADER:
+            card = leader
+        elif acting is not None and (
+            self.loc(acting.instance) is not None
+            or (leader is not None and leader.instance == acting.instance)
+        ):
+            card = acting
+        else:
+            card = None
+        if card is None or card.charges is None or self.defn(card).activation is None:
+            return
+        if a.amount <= 0:
+            return
+        before = card.charges
+        card.charges += a.amount
+        loc = self.loc(card.instance)
+        self.emit(
+            "charges_changed",
+            seat=loc.seat if loc is not None else card.owner,
+            instance=card.instance,
+            card=card.card,
+            source=source,
+            **{"from": before, "to": card.charges},
+        )
 
     def side_seat(self, seat: int, side: Side) -> int:
         return self.s.other(seat) if side is Side.OPPONENT else seat
@@ -1924,6 +1995,9 @@ class _Ctx:
                 source=source,
             )
 
+
+# Actions that wait for the generalised choices of phase C.
+_NOT_YET = frozenset({Action.PLAY_FROM_DECK, Action.PLAY_FROM_GRAVEYARD, Action.CREATE})
 
 # Actions that act on each target of a unit selector in turn.
 _PER_TARGET = frozenset(

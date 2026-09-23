@@ -23,6 +23,8 @@ File shape (YAML)::
     steps:                               # [seat, verb, args...]
       - [0, play, zap2, melee]           # play <card> [row] [position] — right end by default
       - [0, choose, plain3]              # choose <card> | <side>:<row>[:<position>] | <index>
+      - [0, end]                         # end the turn once its card is played
+      - [1, refused, error.order.not-ready, order, u-1]   # must be refused; not recorded
       - [1, pass]                        # also: order <card>|leader, cancel, end_mulligan
     events:                              # an ordered subsequence of the match's events, with
       - {type: unit_damaged, card: plain3, source: zap2}   # instance ids written as card ids
@@ -38,14 +40,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
-from opengwt.core.engine import apply, new_match
+from opengwt.core.engine import IllegalIntent, apply, new_match
 from opengwt.core.events import Event, event_to_dict
 from opengwt.core.intents import (
     CancelChoice,
     Choose,
     EndMulligan,
+    EndTurn,
     Intent,
     Pass,
     PlayCard,
@@ -97,6 +101,13 @@ def play_scenario(spec: dict[str, Any]) -> Played:
     intents: list[tuple[int, Intent]] = []
     for step in spec.get("steps", []):
         seat, verb, *args = step
+        if verb == "refused":  # [seat, refused, <reason key>, verb, args...]: not recorded
+            reason, verb, *args = args
+            intent = _intent(lib, state, int(seat), str(verb), [str(a) for a in args])
+            with pytest.raises(IllegalIntent) as refusal:
+                apply(lib, state, int(seat), intent)
+            assert reason in (refusal.value.reason, refusal.value.code), (step, refusal.value)
+            continue
         intent = _intent(lib, state, int(seat), str(verb), [str(a) for a in args])
         state, more = apply(lib, state, int(seat), intent)
         intents.append((int(seat), intent))
@@ -159,6 +170,8 @@ def _intent(lib: Library, state: MatchState, seat: int, verb: str, args: list[st
         return CancelChoice()
     if verb == "pass":
         return Pass()
+    if verb == "end":
+        return EndTurn()
     if verb == "end_mulligan":
         return EndMulligan()
     raise ValueError(f"unknown step verb {verb!r}")

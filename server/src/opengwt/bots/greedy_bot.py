@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from opengwt.core.engine import apply, play_positions
-from opengwt.core.intents import Choose, EndMulligan, Intent, Pass, PlayCard
+from opengwt.core.intents import Choose, EndMulligan, EndTurn, Intent, Pass, PlayCard
 from opengwt.core.model import Library, MatchState, Phase
 from opengwt.core.power import score
 
@@ -19,6 +19,8 @@ class GreedyBot:
         if state.phase is Phase.CHOOSING:
             options = [i for i in legal if isinstance(i, Choose)]
             return max(options, key=lambda i: self._value(lib, state, seat, i))
+        if EndTurn() in legal:
+            return EndTurn()
         me, opp = state.players[seat], state.players[state.other(seat)]
         plays = [self._concrete(lib, state, seat, i) for i in legal if not isinstance(i, Pass)]
         if not plays:
@@ -26,6 +28,8 @@ class GreedyBot:
         lead = score(lib, state, seat) - score(lib, state, opp.seat)
         gains = [(self._value(lib, state, seat, i) - lead, i) for i in plays]
         best_gain, best = max(gains, key=lambda g: g[0])
+        if Pass() not in legal:
+            return best  # an activated ability was used: the turn needs its card
         if opp.passed:
             if lead > 0:
                 return Pass()

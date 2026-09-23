@@ -287,6 +287,8 @@ def state_to_dict(s: MatchState) -> dict[str, Any]:
             {"round": r.round, "winners": list(r.winners), "scores": list(r.scores)}
             for r in s.rounds
         ],
+        "played": s.played,
+        "ordered": s.ordered,
     }
 
 
@@ -316,6 +318,8 @@ def state_from_dict(d: dict[str, Any]) -> MatchState:
             )
             for r in d["rounds"]
         ],
+        played=bool(d["played"]),
+        ordered=bool(d["ordered"]),
     )
 
 

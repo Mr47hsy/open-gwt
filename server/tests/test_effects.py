@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from opengwt.core.engine import QUEUE_STEPS_MAX, IllegalIntent, apply, legal_intents
-from opengwt.core.intents import Choose, Pass, PlayCard, UseOrder
+from opengwt.core.intents import Pass, PlayCard, UseOrder
 from opengwt.core.model import Phase, Rules, Status, StatusEntry
 from opengwt.core.power import score
 from tests.helpers import (
@@ -14,6 +14,7 @@ from tests.helpers import (
     RANGED,
     Builder,
     cards_on,
+    choose,
     event_types,
     events_of,
     hand_instance,
@@ -87,12 +88,12 @@ def test_damage_meets_shield_then_armour_then_power() -> None:
         hand1=["plain3", "plain3", "plain3"],
     )
     s, _ = play(lib, s, 0, "hit5")
-    s, events = apply(lib, s, 0, Choose(0))  # the shield blocks all five
+    s, events = choose(lib, s, 0, 0)  # the shield blocks all five
     assert event_types(events)[:3] == ["choice_made", "damage_blocked", "status_removed"]
     assert unit(s, "shield4").power == 4 and statuses(unit(s, "shield4")) == []
     s, _ = play(lib, s, 1, "plain3", RANGED)
     s, _ = play(lib, s, 0, "hit5")
-    s, events = apply(lib, s, 0, Choose(1))  # armour 3 absorbs, 2 reach power
+    s, events = choose(lib, s, 0, 1)  # armour 3 absorbs, 2 reach power
     armored = unit(s, "armored4")
     assert (armored.armor, armored.power) == (0, 2)
     change = events_of(events, "armor_changed")[0]
@@ -106,13 +107,13 @@ def test_a_unit_at_zero_power_is_destroyed_and_doomed_ones_are_banished() -> Non
         hand0=["hit5", "hit5", "plain5"], board1={"melee": ["plain5", "doomed5"]}
     )
     s, _ = play(lib, s, 0, "hit5")
-    s, events = apply(lib, s, 0, Choose(0))
+    s, events = choose(lib, s, 0, 0)
     assert cards_on(s, 1, MELEE) == ["doomed5"]
     assert [c.card for c in s.players[1].graveyard] == ["plain5"]
     assert events_of(events, "card_destroyed")[0]["banished"] is False
     s, _ = apply(lib, s, 1, Pass())
     s, _ = play(lib, s, 0, "hit5")
-    s, events = apply(lib, s, 0, Choose(0))
+    s, events = choose(lib, s, 0, 0)
     assert [c.card for c in s.players[1].banished] == ["doomed5"]
     assert events_of(events, "card_destroyed")[0]["banished"] is True
 
@@ -130,7 +131,7 @@ def test_heal_restores_damage_only_and_reset_returns_to_base() -> None:
     assert events_of(events, "unit_healed")[0]["amount"] == 3
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "reset")
-    s, events = apply(LIB, s, 0, Choose(1))
+    s, events = choose(LIB, s, 0, 1)
     assert powers_on(LIB, s, 0, MELEE) == [5, 3]
     assert events_of(events, "power_changed")[0]["reason"] == "reset_power"
 
@@ -139,7 +140,7 @@ def test_raising_base_power_raises_power_with_it() -> None:
     s = build().state(hand0=["raise2", "plain5"], board0={"melee": ["plain3"]})
     s.players[0].rows[MELEE].cards[0].power = 1
     s, events = play(LIB, s, 0, "raise2")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     card = unit(s, "plain3")
     assert (card.base, card.power) == (5, 3)
     assert events_of(events, "base_power_changed")[0]["to"] == 5
@@ -155,7 +156,7 @@ def test_bleeding_ticks_at_its_controllers_turn_end_and_ignores_armour() -> None
         board1={"melee": ["armored4"]},
     )
     s, _ = play(LIB, s, 0, "bleed2")
-    s, _ = apply(LIB, s, 0, Choose(0))
+    s, _ = choose(LIB, s, 0, 0)
     target = unit(s, "armored4")
     assert statuses(target) == [("bleeding", 2)] and target.power == 4  # not seat 0's turn end
     s, events = play(LIB, s, 1, "plain3", RANGED)
@@ -177,7 +178,7 @@ def test_growing_boosts_at_turn_end_and_cancels_bleeding_turn_for_turn() -> None
     target.statuses.append(StatusEntry(Status.GROWING, 3))
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "bleed2")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert statuses(unit(s, "plain5", 1)) == [("growing", 1)]
     reduced = events_of(events, "status_reduced")[0]
     assert (reduced["status"], reduced["turns"]) == ("growing", 1)
@@ -187,7 +188,7 @@ def test_bleeding_longer_than_growing_leaves_the_rest() -> None:
     s = build().state(hand0=["bleed2", "plain5"], board1={"melee": ["plain5"]})
     s.players[1].rows[MELEE].cards[0].statuses.append(StatusEntry(Status.GROWING, 1))
     s, _ = play(LIB, s, 0, "bleed2")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert statuses(unit(s, "plain5", 1)) == [("bleeding", 1)]
     assert events_of(events, "status_removed")[0]["reason"] == "cancelled"
 
@@ -201,7 +202,7 @@ def test_a_timer_on_a_status_that_has_none_changes_nothing() -> None:
     s = Builder(lib).state(hand0=["lock3", "plain5"], board1={"melee": ["plain5"]})
     s.players[1].rows[MELEE].cards[0].statuses.append(StatusEntry(Status.LOCKED))
     s, _ = play(lib, s, 0, "lock3")
-    s, events = apply(lib, s, 0, Choose(0))
+    s, events = choose(lib, s, 0, 0)
     assert statuses(unit(s, "plain5", 1)) == [("locked", None)]
     assert "status_added" not in event_types(events)
 
@@ -209,18 +210,18 @@ def test_a_timer_on_a_status_that_has_none_changes_nothing() -> None:
 def test_a_second_poison_destroys() -> None:
     s = build().state(hand0=["poison", "poison", "plain5"], board1={"melee": ["plain8"]})
     s, _ = play(LIB, s, 0, "poison")
-    s, _ = apply(LIB, s, 0, Choose(0))
+    s, _ = choose(LIB, s, 0, 0)
     assert statuses(unit(s, "plain8")) == [("poisoned", None)]
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "poison")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert cards_on(s, 1, MELEE) == [] and "card_destroyed" in event_types(events)
 
 
 def test_status_proof_takes_no_status() -> None:
     s = build().state(hand0=["poison", "plain5"], board1={"melee": ["proof4"]})
     s, _ = play(LIB, s, 0, "poison")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert statuses(unit(s, "proof4")) == [("status_proof", None)]
     assert "status_added" not in event_types(events)
 
@@ -229,7 +230,7 @@ def test_immune_units_cannot_be_chosen_but_area_damage_reaches_them() -> None:
     s = build().state(hand0=["zap2", "zap-all", "plain5"], board1={"melee": ["immune6", "plain5"]})
     s, _ = play(LIB, s, 0, "zap2")
     assert options(s) == ["plain5"]
-    s, _ = apply(LIB, s, 0, Choose(0))
+    s, _ = choose(LIB, s, 0, 0)
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "zap-all")
     assert powers_on(LIB, s, 1, MELEE) == [5, 2]
@@ -253,7 +254,7 @@ def test_locked_cards_lose_their_aura_and_status_removal_brings_it_back() -> Non
     assert powers_on(LIB, s, 1, MELEE) == [2, 4]
     s, _ = play(LIB, s, 0, "lock")
     assert options(s) == ["plain5", "aura-row", "plain3"]
-    s, events = apply(LIB, s, 0, Choose(1))
+    s, events = choose(LIB, s, 0, 1)
     assert powers_on(LIB, s, 1, MELEE) == [2, 3]
     aura = [e for e in events_of(events, "power_changed") if e["reason"] == "aura"]
     assert [(e["from"], e["to"]) for e in aura] == [(4, 3)]
@@ -272,7 +273,7 @@ def test_auras_cover_the_row_or_the_neighbours_and_their_loss_can_destroy() -> N
     s.players[1].rows[MELEE].cards[1].power = -1  # damaged deep, kept up by the auras
     assert powers_on(LIB, s, 1, MELEE) == [3, 2, 2]
     s, _ = play(LIB, s, 0, "lock")
-    s, events = apply(LIB, s, 0, Choose(0))  # lock aura-adj: plain3 falls to 0 and is destroyed
+    s, events = choose(LIB, s, 0, 0)  # lock aura-adj: plain3 falls to 0 and is destroyed
     assert cards_on(s, 1, MELEE) == ["aura-adj", "aura-row"]
     types = event_types(events)
     assert types.index("card_destroyed") < types.index("turn_ended")  # at once, not next turn
@@ -372,13 +373,13 @@ def test_taking_control_moves_a_unit_and_marks_whose_it_is() -> None:
         board1={"melee": ["plain5", ("spy7", 0)]},
     )
     s, _ = play(LIB, s, 0, "seize")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert cards_on(s, 0, MELEE) == ["plain3", "plain5"]
     assert statuses(unit(s, "plain5", 0)) == [("on_enemy_side", None)]
     assert events_of(events, "control_changed")[0]["from_seat"] == 1
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "seize")
-    s, _ = apply(LIB, s, 0, Choose(0))  # the spy comes home
+    s, _ = choose(LIB, s, 0, 0)  # the spy comes home
     assert statuses(unit(s, "spy7", 0)) == []
 
 
@@ -389,14 +390,14 @@ def test_drain_duel_and_consume() -> None:
         board1={"melee": ["armored4", "plain8"]},
     )
     s, _ = play(LIB, s, 0, "drain3")
-    s, _ = apply(LIB, s, 0, Choose(0))  # armour takes all three: nothing drained
+    s, _ = choose(LIB, s, 0, 0)  # armour takes all three: nothing drained
     assert unit(s, "drain3").power == 2 and unit(s, "armored4").armor == 0
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "duel")
-    s, _ = apply(LIB, s, 0, Choose(1))  # 8 -> 3, 5 -> 2, 3 -> 1, 2 -> 1, 1 -> 0
+    s, _ = choose(LIB, s, 0, 1)  # 8 -> 3, 5 -> 2, 3 -> 1, 2 -> 1, 1 -> 0
     assert cards_on(s, 1, MELEE) == ["armored4"] and unit(s, "duel").power == 1
     s, _ = play(LIB, s, 0, "consume")
-    s, _ = apply(LIB, s, 0, Choose(0))  # eats plain3
+    s, _ = choose(LIB, s, 0, 0)  # eats plain3
     assert unit(s, "consume").power == 1 + 3
     assert "plain3" not in cards_on(s, 0, MELEE)
 
@@ -405,13 +406,13 @@ def test_return_to_hand_resets_the_card_and_respects_the_hand_limit() -> None:
     s = build().state(hand0=["recall", "plain5"], board0={"melee": ["plain3", "doomed5"]})
     s.players[0].rows[MELEE].cards[0].power = 9
     s, _ = play(LIB, s, 0, "recall")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     back = s.players[0].hand[-1]
     assert back.card == "plain3" and back.power == 3
     assert "card_returned" in event_types(events)
     full = build().state(hand0=["recall"] + ["plain5"] * 10, board0={"melee": ["plain3"]})
     full, _ = play(LIB, full, 0, "recall")
-    full, _ = apply(LIB, full, 0, Choose(0))
+    full, _ = choose(LIB, full, 0, 0)
     assert cards_on(full, 0, MELEE) == ["plain3"]
 
 
@@ -420,7 +421,7 @@ def test_moving_to_the_other_row_meets_its_row_effect() -> None:
     s, _ = play(LIB, s, 0, "trap")
     s, _ = apply(LIB, s, 1, Pass())
     s, _ = play(LIB, s, 0, "shove")
-    s, events = apply(LIB, s, 0, Choose(0))
+    s, events = choose(LIB, s, 0, 0)
     assert cards_on(s, 1, MELEE) == ["plain5"] and powers_on(LIB, s, 1, MELEE) == [3]
     assert events_of(events, "unit_damaged")[0]["reason"] == "damage_on_arrival"
 
@@ -457,7 +458,7 @@ def test_a_token_never_reaches_a_hand() -> None:
     s, _ = play(LIB, s, 0, "purify")  # strips the banish_on_leave the tokens came with
     assert statuses(s.players[0].rows[MELEE].cards[1]) == []
     s, _ = play(LIB, s, 0, "recall")
-    s, events = apply(LIB, s, 0, Choose(1))
+    s, events = choose(LIB, s, 0, 1)
     assert "tok" not in [c.card for c in s.players[0].hand]
     assert [c.card for c in s.players[0].banished] == ["tok"]
     assert "card_banished" in event_types(events)
@@ -604,7 +605,7 @@ def test_a_trigger_loop_stops_after_the_most_abilities_one_resolution_resolves()
     )
     s = Builder(lib).state(hand0=["boost3", "plain5"], board0={"melee": ["vain"]})
     s, events = play(lib, s, 0, "boost3")
-    s, events = apply(lib, s, 0, Choose(0))  # the boost, then its triggers up to the limit
+    s, events = choose(lib, s, 0, 0)  # the boost, then its triggers up to the limit
     assert len(events_of(events, "unit_boosted")) == 1 + QUEUE_STEPS_MAX
     assert powers_on(lib, s, 0, MELEE) == [1 + 3 + QUEUE_STEPS_MAX]
     assert s.turn == 1 and s.phase is Phase.PLAYING

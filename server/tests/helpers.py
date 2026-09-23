@@ -7,7 +7,7 @@ from typing import Any
 
 from opengwt.core.engine import apply
 from opengwt.core.events import Event
-from opengwt.core.intents import PlayCard
+from opengwt.core.intents import Choose, EndTurn, PlayCard
 from opengwt.core.model import (
     CardInstance,
     Kind,
@@ -305,9 +305,11 @@ def play(
     card: str,
     row: Row | None = None,
     position: int | None = None,
+    end: bool = True,
 ) -> tuple[MatchState, list[Event]]:
     """Play a card from hand; a unit or artifact goes to the right end of ``row`` (melee by
-    default) unless ``position`` says otherwise."""
+    default) unless ``position`` says otherwise. With ``end``, the turn is then ended, unless a
+    choice is pending (``choose`` ends it once the choice is made)."""
     defn = lib[card]
     if defn.placed:
         row = row or MELEE
@@ -315,7 +317,28 @@ def play(
             opposite = defn.kind is Kind.UNIT and defn.side is Side.OPPONENT
             land = 1 - seat if opposite else seat
             position = len(state.players[land].rows[row].cards)
-    return apply(lib, state, seat, PlayCard(hand_instance(state, seat, card), row, position))
+    state, events = apply(
+        lib, state, seat, PlayCard(hand_instance(state, seat, card), row, position)
+    )
+    return end_turn(lib, state, seat, events) if end else (state, events)
+
+
+def choose(
+    lib: Library, state: MatchState, seat: int, option: int = 0, end: bool = True
+) -> tuple[MatchState, list[Event]]:
+    """Make a pending choice; with ``end``, end the turn once the played card has resolved."""
+    state, events = apply(lib, state, seat, Choose(option))
+    return end_turn(lib, state, seat, events) if end else (state, events)
+
+
+def end_turn(
+    lib: Library, state: MatchState, seat: int, events: list[Event]
+) -> tuple[MatchState, list[Event]]:
+    """End ``seat``'s turn if its card has been played and nothing is pending."""
+    if state.phase is Phase.PLAYING and state.turn == seat and state.played:
+        state, more = apply(lib, state, seat, EndTurn())
+        events = [*events, *more]
+    return state, events
 
 
 def cards_on(state: MatchState, seat: int, row: Row) -> list[str]:

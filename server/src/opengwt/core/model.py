@@ -751,7 +751,8 @@ class RoundResult:
 class MatchState:
     """A match in progress. ``turn`` is whose turn it is (``None`` during the mulligan and after
     the match); ``active`` is the player whose turn it is or who took the last one, which is the
-    side board order starts from (cards.md §5)."""
+    side board order starts from (cards.md §5). ``played`` and ``ordered`` say whether the turn's
+    card has been played and whether an activated ability has been used this turn (§11.4)."""
 
     rules: Rules
     seed: str
@@ -769,6 +770,8 @@ class MatchState:
     pending: PendingChoice | None
     resolving: list[CardInstance]
     rounds: list[RoundResult]
+    played: bool = False
+    ordered: bool = False
 
     def other(self, seat: int) -> int:
         return 1 - seat
@@ -806,6 +809,8 @@ class MatchState:
             ),
             resolving=[c.clone() for c in self.resolving],
             rounds=[RoundResult(r.round, r.winners, r.scores) for r in self.rounds],
+            played=self.played,
+            ordered=self.ordered,
         )
 
 

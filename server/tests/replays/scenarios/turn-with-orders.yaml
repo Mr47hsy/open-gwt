@@ -1,0 +1,50 @@
+# A turn (cards.md §11.4 step 5): any number of ready activated abilities before and after the
+# turn's one card; once an ability is used the turn needs its card — no pass — and once the
+# card is played only end_turn ends the turn, never by itself. Standalone game: developer forum
+# thread "Allow [END TURN] without playing a card" (2018) and a Steam discussion (2020) — after
+# an order or the leader ability a card must be played; zeal and the guides — orders are used
+# after the card too.
+cards:
+  gunner:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    activation: {charges: 2, ready_on_play: true}
+    abilities:
+      - {when: on_activate, do: damage, amount: 1, target: {units: chosen, side: opponent}}
+seed: 3
+decks:
+  - [plain5, gunner, plain5, spare]
+  - [plain8, plain5, spare]
+steps:
+  - [0, play, plain5, melee]
+  - [0, refused, error.play.card-already-played, play, plain5, melee]
+  - [0, refused, error.pass.card-played, pass]
+  - [0, end]
+  - [1, refused, error.end-turn.no-card-played, end]
+  - [1, play, plain8, melee]
+  - [1, end]
+  - [0, play, gunner, melee]    # ready on the turn it enters: used after the card
+  - [0, order, gunner]
+  - [0, choose, plain8]
+  - [0, end]
+  - [1, play, plain5, melee]
+  - [1, end]
+  - [0, order, gunner]          # its second charge, before the card
+  - [0, choose, plain5]
+  - [0, refused, error.pass.order-used, pass]
+  - [0, refused, error.order.not-ready, order, gunner]
+  - [0, play, plain5, ranged]
+  - [0, end]
+events:
+  - {type: card_played, seat: 0, card: gunner}
+  - {type: order_used, seat: 0, card: gunner, charges: 1, cooldown: 0}
+  - {type: unit_damaged, card: plain8, amount: 1, source: gunner}
+  - {type: turn_ended, seat: 0}
+  - {type: order_used, seat: 0, card: gunner, charges: 0}
+  - {type: unit_damaged, card: plain5, amount: 1, source: gunner}
+  - {type: card_played, seat: 0, card: plain5, row: ranged}
+board:
+  1: {melee: ["plain8:7", "plain5:4"]}
+turn: 1

@@ -1,0 +1,40 @@
+# Cooldown (cards.md §6.3): a unit enters with a cooldown of 1 unless its ability is ready on
+# play; each use sets the cooldown, which drops by one at each of its controller's turn starts,
+# and the ability is ready at zero — so a cooldown of 2 skips one turn. Unlimited charges with
+# a cooldown. Community glossaries: an order cannot be used for a turn after the card is placed;
+# a cooldown is the number of turns before the order can be used again.
+cards:
+  tinker:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    activation: {cooldown: 2}
+    abilities:
+      - {when: on_activate, do: boost, amount: 1, target: {units: this}}
+seed: 1
+decks:
+  - [tinker, spare, spare, spare, spare]
+  - [spare, spare, spare, spare, spare]
+steps:
+  - [0, play, tinker, melee]
+  - [0, refused, error.order.not-ready, order, tinker]   # entered this turn
+  - [0, end]
+  - [1, play, spare, melee]
+  - [1, end]
+  - [0, order, tinker]                                    # turn 2: ready
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, play, spare, melee]
+  - [1, end]
+  - [0, refused, error.order.not-ready, order, tinker]   # turn 3: cooldown 1 left
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, play, spare, melee]
+  - [1, end]
+  - [0, order, tinker]                                    # turn 4: ready again
+events:
+  - {type: order_used, card: tinker, charges: null, cooldown: 2}
+  - {type: order_used, card: tinker, charges: null, cooldown: 2}
+board:
+  0: {melee: ["tinker:5", "spare:1", "spare:1"]}

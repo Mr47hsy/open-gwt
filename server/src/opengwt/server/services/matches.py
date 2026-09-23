@@ -30,14 +30,17 @@ from opengwt.core.engine import (
     apply,
     legal_intents,
     new_match,
+    play_positions,
 )
 from opengwt.core.events import Event, event_to_dict
 from opengwt.core.intents import (
     CancelChoice,
     Choose,
     EndMulligan,
+    EndTurn,
     Intent,
     Pass,
+    PlayCard,
     intent_from_dict,
     intent_to_dict,
 )
@@ -341,21 +344,27 @@ class MatchService:
 
     async def timeout_move(self, match_id: str, seat: int, wait: _Wait) -> None:
         """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
-        first option, otherwise pass. The move is decided under the match lock and only while the
-        wait the timer was set for goes on, so a player's own intent that lands first is never
-        followed by a move they did not make, and the other player's redraws in a mulligan
-        neither cancel nor restart it."""
+        first option, end the turn once its card is played, pass if the player may — and, after
+        an activated ability, when a pass is no longer allowed, play the first card at the right
+        end. The move is decided under the match lock and only while the wait the timer was set
+        for goes on, so a player's own intent that lands first is never followed by a move they
+        did not make, and the other player's redraws in a mulligan neither cancel nor restart
+        it."""
+        lib = self.content.library
 
         def decide(state: MatchState) -> Intent | None:
             if seat not in acting_seats(state) or _wait(state) != wait:
                 return None
-            legal = legal_intents(self.content.library, state, seat)
+            legal = legal_intents(lib, state, seat)
             if not legal:
                 return None
-            for intent in (EndMulligan(), CancelChoice(), Choose(0)):
+            for intent in (EndMulligan(), CancelChoice(), Choose(0), EndTurn(), Pass()):
                 if intent in legal:
                     return intent
-            return Pass()
+            play = next(i for i in legal if isinstance(i, PlayCard))
+            if play.row is None:
+                return play
+            return PlayCard(play.card, play.row, play_positions(lib, state, seat, play) - 1)
 
         await self._move(match_id, seat, decide)
 

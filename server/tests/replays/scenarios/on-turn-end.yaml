@@ -13,12 +13,17 @@ decks:
   - [sniper, plain5, plain5, spare]
   - [plain5, bleed2, plain5, spare]
 steps:
-  - [0, play, sniper, melee]    # no enemy yet
-  - [1, play, plain5, melee]    # seat 1's turn end: the sniper is not theirs
-  - [0, play, plain5, melee]    # 5 -> 4
+  - [0, play, sniper, melee]
+  - [0, end]                    # no enemy yet
+  - [1, play, plain5, melee]
+  - [1, end]                    # seat 1's turn end: the sniper is not theirs
+  - [0, play, plain5, melee]
+  - [0, end]                    # 5 -> 4
   - [1, play, bleed2]
   - [1, choose, sniper]
-  - [0, play, plain5, melee]    # bleeding first (4 -> 3), then the sniper (4 -> 3)
+  - [1, end]
+  - [0, play, plain5, melee]
+  - [0, end]                    # bleeding first (4 -> 3), then the sniper (4 -> 3)
 events:
   - {type: card_played, seat: 0, card: plain5}
   - {type: unit_damaged, seat: 1, card: plain5, amount: 1, power: 4, source: sniper}

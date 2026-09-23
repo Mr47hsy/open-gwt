@@ -15,7 +15,9 @@ decks:
   - [frost, spare]
 steps:
   - [0, play, sprout, melee]
-  - [1, play, frost]            # seat 0's turn start: 1 -> 3, then the hazard: 3 -> 1
+  - [0, end]
+  - [1, play, frost]
+  - [1, end]                    # seat 0's turn start: 1 -> 3, then the hazard: 3 -> 1
 events:
   - {type: turn_started, seat: 0}
   - {type: unit_boosted, card: sprout, power: 3}
