@@ -167,6 +167,18 @@ CARDS: dict[str, dict[str, Any]] = {
             {"when": "while_on_board", "do": "continuous_boost", "amount": 1, "scope": "row"}
         ],
     },
+    "strat-boost": {
+        "kind": "stratagem",
+        "abilities": [{"when": "on_activate", "do": "boost", "amount": 3, "target": CHOSEN_ALLY}],
+    },
+    "strat-draw": {
+        "kind": "stratagem",
+        "rows": ["ranged"],
+        "abilities": [
+            {"when": "on_activate", "do": "draw", "count": 1},
+            {"when": "on_activate", "do": "boost", "amount": 1, "target": CHOSEN_ALLY},
+        ],
+    },
     "leader": {
         "kind": "leader",
         "provision_bonus": 15,

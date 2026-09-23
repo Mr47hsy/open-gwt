@@ -17,11 +17,14 @@ def _card(inst: CardInstance) -> dict[str, Any]:
     return {"instance": inst.instance, "card": inst.card}
 
 
-def _order(lib: Library, state: MatchState, seat: int, inst: CardInstance) -> dict[str, Any] | None:
+def _order(
+    lib: Library, state: MatchState, seat: int, inst: CardInstance, viewer: int
+) -> dict[str, Any] | None:
+    """``ready`` is only ever true for the viewer's own cards on their turn (match.md §7)."""
     if lib[inst.card].activation is None:
         return None
     return {
-        "ready": order_ready(lib, state, seat, inst),
+        "ready": seat == viewer and order_ready(lib, state, seat, inst),
         "charges": inst.charges,
         "cooldown": inst.cooldown,
     }
@@ -37,7 +40,7 @@ def _statuses(inst: CardInstance) -> list[dict[str, Any]]:
     return out
 
 
-def _rows(lib: Library, state: MatchState, player: PlayerState) -> dict[str, Any]:
+def _rows(lib: Library, state: MatchState, player: PlayerState, viewer: int) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for row in state.rules.rows:
         side = player.rows[row]
@@ -50,7 +53,7 @@ def _rows(lib: Library, state: MatchState, player: PlayerState) -> dict[str, Any
                 entry["aura"] = aura_at(lib, state, player.seat, row, index)
                 entry["armor"] = c.armor
             entry["statuses"] = _statuses(c)
-            entry["order"] = _order(lib, state, player.seat, c)
+            entry["order"] = _order(lib, state, player.seat, c, viewer)
             cards.append(entry)
         effect = side.effect
         effect_view: dict[str, Any] | None = None
@@ -62,7 +65,7 @@ def _rows(lib: Library, state: MatchState, player: PlayerState) -> dict[str, Any
     return out
 
 
-def _common(lib: Library, state: MatchState, player: PlayerState) -> dict[str, Any]:
+def _common(lib: Library, state: MatchState, player: PlayerState, viewer: int) -> dict[str, Any]:
     leader = player.leader
     m = player.mulligan
     return {
@@ -76,12 +79,12 @@ def _common(lib: Library, state: MatchState, player: PlayerState) -> dict[str, A
         "graveyard": [_card(u) for u in player.graveyard],
         "banished": [_card(u) for u in player.banished],
         "leader": (
-            {**_card(leader), "order": _order(lib, state, player.seat, leader)}
+            {**_card(leader), "order": _order(lib, state, player.seat, leader, viewer)}
             if leader is not None
             else None
         ),
         "mulligan": {"remaining": m.remaining, "done": m.done} if m is not None else None,
-        "rows": _rows(lib, state, player),
+        "rows": _rows(lib, state, player, viewer),
     }
 
 
@@ -116,9 +119,9 @@ def player_view(
 ) -> dict[str, Any]:
     me = state.players[seat]
     opponent = state.players[state.other(seat)]
-    mine = _common(lib, state, me)
+    mine = _common(lib, state, me, seat)
     mine["hand"] = [_card(u) for u in me.hand]
-    theirs = _common(lib, state, opponent)
+    theirs = _common(lib, state, opponent, seat)
 
     turn: str | None = None
     if state.turn is not None:

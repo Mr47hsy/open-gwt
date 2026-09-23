@@ -100,6 +100,13 @@ def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[str]:
         problems.append(f"error.deck.leader-not-leader:{deck.leader}")
     elif leader.faction not in (deck.faction, NEUTRAL):
         problems.append(f"error.deck.wrong-faction:{deck.leader}")
+    stratagem = lib.get(deck.stratagem)
+    if stratagem is None:
+        problems.append(f"error.deck.unknown-card:{deck.stratagem}")
+    elif stratagem.kind is not Kind.STRATAGEM:
+        problems.append(f"error.deck.stratagem-not-stratagem:{deck.stratagem}")
+    elif stratagem.faction not in (deck.faction, NEUTRAL):
+        problems.append(f"error.deck.wrong-faction:{deck.stratagem}")
     for cid in deck.cards:
         defn = lib.get(cid)
         if defn is None:
@@ -109,6 +116,8 @@ def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[str]:
             problems.append(f"error.deck.wrong-faction:{cid}")
         if defn.kind is Kind.LEADER:
             problems.append(f"error.deck.leader-in-deck:{cid}")
+        elif defn.kind is Kind.STRATAGEM:
+            problems.append(f"error.deck.stratagem-in-deck:{cid}")
         elif defn.token:
             problems.append(f"error.deck.token-in-deck:{cid}")
     if len(deck.cards) < rules.deck_min_cards:
@@ -171,6 +180,8 @@ def new_match(
     state.starter = state.active = ctx.rng.below(2)
     # no seed: events reach clients, and the seed with the open-source shuffle rebuilds both decks
     ctx.emit("match_started", starter=state.starter)
+    if rules.starter_stratagem:
+        ctx.place_stratagem(state.starter, decks[state.starter].stratagem)
     ctx.start_round()
     ctx.save_rng()
     return state, ctx.events
@@ -240,6 +251,9 @@ def legal_intents(lib: Library, state: MatchState, seat: int) -> list[Intent]:
     if state.turn != seat:
         return []
     plays: list[Intent] = [Pass()]
+    for loc in board(state, seat):
+        if loc.seat == seat and order_ready(lib, state, seat, loc.card):
+            plays.append(UseOrder(loc.card.instance))
     for inst in player.hand:
         defn = lib[inst.card]
         if defn.placed:
@@ -283,9 +297,29 @@ def acting_seat(state: MatchState) -> int | None:
 
 
 def order_ready(lib: Library, state: MatchState, seat: int, card: CardInstance) -> bool:
-    """Whether a card's activated ability may be used now (§6.3). Using one is ADR 0009 phase C;
-    until then no activated ability is ever ready."""
-    return False
+    """Whether ``seat`` may use this card's activated ability now (§6.3): its controller's turn,
+    not passed, no choice pending, the card on their side of the board, not locked, a charge
+    left, no cooldown, and a candidate for its first ability if that one asks for a choice.
+
+    Activated abilities are ADR 0009 phase C; since ADR 0011 a stratagem's is used in phase B,
+    so only a stratagem is ever ready until phase C."""
+    d = lib[card.card]
+    if d.kind is not Kind.STRATAGEM or d.activation is None:
+        return False
+    if state.phase is not Phase.PLAYING or state.turn != seat or state.players[seat].passed:
+        return False
+    if card.has(Status.LOCKED) or card.cooldown > 0:
+        return False
+    if card.charges is not None and card.charges <= 0:
+        return False
+    if all(c is not card for side in state.players[seat].rows.values() for c in side.cards):
+        return False
+    first = next((a for a in d.abilities if a.when is Trigger.ON_ACTIVATE), None)
+    if first is None:
+        return False
+    if first.target is not None and first.target.units is Units.CHOSEN:
+        return bool(_Ctx(lib, state).unit_candidates(seat, card, first.target, first.do))
+    return True
 
 
 # --- helpers shared by the API and the context ----------------------------------------------------
@@ -534,6 +568,8 @@ class _Ctx:
             loc = self.loc(acting.instance) if acting is not None else None
             if loc is None or (action in POWER_ACTIONS and not self.is_unit(loc.card)):
                 return []
+            if self.defn(loc.card).kind is Kind.STRATAGEM:
+                return []  # nothing acts on a stratagem (ADR 0011)
             return [loc] if self.where_ok(loc.card, t.where, acting) else []
         if t.units in PHASE_C_UNITS:
             return []
@@ -1136,6 +1172,22 @@ class _Ctx:
             return [cands[i] for i in sorted(chosen)]
         return []
 
+    def place_stratagem(self, seat: int, card_id: str) -> None:
+        """ADR 0011: the round-one starter's stratagem starts on their side of the board, at the
+        left end of the first row it allows, taking a place like any card. Nothing acts on it;
+        its activated ability is ready from the first turn, and it stays until it is used."""
+        card = self.new_instance(card_id, seat)
+        row = _allowed_rows(self.s.rules, self.defn(card))[0]
+        self.s.players[seat].rows[row].cards.insert(0, card)
+        self.emit(
+            "stratagem_placed",
+            seat=seat,
+            instance=card.instance,
+            card=card.card,
+            row=row.value,
+            position=0,
+        )
+
     # --- match flow ----------------------------------------------------------------------------
 
     def start_round(self) -> None:
@@ -1151,6 +1203,8 @@ class _Ctx:
             s.rules.mulligans(s.round) + skipped[seat] * s.rules.mulligans_per_skipped_draw
             for seat in (0, 1)
         ]
+        if s.round == 1:
+            redraws[s.starter] += s.rules.starter_extra_mulligans  # ADR 0011
         for seat in (0, 1):
             s.players[seat].mulligan = MulliganState(remaining=redraws[seat])
         self.emit("mulligan_started", round=s.round, redraws=redraws)
@@ -1283,7 +1337,7 @@ class _Ctx:
         kept: list[str] = []
         for loc in self.board():
             card = loc.card
-            if card.has(Status.KEPT_AT_ROUND_END):
+            if card.has(Status.KEPT_AT_ROUND_END) or self.defn(card).kind is Kind.STRATAGEM:
                 kept.append(card.instance)
                 continue
             self.s.players[loc.seat].rows[loc.row].cards.remove(card)
@@ -1301,7 +1355,7 @@ class _Ctx:
         self.sync_auras()
         for iid in kept:
             kept_loc = self.loc(iid)
-            if kept_loc is not None:
+            if kept_loc is not None and kept_loc.card.has(Status.KEPT_AT_ROUND_END):
                 self.drop_status(kept_loc, Status.KEPT_AT_ROUND_END, "kept", None)
         self.check_destruction()
         wins = [p.rounds_won for p in s.players]
@@ -1391,7 +1445,58 @@ class _Ctx:
         self.end_turn(seat)
 
     def use_order(self, seat: int, iid: str) -> None:
-        raise IllegalIntent("illegal_intent", "error.order.not-ready")
+        """§6.3: queue the card's ``on_activate`` abilities; the turn goes on afterwards. Only a
+        stratagem is ever ready before phase C (``order_ready``)."""
+        s = self.s
+        loc = self.loc(iid)
+        leader = s.players[seat].leader
+        if (loc is None or loc.seat != seat) and (leader is None or leader.instance != iid):
+            raise IllegalIntent("unknown_instance", iid)
+        card = loc.card if loc is not None else leader
+        assert card is not None
+        if not order_ready(self.lib, s, seat, card):
+            raise IllegalIntent("illegal_intent", "error.order.not-ready")
+        queue = [
+            Invocation(card.instance, card.card, i, seat)
+            for i in self.defn(card).triggered(Trigger.ON_ACTIVATE)
+        ]
+        if not self.resolve(queue, ends_turn=False, order=card.instance, order_started=False):
+            self.finish_order(card.instance, started=True)
+
+    def start_order(self, iid: str) -> None:
+        """The order's first ability starts to act: a charge is spent and the cooldown starts."""
+        card = self.card_by_id(iid)
+        if card is None:
+            return
+        activation = self.defn(card).activation
+        if card.charges is not None:
+            card.charges -= 1
+        card.cooldown = activation.cooldown if activation is not None else 0
+        loc = self.loc(iid)
+        self.emit(
+            "order_used",
+            seat=loc.seat if loc is not None else card.owner,
+            instance=iid,
+            card=card.card,
+            charges=card.charges,
+            cooldown=card.cooldown,
+        )
+
+    def finish_order(self, iid: str, started: bool) -> None:
+        """After an order resolved: a stratagem, used once, leaves the board for its owner's
+        banished zone (ADR 0011)."""
+        if not started:
+            self.start_order(iid)
+        loc = self.loc(iid)
+        if loc is None or self.defn(loc.card).kind is not Kind.STRATAGEM:
+            return
+        card = loc.card
+        self.s.players[loc.seat].rows[loc.row].cards.remove(card)
+        self.reset(card)
+        self.s.players[card.owner].banished.append(card)
+        self.emit("card_banished", seat=loc.seat, instance=card.instance, card=card.card)
+        self.sync_auras()
+        self.check_destruction()
 
     def choose(self, seat: int, option: int) -> None:
         s = self.s
@@ -1409,9 +1514,15 @@ class _Ctx:
         ability = self.ability(inv)
         acting = self.acting_card(inv)
         target = self.loc(pending.options[option])
+        if pending.order is not None and not pending.order_started:
+            self.start_order(pending.order)
         self.perform(inv, acting, ability, [target] if target is not None else [])
-        if not self.resolve(pending.queue, pending.ends_turn) and pending.ends_turn:
+        if self.resolve(pending.queue, pending.ends_turn, pending.order, order_started=True):
+            return
+        if pending.ends_turn:
             self.finish_play(inv.seat)
+        elif pending.order is not None:
+            self.finish_order(pending.order, started=True)
 
     def cancel_choice(self, seat: int) -> None:
         pending = self.s.pending
@@ -1419,7 +1530,12 @@ class _Ctx:
             raise IllegalIntent("illegal_intent", "error.choice.none-pending")
         if pending.seat != seat:
             raise IllegalIntent("not_your_turn")
-        raise IllegalIntent("illegal_intent", "error.choice.not-cancellable")
+        if not pending.cancellable:
+            raise IllegalIntent("illegal_intent", "error.choice.not-cancellable")
+        # nothing has happened since the use_order: the match is back where it was
+        self.s.pending = None
+        self.s.phase = Phase.PLAYING
+        self.emit("choice_cancelled", seat=seat)
 
     # --- resolution ----------------------------------------------------------------------------
 
@@ -1429,17 +1545,29 @@ class _Ctx:
     def acting_card(self, inv: Invocation) -> CardInstance | None:
         """The card an invocation belongs to: on the board, resolving as a special, a leader, or
         anywhere else it went."""
-        loc = self.loc(inv.instance)
+        return self.card_by_id(inv.instance)
+
+    def card_by_id(self, iid: str) -> CardInstance | None:
+        loc = self.loc(iid)
         if loc is not None:
             return loc.card
         for c in self.all_cards():
-            if c.instance == inv.instance:
+            if c.instance == iid:
                 return c
         return None
 
-    def resolve(self, queue: list[Invocation], ends_turn: bool) -> bool:
-        """Run invocations first in, first out (§11.3). True when paused for a choice."""
+    def resolve(
+        self,
+        queue: list[Invocation],
+        ends_turn: bool,
+        order: str | None = None,
+        order_started: bool = True,
+    ) -> bool:
+        """Run invocations first in, first out (§11.3). True when paused for a choice. ``order``
+        is the card whose activated ability is resolving; until its first ability acts, a choice
+        it asks may be cancelled and no charge is spent (§6.3)."""
         s = self.s
+        started = order_started
         while queue:
             inv = queue.pop(0)
             ability = self.ability(inv)
@@ -1458,8 +1586,10 @@ class _Ctx:
                     prompt_key="choice." + ability.do.value.replace("_", "-"),
                     options=[loc.card.instance for loc in options],
                     queue=queue,
-                    cancellable=False,
+                    cancellable=order is not None and not started,
                     ends_turn=ends_turn,
+                    order=order,
+                    order_started=started,
                 )
                 s.pending = pending
                 s.phase = Phase.CHOOSING
@@ -1470,17 +1600,25 @@ class _Ctx:
                     prompt_key=pending.prompt_key,
                     option_count=len(pending.options),
                     source=inv.instance,
-                    cancellable=False,
+                    cancellable=pending.cancellable,
                 )
                 return True
+            if order is not None and not started:
+                self.start_order(order)
+                started = True
             targets = self.select_units(inv.seat, acting, t, ability.do) if t is not None else []
             self.perform(inv, acting, ability, targets)
+        if order is not None and not started:
+            self.start_order(order)
         return False
 
     def may_fire(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> bool:
         """§11.3: skipped when the card is locked, when it must be on the board and is not,
         when its conditions fail — and in phase B when a phase-C word is involved."""
-        if acting is None or a.when in PHASE_C_TRIGGERS or a.do in PHASE_C_ACTIONS:
+        if acting is None or a.do in PHASE_C_ACTIONS:
+            return False
+        stratagem_order = a.when is Trigger.ON_ACTIVATE and self.defn(acting).kind is Kind.STRATAGEM
+        if a.when in PHASE_C_TRIGGERS and not stratagem_order:
             return False
         if a.target is not None and a.target.units in PHASE_C_UNITS:
             return False

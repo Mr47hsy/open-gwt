@@ -20,6 +20,7 @@ class Kind(str, Enum):
     SPECIAL = "special"
     ARTIFACT = "artifact"
     LEADER = "leader"
+    STRATAGEM = "stratagem"
 
 
 class Color(str, Enum):
@@ -372,9 +373,12 @@ Library = dict[str, CardDef]
 
 @dataclass(frozen=True)
 class Deck:
+    """A deck: its cards, its leader and the stratagem it brings for going first (ADR 0011)."""
+
     faction: str
     cards: tuple[str, ...]
     leader: str
+    stratagem: str
 
 
 @dataclass(frozen=True)
@@ -385,8 +389,10 @@ class Rules:
     row_capacity: int = 9
     hand_limit: int = 10
     draws_per_round: tuple[int, ...] = (10, 3, 3)
-    mulligans_per_round: tuple[int, ...] = (3, 2, 2)
+    mulligans_per_round: tuple[int, ...] = (2, 2, 2)
     mulligans_per_skipped_draw: int = 1
+    starter_extra_mulligans: int = 1
+    starter_stratagem: bool = True
     rounds_to_win: int = 2
     max_rounds: int = 3
     tie_rule: TieRule = TieRule.BOTH_WIN
@@ -531,9 +537,13 @@ def _activation(m: Mapping[str, Any] | None) -> Activation | None:
 
 def card_def_from_mapping(card_id: str, faction: str, m: Mapping[str, Any]) -> CardDef:
     """Build a definition from a mapping shaped like one entry of a cards file."""
+    kind = Kind(m["kind"])
+    activation = _activation(m.get("activation"))
+    if activation is None and kind is Kind.STRATAGEM:
+        activation = Activation(charges=1)  # a stratagem is used once (ADR 0011)
     return CardDef(
         id=card_id,
-        kind=Kind(m["kind"]),
+        kind=kind,
         faction=faction,
         color=Color(m["color"]) if "color" in m else None,
         provisions=int(m.get("provisions", 0)),
@@ -545,7 +555,7 @@ def card_def_from_mapping(card_id: str, faction: str, m: Mapping[str, Any]) -> C
         side=Side(m.get("side", "self")),
         statuses=tuple(Status(s) for s in m.get("statuses", ())),
         tags=tuple(str(t) for t in m.get("tags", ())),
-        activation=_activation(m.get("activation")),
+        activation=activation,
         abilities=tuple(_ability(a) for a in m.get("abilities", ())),
     )
 
@@ -557,10 +567,11 @@ def phase_c_words(defn: CardDef) -> list[str]:
     actions and selectors do nothing, and no activated ability is ready.
     """
     words: list[str] = []
-    if defn.activation is not None:
+    stratagem = defn.kind is Kind.STRATAGEM  # its activated ability acts from phase B (ADR 0011)
+    if defn.activation is not None and not stratagem:
         words.append("card:activation")
     for a in defn.abilities:
-        if a.when in PHASE_C_TRIGGERS:
+        if a.when in PHASE_C_TRIGGERS and not (stratagem and a.when is Trigger.ON_ACTIVATE):
             words.append(f"when:{a.when.value}")
         if a.do in PHASE_C_ACTIONS:
             words.append(f"do:{a.do.value}")
@@ -705,7 +716,9 @@ class Invocation:
 class PendingChoice:
     """A pick the core waits for. In phase B every choice is of kind ``unit`` and ``options``
     are instance ids; ``queue`` is what resolves after it, and ``ends_turn`` whether the turn
-    ends once it has (a played card) or goes on (an activated ability)."""
+    ends once it has (a played card) or goes on (an activated ability). ``order`` is the card
+    whose activated ability is resolving, if any, and ``order_started`` whether it has spent its
+    charge yet — until then the choice may be cancelled (cards.md §6.3)."""
 
     seat: int
     kind: ChoiceKind
@@ -715,6 +728,8 @@ class PendingChoice:
     queue: list[Invocation]
     cancellable: bool = False
     ends_turn: bool = True
+    order: str | None = None
+    order_started: bool = False
 
 
 @dataclass
@@ -776,6 +791,8 @@ class MatchState:
                     [_clone_invocation(i) for i in p.queue],
                     p.cancellable,
                     p.ends_turn,
+                    p.order,
+                    p.order_started,
                 )
                 if p
                 else None

@@ -169,6 +169,8 @@ def rules_to_dict(rules: Rules) -> dict[str, Any]:
         "draws_per_round": list(rules.draws_per_round),
         "mulligans_per_round": list(rules.mulligans_per_round),
         "mulligans_per_skipped_draw": rules.mulligans_per_skipped_draw,
+        "starter_extra_mulligans": rules.starter_extra_mulligans,
+        "starter_stratagem": rules.starter_stratagem,
         "rounds_to_win": rules.rounds_to_win,
         "max_rounds": rules.max_rounds,
         "tie_rule": rules.tie_rule.value,
@@ -192,6 +194,8 @@ def rules_from_dict(d: dict[str, Any]) -> Rules:
         draws_per_round=tuple(int(n) for n in d["draws_per_round"]),
         mulligans_per_round=tuple(int(n) for n in d["mulligans_per_round"]),
         mulligans_per_skipped_draw=int(d["mulligans_per_skipped_draw"]),
+        starter_extra_mulligans=int(d["starter_extra_mulligans"]),
+        starter_stratagem=bool(d["starter_stratagem"]),
         rounds_to_win=int(d["rounds_to_win"]),
         max_rounds=int(d["max_rounds"]),
         tie_rule=TieRule(d["tie_rule"]),
@@ -206,11 +210,21 @@ def rules_from_dict(d: dict[str, Any]) -> Rules:
 
 
 def deck_to_dict(deck: Deck) -> dict[str, Any]:
-    return {"faction": deck.faction, "leader": deck.leader, "cards": list(deck.cards)}
+    return {
+        "faction": deck.faction,
+        "leader": deck.leader,
+        "stratagem": deck.stratagem,
+        "cards": list(deck.cards),
+    }
 
 
 def deck_from_dict(d: dict[str, Any]) -> Deck:
-    return Deck(str(d["faction"]), tuple(str(c) for c in d["cards"]), str(d["leader"]))
+    return Deck(
+        str(d["faction"]),
+        tuple(str(c) for c in d["cards"]),
+        str(d["leader"]),
+        str(d["stratagem"]),
+    )
 
 
 def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
@@ -223,6 +237,8 @@ def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
         "queue": [_invocation_to_dict(i) for i in p.queue],
         "cancellable": p.cancellable,
         "ends_turn": p.ends_turn,
+        "order": p.order,
+        "order_started": p.order_started,
     }
 
 
@@ -236,6 +252,8 @@ def _pending_from_dict(d: dict[str, Any]) -> PendingChoice:
         queue=[_invocation_from_dict(i) for i in d["queue"]],
         cancellable=bool(d["cancellable"]),
         ends_turn=bool(d["ends_turn"]),
+        order=None if d["order"] is None else str(d["order"]),
+        order_started=bool(d["order_started"]),
     )
 
 

@@ -1,14 +1,24 @@
 """Match flow — docs/protocol/cards.md §11.4 and §11.5: draws, mulligans, turns, rounds."""
 
+from typing import Any
+
 import pytest
 
 from opengwt.core.engine import IllegalIntent, acting_seats, apply, legal_intents, new_match
 from opengwt.core.events import event_for_seat
-from opengwt.core.intents import EndMulligan, Mulligan, Pass, PlayCard
+from opengwt.core.intents import (
+    CancelChoice,
+    Choose,
+    EndMulligan,
+    Mulligan,
+    Pass,
+    PlayCard,
+    UseOrder,
+)
 from opengwt.core.model import Deck, Library, MatchState, NextRoundStarter, Phase, Rules, TieRule
 from opengwt.core.rng import seed_from_int
 from opengwt.core.view import player_view
-from tests.helpers import MELEE, Builder, event_types, events_of, make_library, play
+from tests.helpers import MELEE, RANGED, Builder, event_types, events_of, make_library, play
 
 LIB = make_library()
 SEED = seed_from_int(5)
@@ -27,15 +37,21 @@ def test_new_match_deals_ten_and_opens_the_mulligan_for_both(
 ) -> None:
     state, events = new_match(library, starter_decks, SEED)
     assert state.phase is Phase.MULLIGAN and state.turn is None
+    starter = state.starter
+    redraws = [3 if seat == starter else 2 for seat in (0, 1)]  # ADR 0011: one more for the starter
     for seat, deck in enumerate(starter_decks):
         p = state.players[seat]
         assert len(p.hand) == 10 and len(p.deck) == len(deck.cards) - 10
-        assert p.mulligan is not None and p.mulligan.remaining == 3
+        assert p.mulligan is not None and p.mulligan.remaining == redraws[seat]
         legal = legal_intents(library, state, seat)
         assert legal == [Mulligan(c.instance) for c in p.hand] + [EndMulligan()]
-    assert event_types(events)[:2] == ["match_started", "round_started"]
-    assert events_of(events, "mulligan_started") == [{"round": 1, "redraws": [3, 3]}]
+    assert event_types(events)[:3] == ["match_started", "stratagem_placed", "round_started"]
+    assert events_of(events, "mulligan_started") == [{"round": 1, "redraws": redraws}]
     assert set(acting_seats(state)) == {0, 1}
+    placed = events_of(events, "stratagem_placed")[0]
+    assert placed["seat"] == starter and placed["card"] == starter_decks[starter].stratagem
+    on_board = [c.card for p in state.players for side in p.rows.values() for c in side.cards]
+    assert on_board == [starter_decks[starter].stratagem]
 
 
 def test_a_redraw_skips_returned_ids_and_puts_the_card_back(
@@ -188,3 +204,88 @@ def test_the_view_shows_only_what_the_player_may_see(
     assert set(view["me"]["rows"]) == {"melee", "ranged"}
     assert view["me"]["leader"]["order"] == {"ready": False, "charges": 2, "cooldown": 0}
     assert "seed" not in str(view) and state.seed not in str(view)
+
+
+# --- the starter's stratagem (ADR 0011) ---------------------------------------------------------
+
+
+def _strategist(**kwargs: Any) -> MatchState:
+    return Builder(LIB).state(
+        hand0=["plain5", "plain5"], board0={"melee": ["strat-boost", "plain5"]}, **kwargs
+    )
+
+
+def test_a_stratagem_is_used_once_after_a_choice_that_can_be_cancelled() -> None:
+    s = _strategist()
+    strat = s.players[0].rows[MELEE].cards[0]
+    assert UseOrder(strat.instance) in legal_intents(LIB, s, 0)
+    s, events = apply(LIB, s, 0, UseOrder(strat.instance))
+    assert s.pending is not None and s.pending.cancellable and len(s.pending.options) == 1
+    assert events_of(events, "choice_requested")[0]["cancellable"] is True
+    assert CancelChoice() in legal_intents(LIB, s, 0)
+    s, events = apply(LIB, s, 0, CancelChoice())
+    assert event_types(events) == ["choice_cancelled"]
+    assert s.phase is Phase.PLAYING and s.turn == 0 and s.pending is None
+    assert s.players[0].rows[MELEE].cards[0].charges == 1
+    s, _ = apply(LIB, s, 0, UseOrder(strat.instance))
+    s, events = apply(LIB, s, 0, Choose(0))
+    assert event_types(events)[:3] == ["choice_made", "order_used", "unit_boosted"]
+    assert events_of(events, "order_used")[0]["charges"] == 0
+    assert [c.card for c in s.players[0].rows[MELEE].cards] == ["plain5"]
+    assert [c.card for c in s.players[0].banished] == ["strat-boost"]
+    assert s.turn == 0 and s.phase is Phase.PLAYING  # an order does not end the turn
+    assert not any(isinstance(i, UseOrder) for i in legal_intents(LIB, s, 0))
+
+
+def test_a_stratagem_takes_a_place_and_nothing_acts_on_it() -> None:
+    s = _strategist(rules=Rules(row_capacity=2), hand1=["zap2", "plain5"], turn=1)
+    plays = [i for i in legal_intents(LIB, s, 0) if isinstance(i, PlayCard)]
+    assert plays == []  # not seat 0's turn
+    s, _ = play(LIB, s, 1, "zap2")
+    assert s.pending is not None and len(s.pending.options) == 1  # only the unit
+    s, _ = apply(LIB, s, 1, Choose(0))
+    melee_plays = [
+        i for i in legal_intents(LIB, s, 0) if isinstance(i, PlayCard) and i.row is MELEE
+    ]
+    assert melee_plays == []  # the stratagem fills a place of the full melee row
+    view = player_view(LIB, s, 0)
+    strat_view = view["me"]["rows"]["melee"]["cards"][0]
+    assert strat_view["order"] == {"ready": True, "charges": 1, "cooldown": 0}
+    assert (
+        player_view(LIB, s, 1)["opponent"]["rows"]["melee"]["cards"][0]["order"]["ready"] is False
+    )
+
+
+def test_an_unused_stratagem_stays_through_the_round_end() -> None:
+    s = _strategist(hand1=["plain3"])
+    s, _ = apply(LIB, s, 0, Pass())
+    s, events = play(LIB, s, 1, "plain3")  # seat 1's hand is then empty: it passes, round over
+    assert s.round == 2
+    assert [c.card for c in s.players[0].rows[MELEE].cards] == ["strat-boost"]
+    assert "status_removed" not in event_types(events)
+
+
+def test_a_stratagem_whose_first_ability_asks_nothing_starts_at_once() -> None:
+    s = Builder(LIB).state(
+        hand0=["plain5", "plain5"],
+        deck0=["plain3"],
+        board0={"ranged": ["strat-draw", "plain5"]},
+    )
+    strat = s.players[0].rows[RANGED].cards[0]
+    s, events = apply(LIB, s, 0, UseOrder(strat.instance))
+    assert event_types(events)[:2] == ["order_used", "card_drawn"]
+    assert s.pending is not None and not s.pending.cancellable
+    with pytest.raises(IllegalIntent) as info:
+        apply(LIB, s, 0, CancelChoice())
+    assert info.value.reason == "error.choice.not-cancellable"
+    s, events = apply(LIB, s, 0, Choose(0))
+    assert "card_banished" in event_types(events) and s.turn == 0
+
+
+def test_only_the_round_one_starter_gets_the_extra_redraw_and_the_stratagem(
+    library: Library, starter_decks: tuple[Deck, Deck]
+) -> None:
+    rules = Rules(starter_extra_mulligans=0, starter_stratagem=False)
+    _, events = new_match(library, starter_decks, SEED, rules)
+    assert events_of(events, "mulligan_started")[0]["redraws"] == [2, 2]
+    assert "stratagem_placed" not in event_types(events)
