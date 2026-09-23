@@ -1,6 +1,6 @@
 ---
 name: project-status
-description: As of 2026-09-23 milestones M1 and M2 are implemented under server/ and data/ (core, data, i18n, bots, sim, FastAPI server with memory backends); the Redis backends (M2b) and the Unity client (M3) do not exist yet.
+description: As of 2026-09-23 M1 and M2 are implemented and merged; the M3 Unity thin client exists under client/ with EditMode and PlayMode tests, its human acceptance and mobile smoke builds still open; the Redis backends (M2b) do not exist yet.
 metadata:
   type: project
 ---
@@ -17,13 +17,19 @@ WebSocket, two scripted clients play through a room code, a reconnecting client 
 view and can `resync`, the opponent's hand never appears on the wire (asserted on every message),
 every socket message goes through `MatchService.apply` with the memory backends, the i18n
 conformance suite passes in Python, and the migrations run on SQLite locally and on PostgreSQL in
-CI. `opengwt.server` runs as one worker process; Redis backends (M2b) and `client/` (M3) do
-**not exist yet**.
+CI. `opengwt.server` runs as one worker process.
+
+M3 (2026-09-23): `client/` is a Unity 6000.6.2f1 project created by the editor itself and set up
+by `OpenGwt.Editor.ProjectSetup.Run`; `Assets/OpenGwt/` holds the C# i18n renderer (passes the
+shared conformance suite), `ServerApi`, `MatchSocket`, `MatchClient`, the UI Toolkit board, and
+tests. Still open for M3 acceptance: the owner's ten complete matches on macOS, a CJK font
+fallback, and the iOS / Android smoke builds (modules not installed yet). Redis backends (M2b)
+do **not exist yet**.
 
 Both branches are pushed to the public repository at https://github.com/Mr47hsy/open-gwt.
 
-Next: M3, the Unity thin client on UI Toolkit, or M2b, the Redis `MatchStore` / `EventBus` with
-the multi-worker acceptance of ADR 0008 — the owner chooses the order.
+Next: finish M3 acceptance (play-through, CJK font, mobile builds), then M2b, the Redis
+`MatchStore` / `EventBus` with the multi-worker acceptance of ADR 0008.
 
 **Why:** the architecture described in `../context/02-architecture.md` is now mostly built, and
 an agent that assumes either more or less than this will invent or miss module paths and APIs.

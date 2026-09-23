@@ -29,8 +29,9 @@ contracts: `docs/protocol/`.
 **What exists (2026-09-23):** `server/` holds the Python code base — the rules core
 (`opengwt.core`), the data loader, the i18n renderer, bots, the simulator and the FastAPI server
 (`opengwt.server`: HTTP API, WebSocket match protocol, SQLite and memory backends) — all tested;
-`data/` holds placeholder cards, decks and translations. **`client/` does not exist yet.** Check
-the filesystem before describing any module or API as existing.
+`data/` holds placeholder cards, decks and translations; `client/` is the Unity 6.6 thin client
+(UI Toolkit, `Assets/OpenGwt/`) with EditMode and PlayMode tests. Check the filesystem before
+describing any module or API as existing.
 
 ## Working rules
 

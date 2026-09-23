@@ -45,8 +45,12 @@ holds placeholder cards for three factions, two starter decks and en / zh-CN / r
 ruff, mypy, import-linter, pytest (with the migrations on SQLite and PostgreSQL) and a simulation
 on Python 3.10 and 3.14.
 
-`client/` (milestone M3) and the Redis backends (M2b) do **not exist yet**. Do not tell a user a
-module exists because it is mentioned here — check the filesystem.
+`client/` is the Unity 6.6 project of milestone M3: `Assets/OpenGwt/` with the C# twin of the
+i18n renderer, `ServerApi` and `MatchSocket`, `MatchClient`, the UI Toolkit `BoardView`, editor
+setup and build scripts, EditMode tests (conformance suite, message models) and a PlayMode test
+that plays a match against a running server. M3's human acceptance (ten complete matches on
+macOS) and the iOS / Android smoke builds are still open. The Redis backends (M2b) do **not exist
+yet**. Do not tell a user a module exists because it is mentioned here — check the filesystem.
 
 ## Legal position in one line
 

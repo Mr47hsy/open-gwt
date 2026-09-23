@@ -80,3 +80,12 @@ def test_negotiate_locale() -> None:
     assert negotiate_locale(supported, None, "de, *;q=0.1") == "en"
     assert negotiate_locale(supported, "fr", "") == "en"
     assert negotiate_locale(supported, None, "ru;q=0, en;q=0.2") == "en"
+
+
+def test_conformance_json_matches_the_yaml() -> None:
+    """The client's renderer reads the JSON twin; it must never lag behind the YAML."""
+    from opengwt.data.cli import conformance_json
+
+    target = REPO / "data" / "i18n" / "conformance.json"
+    assert target.exists(), "run `opengwt-data conformance-json --data ../data`"
+    assert target.read_text(encoding="utf-8") == conformance_json(REPO / "data")

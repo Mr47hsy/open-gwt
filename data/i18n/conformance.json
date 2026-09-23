@@ -1,0 +1,255 @@
+{
+ "cases": [
+  {
+   "expected": "1 card in hand",
+   "key": "ui.hand.count",
+   "locale": "en",
+   "params": {
+    "count": 1
+   }
+  },
+  {
+   "expected": "0 cards in hand",
+   "key": "ui.hand.count",
+   "locale": "en",
+   "params": {
+    "count": 0
+   }
+  },
+  {
+   "expected": "2 cards in hand",
+   "key": "ui.hand.count",
+   "locale": "en",
+   "params": {
+    "count": 2
+   }
+  },
+  {
+   "expected": "手牌 1 张",
+   "key": "ui.hand.count",
+   "locale": "zh-CN",
+   "params": {
+    "count": 1
+   }
+  },
+  {
+   "expected": "手牌 7 张",
+   "key": "ui.hand.count",
+   "locale": "zh-CN",
+   "params": {
+    "count": 7
+   }
+  },
+  {
+   "expected": "1 карта в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 1
+   }
+  },
+  {
+   "expected": "3 карты в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 3
+   }
+  },
+  {
+   "expected": "5 карт в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 5
+   }
+  },
+  {
+   "expected": "11 карт в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 11
+   }
+  },
+  {
+   "expected": "12 карт в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 12
+   }
+  },
+  {
+   "expected": "21 карта в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 21
+   }
+  },
+  {
+   "expected": "22 карты в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 22
+   }
+  },
+  {
+   "expected": "112 карт в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 112
+   }
+  },
+  {
+   "expected": "0 карт в руке",
+   "key": "ui.hand.count",
+   "locale": "ru",
+   "params": {
+    "count": 0
+   }
+  },
+  {
+   "expected": "Delta -1",
+   "key": "ui.negative",
+   "locale": "en",
+   "params": {
+    "count": -1
+   }
+  },
+  {
+   "expected": "A deck needs at least 22 units, this one has 20.",
+   "key": "error.deck.too-few-units",
+   "locale": "en",
+   "params": {
+    "actual": 20,
+    "min": 22
+   }
+  },
+  {
+   "expected": "卡组至少需要 22 张单位牌，当前只有 20 张。",
+   "key": "error.deck.too-few-units",
+   "locale": "zh-CN",
+   "params": {
+    "actual": 20,
+    "min": 22
+   }
+  },
+  {
+   "expected": "A deck needs at least 22 units, this one has {actual}.",
+   "key": "error.deck.too-few-units",
+   "locale": "en",
+   "params": {
+    "min": 22
+   }
+  },
+  {
+   "expected": "Literal {braces} stay, and a lone { too",
+   "key": "ui.braces",
+   "locale": "en",
+   "params": {}
+  },
+  {
+   "expected": "Placeholder unit seven cannot be used by Placeholder faction A.",
+   "key": "error.deck.card-not-allowed",
+   "locale": "en",
+   "params": {
+    "card": "@card.u-0007.name",
+    "faction": "@faction.placeholder-a.name"
+   }
+  },
+  {
+   "expected": "占位单位七 cannot be used by Placeholder faction A.",
+   "key": "error.deck.card-not-allowed",
+   "locale": "zh-CN",
+   "params": {
+    "card": "@card.u-0007.name",
+    "faction": "@faction.placeholder-a.name"
+   }
+  },
+  {
+   "expected": "Заглушка: отряд семь cannot be used by Placeholder faction A.",
+   "key": "error.deck.card-not-allowed",
+   "locale": "ru",
+   "params": {
+    "card": "@card.u-0007.name",
+    "faction": "@faction.placeholder-a.name"
+   }
+  },
+  {
+   "expected": "Mention Return a unit from your discard pile. {unused}",
+   "key": "ui.mention",
+   "locale": "en",
+   "params": {
+    "who": "@card.u-0007.text"
+   }
+  },
+  {
+   "expected": "Mention @everyone",
+   "key": "ui.mention",
+   "locale": "en",
+   "params": {
+    "who": "@@everyone"
+   }
+  },
+  {
+   "expected": "Mention ui.nope",
+   "key": "ui.mention",
+   "locale": "en",
+   "params": {
+    "who": "@ui.nope"
+   }
+  },
+  {
+   "expected": "Base only",
+   "key": "ui.only-base",
+   "locale": "ru",
+   "params": {}
+  },
+  {
+   "expected": "ui.missing.key",
+   "key": "ui.missing.key",
+   "locale": "en",
+   "params": {}
+  },
+  {
+   "expected": "ui.missing.key",
+   "key": "ui.missing.key",
+   "locale": "zh-CN",
+   "params": {
+    "count": 3
+   }
+  }
+ ],
+ "schema": "opengwt.i18n-conformance/1",
+ "tables": {
+  "en": {
+   "card.u-0007.name": "Placeholder unit seven",
+   "card.u-0007.text": "Return a unit from your discard pile. {unused}",
+   "error.deck.card-not-allowed": "{card} cannot be used by {faction}.",
+   "error.deck.too-few-units": "A deck needs at least {min} units, this one has {actual}.",
+   "faction.placeholder-a.name": "Placeholder faction A",
+   "ui.braces": "Literal {{braces}} stay, and a lone { too",
+   "ui.hand.count.one": "{count} card in hand",
+   "ui.hand.count.other": "{count} cards in hand",
+   "ui.mention": "Mention {who}",
+   "ui.negative": "Delta {count}",
+   "ui.only-base": "Base only"
+  },
+  "ru": {
+   "card.u-0007.name": "Заглушка: отряд семь",
+   "ui.hand.count.few": "{count} карты в руке",
+   "ui.hand.count.many": "{count} карт в руке",
+   "ui.hand.count.one": "{count} карта в руке",
+   "ui.hand.count.other": "{count} карт в руке"
+  },
+  "zh-CN": {
+   "card.u-0007.name": "占位单位七",
+   "error.deck.too-few-units": "卡组至少需要 {min} 张单位牌，当前只有 {actual} 张。",
+   "ui.hand.count.other": "手牌 {count} 张"
+  }
+ }
+}
