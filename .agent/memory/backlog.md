@@ -26,7 +26,10 @@ behaviour, not words.
 - Phase E: the client speaks protocol 2 (the server does since B); targeting UI; statuses and
   armour on cards; order buttons (a stratagem's is usable already); stratagem choice in decks;
   the interface texts for statuses, row effects and every `choice.<action>` prompt in three
-  languages.
+  languages. Remove the client's protocol-1 leftovers with it (owner, 2026-09-23): the lives
+  shown as hearts, the `ui.effect.*` row-effect texts (v2 uses `row-effect.<id>.name`), the
+  mulligan modal that picks several cards at once (v2 redraws one at a time, then
+  `end_mulligan`), and the leader's "used" label (v2 shows the order's charges and cooldown).
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
 
 **Client**
