@@ -15,17 +15,26 @@ from opengwt.core.engine import acting_seat, apply, legal_intents, new_match
 from opengwt.core.intents import Intent
 from opengwt.core.model import Deck, Library, MatchState, Phase
 from opengwt.core.replay import MatchRecord, record_to_dict, replay
+from opengwt.core.rng import Stream, seed_from_int
 from opengwt.core.serialize import state_hash
 from opengwt.data import DataError, load_data
+
+SIM_BOT_LABEL = b"opengwt/sim-bot"
+
+
+def sim_bot(name: str, bot_seed: int) -> Bot:
+    """A simulator bot on its own stream; the simulator keeps integer seeds (ADR 0010)."""
+    return make_bot(name, Stream(seed_from_int(bot_seed), SIM_BOT_LABEL))
 
 
 def run_match(
     lib: Library,
     decks: tuple[Deck, Deck],
-    seed: int,
+    seed: str,
     bots: tuple[Bot, Bot],
     max_steps: int = 2000,
 ) -> tuple[MatchRecord, MatchState, int]:
+    """Play one match between two bots. ``seed`` is the match seed, 64 hex characters."""
     state, _ = new_match(lib, decks, seed)
     intents: list[tuple[int, Intent]] = []
     while state.phase is not Phase.MATCH_OVER:
@@ -54,7 +63,9 @@ def _find_data(explicit: str | None) -> Path:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="opengwt-sim", description=__doc__)
     parser.add_argument("--matches", type=int, default=100)
-    parser.add_argument("--seed", type=int, default=1, help="seed of the first match")
+    parser.add_argument(
+        "--seed", type=int, default=1, help="number of the first match; its seed is derived from it"
+    )
     parser.add_argument("--bot-a", choices=BOT_NAMES, default="greedy")
     parser.add_argument("--bot-b", choices=BOT_NAMES, default="random")
     parser.add_argument("--deck-a", default="starter-a")
@@ -80,14 +91,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     records: list[tuple[MatchRecord, str]] = []
     started = time.perf_counter()
     for i in range(args.matches):
-        seed = args.seed + i
-        bots = (make_bot(args.bot_a, seed * 2 + 1), make_bot(args.bot_b, seed * 2 + 2))
+        n = args.seed + i
+        seed = seed_from_int(n)
+        bots = (sim_bot(args.bot_a, n * 2 + 1), sim_bot(args.bot_b, n * 2 + 2))
         try:
             record, final, steps = run_match(lib, decks, seed, bots, args.max_steps)
         except Exception:
             errors += 1
             if errors <= 3:
-                print(f"match seed={seed} failed:", file=sys.stderr)
+                print(f"match seed={n} failed:", file=sys.stderr)
                 traceback.print_exc()
             continue
         if final.winner is None:

@@ -2,23 +2,24 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from opengwt.core.intents import Intent, Mulligan
-from opengwt.core.model import Library, MatchState, Phase
-from opengwt.core.rng import Pcg32
+from opengwt.core.engine import play_positions
+from opengwt.core.intents import Intent, PlayCard
+from opengwt.core.model import Library, MatchState
+from opengwt.core.rng import Stream
 
 
 class RandomBot:
-    """Uniformly random legal play; useful for fuzzing the rules and for replay checks."""
+    """Uniformly random legal play, at a random position; useful for fuzzing the rules and for
+    replay checks. Its randomness is its own stream, never the match's."""
 
-    def __init__(self, seed: int) -> None:
-        self.rng = Pcg32(seed, sequence=7)
+    def __init__(self, rng: Stream) -> None:
+        self.rng = rng
 
     def choose(self, lib: Library, state: MatchState, seat: int, legal: Sequence[Intent]) -> Intent:
-        if state.phase is Phase.MULLIGAN:
-            hand = list(state.players[seat].hand)
-            count = self.rng.below(min(state.rules.mulligan_max, len(hand)) + 1)
-            self.rng.shuffle(hand)
-            return Mulligan(tuple(u.instance for u in hand[:count]))
         if not legal:
             raise ValueError("no legal intents")
-        return legal[self.rng.below(len(legal))]
+        intent = legal[self.rng.below(len(legal))]
+        if isinstance(intent, PlayCard) and intent.row is not None:
+            positions = play_positions(lib, state, seat, intent)
+            return PlayCard(intent.card, intent.row, self.rng.below(positions))
+        return intent
