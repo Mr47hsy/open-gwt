@@ -17,9 +17,13 @@ and extended.
 
 Anything that would flatten one of these is a design regression, not a simplification.
 
-**Transition (2026-09-23):** the code on `develop` still implements the previous shape (three
-fixed rows, no draws, two lives, protocol v1) until phases A–F of ADR 0009 land. Do not add v1
-content or vocabulary; read the ADR before touching the core.
+**Transition (2026-09-23):** phase B of ADR 0009 has landed: the core plays two rows with
+capacity and positions, the standalone power model, statuses with timers, draws and redraws each
+round and the tie rule, and the server speaks protocol 2. It loads the whole v2 vocabulary but
+the phase-C words (other triggers, activated abilities, generalised choices) do nothing yet; deck
+building is phase D and the Unity client speaks protocol 1 until phase E, so it cannot play in
+between. The v1 shape is gone; read the ADR and `docs/protocol/cards.md` before touching the
+core.
 
 ## Scope
 
@@ -41,12 +45,14 @@ Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1). Online-only.
 ## Current state — 2026-09-23
 
 Milestones M1 and M2 of ADR 0007 are implemented. `server/` is a uv project (Python ≥ 3.10.15)
-with `opengwt.core` (rules engine, PCG32, views, canonical serialisation, replay), `opengwt.data`
+with `opengwt.core` (the v2 rules engine of ADR 0009 phase B, SHA-256 random streams, views,
+canonical serialisation, replay), `opengwt.data`
 (YAML loading against the protocol schemas), `opengwt.i18n` (the shared message-format renderer),
 `opengwt.bots` (random, greedy), `opengwt.sim` (`opengwt-sim`) and `opengwt.server`
 (`opengwt-server`: FastAPI, guest tokens, decks, bot and room matches, the WebSocket match
 protocol, SQLite plus memory `MatchStore` / `EventBus` / `Cache`, Alembic migrations). `data/`
-holds placeholder cards for three factions, two starter decks and en / zh-CN / ru texts. CI runs
+holds v2 placeholder cards for two factions and neutral, two starter decks and en / zh-CN / ru
+texts. CI runs
 ruff, mypy, import-linter, pytest (with the migrations on SQLite and PostgreSQL) and a simulation
 on Python 3.10 and 3.14.
 

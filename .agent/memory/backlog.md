@@ -8,22 +8,22 @@ metadata:
 Not ordered except for the ruleset phases, which are strictly sequential. One session per item,
 one pull request per concern.
 
-**Ruleset v2 (ADR 0009) — in order, each blocks the next.** Phase A (protocol v2 documents,
-schemas and examples) is done; the phases below implement `docs/protocol/cards.md` and
-`match.md` as written, and change them in the same pull request where the code proves them
-wrong.
-- Phase B: two rows with capacity, base / boost / damage / armour, statuses with timers,
-  per-round draws and mulligans, hand limit, tie rule, weather as per-turn damage; v1 actions
-  dropped; data rewritten to v2; goldens regenerated. Also ADR 0010: SHA-256 random stream,
-  256-bit hex seed (`opengwt.record/2`, `matches.seed` migration), opaque instance ids, bot
-  on its own per-decision stream. Remove the strict `xfail` markers phase A put on
-  `test_packaged_schemas_match_docs` and `test_protocol_examples_load` — they fail loudly once
-  the packaged schemas are v2.
-- Phase C: `use_order` with charges / cooldown / immediate, leader charges, on-destroyed,
-  turn-start/end, ally-played, boosted/damaged, adjacency, generalised choices; bots use orders.
-- Phase D: provisions, colours, copy limits, minimum units; server validation; pack v2.
-- Phase E: intents and views v2 end to end in server and client; targeting UI; statuses and
-  armour on cards; order buttons.
+**Ruleset v2 (ADR 0009) — in order, each blocks the next.** Phases A (protocol v2 documents)
+and B (power and board, ADR 0010's random streams) are done; the phases below implement
+`docs/protocol/cards.md` and `match.md` as written, and change them in the same pull request
+where the code proves them wrong. The vocabulary is complete since B: a later phase adds
+behaviour, not words.
+- Phase C: give behaviour to the words `model.phase_c_words` lists — `use_order` with charges /
+  cooldown / `ready_on_play`, leader charges, `on_destroyed`, turn start / end, `on_ally_played`,
+  `on_boosted` / `on_damaged`, the `adjacent`, `trigger_unit` and `previous_targets` selectors,
+  `play_from_deck` / `play_from_graveyard` / `create` / `add_charges`, choices of kind `row`,
+  `place` and `card` and `cancel_choice`; track the row a card was last on for summons from
+  `on_destroyed`; bots use orders.
+- Phase D: provisions, colours, copy limits, minimum units (and the owner's further deck-building
+  limits, to be discussed); server validation; pack v2 completed with deck provisions.
+- Phase E: the client speaks protocol 2 (the server does since B); targeting UI; statuses and
+  armour on cards; order buttons; the interface texts for statuses, row effects and every
+  `choice.<action>` prompt in three languages.
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
 
 **Client**

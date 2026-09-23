@@ -3,7 +3,7 @@
 > **Status: decided; the rules core, data loader, i18n renderer, bots, simulator (M1), the server
 > with memory backends (M2) and the Unity thin client (M3, acceptance in progress) exist; the
 > Redis backends (M2b) do not.**
-> The decisions are recorded in `docs/adr/` (0001–0008) and the wire contracts in
+> The decisions are recorded in `docs/adr/` (0001–0010) and the wire contracts in
 > `docs/protocol/`. When code and this file disagree, the code wins — update this file in the
 > same pull request.
 
@@ -35,14 +35,13 @@ This is what makes tests, bug reports and bots practical, so the core must avoid
 breaks it (ADR 0002):
 
 - no wall-clock time, no timers, no environment or locale reads inside rules evaluation;
-- no `random` module — the core carries its own generator, seeded from the record: PCG32 over
-  Python integers in the v1 core, a SHA-256 counter-mode stream from ruleset phase B on
-  (ADR 0010);
+- no `random` module — the core carries its own generator, seeded from the record: a SHA-256
+  counter-mode stream with one label per purpose — engine, instance ids, bots (ADR 0010);
 - no `set` iteration and no `dict` iteration where order affects the result; ordered lists and
   explicit `sorted(..., key=...)`; nothing depends on `hash()` of a string;
 - integers only for power, scores and counters; no floats;
-- entity ids come from a counter in the state, never from `id()` or allocation order; from phase
-  B they are rendered through a keyed stream so they reveal no deck position (ADR 0010).
+- entity ids come from a counter in the state, never from `id()` or allocation order, rendered
+  through the id stream so they reveal no deck position (ADR 0010).
 
 A rules change that breaks replay of existing records is a breaking change and must be called out
 in the pull request.
@@ -55,8 +54,8 @@ else serialises state for a client. "The client filters it out before rendering"
 — a modified client would then see everything.
 
 The seed is hidden information too, and so is anything that narrows it down: the seed plus the
-open-source shuffle rebuilds every deck. It never reaches a client before the match is over,
-and from phase B it is 256 bits wide so it cannot be searched for either (ADR 0010).
+open-source shuffle rebuilds every deck. It never reaches a client before the match is over, and
+it is 256 bits wide so it cannot be searched for either (ADR 0010).
 
 ## Content pipeline
 
