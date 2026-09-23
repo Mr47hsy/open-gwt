@@ -5,6 +5,12 @@
     background-color: rgb(24, 27, 33);
     color: rgb(230, 230, 230);
     font-size: 14px;
+    -unity-font-definition: url("/Assets/OpenGwt/Fonts/NotoSans-Regular-SDF.asset");
+}
+
+/* Card names and titles in the serif face; everything else stays in the sans (Fonts/README.md). */
+.card__name, .dialog__title, .bar__name, .middle__status {
+    -unity-font-definition: url("/Assets/OpenGwt/Fonts/NotoSerif-Regular-SDF.asset");
 }
 
 .hidden { display: none; }
@@ -72,14 +78,18 @@
     border-color: rgb(90, 98, 112);
     background-color: rgb(52, 58, 70);
     justify-content: space-between;
+    transition-property: background-color, border-color, scale;
+    transition-duration: 0.45s;
 }
+.card--flash { background-color: rgb(150, 130, 60); border-color: rgb(255, 214, 102); scale: 1.06 1.06; }
+.card--gone { background-color: rgb(120, 50, 50); border-color: rgb(240, 120, 120); }
 .card--playable { border-color: rgb(120, 200, 140); }
 .card--playable:hover { background-color: rgb(66, 74, 88); }
 .card--selected { border-color: rgb(255, 214, 102); background-color: rgb(80, 72, 50); }
 .card--immune { border-color: rgb(255, 214, 102); }
 .card--special { background-color: rgb(58, 52, 74); }
 .card--foreign { border-color: rgb(240, 120, 120); }
-.card__name { font-size: 11px; white-space: normal; height: 44px; }
+.card__name { font-size: 12px; white-space: normal; height: 46px; }
 .card__meta { font-size: 10px; color: rgb(170, 175, 185); }
 .card__power { font-size: 24px; -unity-font-style: bold; -unity-text-align: middle-right; }
 .card__power--boosted { color: rgb(120, 200, 140); }
@@ -120,6 +130,7 @@
 .field { margin: 4px 0; }
 .field .unity-base-field__label { min-width: 70px; color: rgb(170, 175, 185); }
 .field--code { flex-grow: 1; }
+.unity-base-dropdown__container-outer { background-color: rgb(34, 38, 46); }
 .modal__options { flex-direction: row; flex-wrap: wrap; max-height: 300px; }
 
 .event-log {
