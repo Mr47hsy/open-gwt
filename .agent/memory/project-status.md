@@ -22,8 +22,11 @@ CI. `opengwt.server` runs as one worker process.
 M3 (2026-09-23): `client/` is a Unity 6000.6.2f1 project created by the editor itself and set up
 by `OpenGwt.Editor.ProjectSetup.Run`; `Assets/OpenGwt/` holds the C# i18n renderer (passes the
 shared conformance suite), `ServerApi`, `MatchSocket`, `MatchClient`, the UI Toolkit board, and
-tests. Still open for M3 acceptance: the owner's ten complete matches on macOS, a CJK font
-fallback, and the iOS / Android smoke builds (modules not installed yet). Redis backends (M2b)
+tests. Fonts: a Noto fallback chain built from subset static instances
+(`server/scripts/fonts.py`, `FontSetup.Run`); every interface string is keyed and shipped in the
+build; language and deck selection exist. Still open for M3 acceptance: the owner's ten complete
+matches on macOS; the iOS / Android smoke builds are deferred by the owner until the application
+is complete. Redis backends (M2b)
 do **not exist yet**.
 
 Both branches are pushed to the public repository at https://github.com/Mr47hsy/open-gwt.
