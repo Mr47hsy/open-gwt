@@ -1,0 +1,475 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opengwt:protocol:cards:1",
+  "title": "open-gwt cards file (schema opengwt.cards/1)",
+  "type": "object",
+  "required": [
+    "schema",
+    "faction",
+    "cards"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "opengwt.cards/1"
+    },
+    "faction": {
+      "$ref": "#/$defs/id"
+    },
+    "cards": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/card"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$"
+    },
+    "row": {
+      "enum": [
+        "melee",
+        "ranged",
+        "siege"
+      ]
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "side": {
+      "enum": [
+        "self",
+        "opponent"
+      ]
+    },
+    "sides": {
+      "enum": [
+        "self",
+        "opponent",
+        "both"
+      ]
+    },
+    "trait": {
+      "enum": [
+        "immune"
+      ]
+    },
+    "traits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/trait"
+      },
+      "uniqueItems": true
+    },
+    "rowEffect": {
+      "enum": [
+        "power_to_one",
+        "double_power"
+      ]
+    },
+    "positiveInt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nonNegativeInt": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "when": {
+      "enum": [
+        "played",
+        "activated",
+        "always",
+        "round_end",
+        "turn_start",
+        "removed"
+      ]
+    },
+    "choose": {
+      "const": "player"
+    },
+    "card": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "unit",
+            "special",
+            "leader"
+          ]
+        },
+        "rows": {
+          "$ref": "#/$defs/rows"
+        },
+        "power": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "deploy": {
+          "$ref": "#/$defs/side"
+        },
+        "traits": {
+          "$ref": "#/$defs/traits"
+        },
+        "abilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ability"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "unit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "rows",
+          "power"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "rows"
+              ]
+            },
+            {
+              "required": [
+                "power"
+              ]
+            },
+            {
+              "required": [
+                "deploy"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "where": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "row_total_at_least": {
+          "$ref": "#/$defs/nonNegativeInt"
+        },
+        "traits_none": {
+          "$ref": "#/$defs/traits"
+        },
+        "traits_any": {
+          "$ref": "#/$defs/traits"
+        },
+        "same_id_as_this": {
+          "type": "boolean"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "side": {
+          "$ref": "#/$defs/sides"
+        },
+        "rows": {
+          "$ref": "#/$defs/rows"
+        },
+        "units": {
+          "enum": [
+            "all",
+            "strongest",
+            "weakest",
+            "this"
+          ]
+        },
+        "where": {
+          "$ref": "#/$defs/where"
+        }
+      }
+    },
+    "ability": {
+      "type": "object",
+      "required": [
+        "when",
+        "do"
+      ],
+      "properties": {
+        "when": {
+          "$ref": "#/$defs/when"
+        }
+      },
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": [
+            "target"
+          ],
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "destroy"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "choose": {
+              "$ref": "#/$defs/choose"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "draw"
+            },
+            "side": {
+              "$ref": "#/$defs/side"
+            },
+            "count": {
+              "$ref": "#/$defs/positiveInt"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "target",
+            "amount"
+          ],
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "boost"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "amount": {
+              "$ref": "#/$defs/positiveInt"
+            },
+            "choose": {
+              "$ref": "#/$defs/choose"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "target",
+            "value"
+          ],
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "set_power"
+            },
+            "target": {
+              "$ref": "#/$defs/target"
+            },
+            "value": {
+              "$ref": "#/$defs/nonNegativeInt"
+            },
+            "choose": {
+              "$ref": "#/$defs/choose"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "effect",
+            "rows",
+            "sides"
+          ],
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "apply_row_effect"
+            },
+            "effect": {
+              "$ref": "#/$defs/rowEffect"
+            },
+            "rows": {
+              "$ref": "#/$defs/rows"
+            },
+            "sides": {
+              "$ref": "#/$defs/sides"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "clear_row_effects"
+            },
+            "rows": {
+              "$ref": "#/$defs/rows"
+            },
+            "sides": {
+              "$ref": "#/$defs/sides"
+            },
+            "effects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/rowEffect"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "summon_from_deck"
+            },
+            "same_id": {
+              "const": true
+            },
+            "card": {
+              "$ref": "#/$defs/id"
+            },
+            "count": {
+              "$ref": "#/$defs/positiveInt"
+            }
+          },
+          "oneOf": [
+            {
+              "required": [
+                "same_id"
+              ],
+              "not": {
+                "required": [
+                  "card"
+                ]
+              }
+            },
+            {
+              "required": [
+                "card"
+              ],
+              "not": {
+                "required": [
+                  "same_id"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "return_from_discard"
+            },
+            "side": {
+              "$ref": "#/$defs/side"
+            },
+            "where": {
+              "$ref": "#/$defs/where"
+            },
+            "choose": {
+              "$ref": "#/$defs/choose"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "choose"
+          ],
+          "properties": {
+            "when": true,
+            "do": {
+              "const": "swap_with_board_unit"
+            },
+            "where": {
+              "$ref": "#/$defs/where"
+            },
+            "choose": {
+              "$ref": "#/$defs/choose"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "when": {
+              "const": "always"
+            },
+            "do": {
+              "const": "multiply_power_by_copies"
+            }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "when": {
+              "const": "always"
+            },
+            "do": {
+              "const": "boost_row_others"
+            },
+            "amount": {
+              "$ref": "#/$defs/positiveInt"
+            }
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "when": {
+                "const": "always"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "do": {
+                "enum": [
+                  "multiply_power_by_copies",
+                  "boost_row_others"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

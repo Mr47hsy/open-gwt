@@ -1,0 +1,94 @@
+# Generated placeholder text; every name is a TODO for a human writer. Keys: docs/protocol/i18n.md §2.
+card.a-l-0001.name: Placeholder A leader 1
+card.a-l-0001.text: Clears all row effects.
+card.a-s-0001.name: Placeholder A special 1
+card.a-s-0001.text: Destroys the strongest non-immune units on the opponent's side on the melee row once that row totals 10 or more.
+card.a-u-0001.name: Placeholder A unit 1
+card.a-u-0001.text: Unit, power 5, melee row.
+card.a-u-0002.name: Placeholder A unit 2
+card.a-u-0002.text: Unit, power 6, melee row.
+card.a-u-0003.name: Placeholder A unit 3
+card.a-u-0003.text: Unit, power 5, ranged row.
+card.a-u-0004.name: Placeholder A unit 4
+card.a-u-0004.text: Unit, power 6, ranged row.
+card.a-u-0005.name: Placeholder A unit 5
+card.a-u-0005.text: Unit, power 6, siege row.
+card.a-u-0006.name: Placeholder A unit 6
+card.a-u-0006.text: Unit, power 8, siege row.
+card.a-u-0007.name: Placeholder A unit 7
+card.a-u-0007.text: Unit, power 4, melee row. Summons every other copy of itself from your deck.
+card.a-u-0008.name: Placeholder A unit 8
+card.a-u-0008.text: Unit, power 4, ranged row. Summons every other copy of itself from your deck.
+card.a-u-0009.name: Placeholder A unit 9
+card.a-u-0009.text: Unit, power 4, melee row. Power is multiplied by the number of copies on this row.
+card.a-u-0010.name: Placeholder A unit 10
+card.a-u-0010.text: Unit, power 5, siege row. Power is multiplied by the number of copies on this row.
+card.a-u-0011.name: Placeholder A unit 11
+card.a-u-0011.text: Unit, power 2, ranged row. Every other unit on this row gains 1.
+card.a-u-0012.name: Placeholder A unit 12
+card.a-u-0012.text: Unit, power 10, melee row. Immune.
+card.a-u-0013.name: Placeholder A unit 13
+card.a-u-0013.text: Unit, power 10, ranged row. Immune.
+card.a-u-0014.name: Placeholder A unit 14
+card.a-u-0014.text: Unit, power 5, melee or ranged row.
+card.b-l-0001.name: Placeholder B leader 1
+card.b-l-0001.text: Doubles the power of your melee row.
+card.b-s-0001.name: Placeholder B special 1
+card.b-s-0001.text: Draw 2 cards.
+card.b-u-0001.name: Placeholder B unit 1
+card.b-u-0001.text: Unit, power 5, melee row.
+card.b-u-0002.name: Placeholder B unit 2
+card.b-u-0002.text: Unit, power 7, melee row.
+card.b-u-0003.name: Placeholder B unit 3
+card.b-u-0003.text: Unit, power 5, ranged row.
+card.b-u-0004.name: Placeholder B unit 4
+card.b-u-0004.text: Unit, power 7, ranged row.
+card.b-u-0005.name: Placeholder B unit 5
+card.b-u-0005.text: Unit, power 5, siege row.
+card.b-u-0006.name: Placeholder B unit 6
+card.b-u-0006.text: Unit, power 7, siege row.
+card.b-u-0007.name: Placeholder B unit 7
+card.b-u-0007.text: Unit, power 4, melee row. Deploys on the opponent's side. Draw 2 cards.
+card.b-u-0008.name: Placeholder B unit 8
+card.b-u-0008.text: Unit, power 3, ranged row. Deploys on the opponent's side. Draw 2 cards.
+card.b-u-0009.name: Placeholder B unit 9
+card.b-u-0009.text: Unit, power 5, melee row. Returns a non-immune unit from your discard pile to the board.
+card.b-u-0010.name: Placeholder B unit 10
+card.b-u-0010.text: Unit, power 5, ranged row. Returns a non-immune unit from your discard pile to the board.
+card.b-u-0011.name: Placeholder B unit 11
+card.b-u-0011.text: Unit, power 6, siege row. Every unit on your siege row gains 1.
+card.b-u-0012.name: Placeholder B unit 12
+card.b-u-0012.text: Unit, power 10, melee row. Immune.
+card.b-u-0013.name: Placeholder B unit 13
+card.b-u-0013.text: Unit, power 10, siege row. Immune.
+card.b-u-0014.name: Placeholder B unit 14
+card.b-u-0014.text: Unit, power 6, ranged or siege row.
+card.b-u-0015.name: Placeholder B unit 15
+card.b-u-0015.text: Unit, power 1, melee row. Destroys the strongest non-immune units on the opponent's side on the ranged row once that row totals 10 or more.
+card.n-s-0001.name: Placeholder N special 1
+card.n-s-0001.text: Every non-immune unit on the melee row of both sides has power 1.
+card.n-s-0002.name: Placeholder N special 2
+card.n-s-0002.text: Every non-immune unit on the ranged row of both sides has power 1.
+card.n-s-0003.name: Placeholder N special 3
+card.n-s-0003.text: Every non-immune unit on the siege row of both sides has power 1.
+card.n-s-0004.name: Placeholder N special 4
+card.n-s-0004.text: Clears the power-to-one effect from every row.
+card.n-s-0005.name: Placeholder N special 5
+card.n-s-0005.text: Doubles the power of your melee row.
+card.n-s-0006.name: Placeholder N special 6
+card.n-s-0006.text: Doubles the power of your ranged row.
+card.n-s-0007.name: Placeholder N special 7
+card.n-s-0007.text: Doubles the power of your siege row.
+card.n-s-0008.name: Placeholder N special 8
+card.n-s-0008.text: Takes the place of one of your non-immune units, which returns to your hand.
+card.n-s-0009.name: Placeholder N special 9
+card.n-s-0009.text: Destroys the strongest non-immune units on both sides' side.
+card.n-u-0001.name: Placeholder N unit 1
+card.n-u-0001.text: Unit, power 7, melee or ranged row.
+card.n-u-0002.name: Placeholder N unit 2
+card.n-u-0002.text: Unit, power 8, siege row.
+card.n-u-0003.name: Placeholder N unit 3
+card.n-u-0003.text: Unit, power 15, melee row. Immune.
+faction.neutral.name: Neutral
+faction.placeholder-a.name: Placeholder faction A
+faction.placeholder-b.name: Placeholder faction B
