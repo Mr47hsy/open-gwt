@@ -33,7 +33,10 @@ behaviour, not words.
 - Motion still missing: row effects appearing and clearing, power changes (a flash today), the
   opponent's draws and passes. Playing, destroying, returning and specials move since the visual
   baseline (`BoardMotion`, driven by `BoardView`'s step queue); add the rest there, rendering from
-  the view.
+  the view. `BoardMotion` diffs renders and takes only two notes from events (played by whom,
+  destroyed), so phase E maps protocol 2's `card_destroyed` onto the latter and gets the rest —
+  `card_summoned`, `card_moved`, `card_returned`, `card_banished`, `stratagem_placed` — from the
+  diff.
 - Deck builder: the server has `GET/PUT/DELETE /decks` and validates legality; the client only
   offers starter decks.
 - Replay viewer: `GET /matches/{id}/replay` exists; the client has no way to watch one.

@@ -34,6 +34,9 @@ OPENGWT_TEST_SERVER=http://127.0.0.1:8765 "$UNITY" -batchmode -nographics -proje
 
 `ClientMatchTests` plays a whole match through `MatchClient` and asserts the opponent's hand never
 appears; `BoardViewTests` runs in the same pass without the server. Stop the server afterwards.
+Until ADR 0009 phase E moves the client to protocol 2, `ClientMatchTests` fails against a current
+server (it expects v1 content and protocol 1); that failure is known, and `BoardViewTests` is what
+gates a board change meanwhile.
 
 ## 3b. Look at it, for any visual change
 

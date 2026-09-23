@@ -18,7 +18,9 @@ flat placeholder art.
 Look (visual baseline, 2026-09-23): every colour, size, radius, type step and duration is a
 custom property in `UI/Tokens.uss`, imported by the theme; `Board.uss` uses `var()` and holds no
 literal colour. Art is original SVG under `UI/Art/`, imported as UI Toolkit `VectorImage` by the
-built-in Vector Graphics module (no package) and tinted from USS. Motion is USS transitions
+built-in Vector Graphics module (no package) and tinted from USS — the two rows, specials and
+the `immune` status so far. Card faces read kind, rows and statuses from the pack; a status shows
+its `status.<id>.name` once the tables have it (phase E adds them). Motion is USS transitions
 started by `BoardMotion`; `BoardView` plays event/view batches one step at a time and only the
 newest view offers legal intents.
 
