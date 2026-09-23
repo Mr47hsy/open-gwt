@@ -1,0 +1,24 @@
+# The turn start (cards.md §11.4): the on_turn_start abilities of the player's cards resolve
+# first, then the row effects on their row-sides act — hazards act once the units' turn-start
+# effects are over (the standalone game, per its community rules page).
+cards:
+  sprout:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 1
+    abilities:
+      - {when: on_turn_start, do: boost, amount: 2, target: {units: this}}
+seed: 1
+decks:
+  - [sprout, spare]
+  - [frost, spare]
+steps:
+  - [0, play, sprout, melee]
+  - [1, play, frost]            # seat 0's turn start: 1 -> 3, then the hazard: 3 -> 1
+events:
+  - {type: turn_started, seat: 0}
+  - {type: unit_boosted, card: sprout, power: 3}
+  - {type: unit_damaged, card: sprout, reason: damage_weakest, power: 1}
+board:
+  0: {melee: ["sprout:1"]}

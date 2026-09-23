@@ -1131,9 +1131,15 @@ class _Ctx:
     # --- row effects ---------------------------------------------------------------------------
 
     def act_row_effects(self, seat: int) -> None:
-        """At a player's turn start, the per-turn row effects on their row-sides act (§10)."""
-        for row in self.s.rules.rows:
-            effect = self.s.players[seat].rows[row].effect
+        """At a player's turn start, the per-turn row effects on their row-sides act, in the
+        order they were set (§10, §11.4)."""
+        sides = self.s.players[seat].rows
+        order = sorted(
+            (row for row in self.s.rules.rows if sides[row].effect is not None),
+            key=lambda row: sides[row].effect.since,  # type: ignore[union-attr]
+        )
+        for row in order:
+            effect = sides[row].effect
             if effect is None or effect.effect is RowEffectKind.DAMAGE_ON_ARRIVAL:
                 continue
             units = [
@@ -1319,7 +1325,9 @@ class _Ctx:
         self.start_turn(s.starter)
 
     def start_turn(self, seat: int) -> None:
-        """§11.4 steps 1 to 5."""
+        """§11.4 steps 1 to 5: cooldowns drop; the ``on_turn_start`` abilities of the player's
+        cards resolve; then the row effects on their row-sides act, in the order they were set;
+        each step resolves with what it causes before the next."""
         s = self.s
         s.turn = s.active = seat
         self.emit("turn_started", seat=seat)
@@ -1329,9 +1337,10 @@ class _Ctx:
                 loc.card.cooldown -= 1
         if player.leader is not None and player.leader.cooldown > 0:
             player.leader.cooldown -= 1
+        self.fire_side(seat, Trigger.ON_TURN_START)
+        self.settle_unasked()
         self.act_row_effects(seat)
         self.check_destruction()
-        self.fire_side(seat, Trigger.ON_TURN_START)
         self.settle_unasked()
         if not player.hand and not self.any_order_ready(seat):
             self.do_pass(seat, auto=True)
@@ -1884,11 +1893,14 @@ class _Ctx:
         if rt is None or a.effect is None:
             return
         for side_seat, row in self.row_sides(seat, acting, rt.pick, rt.side, rt.rows):
-            self.s.players[side_seat].rows[row].effect = RowEffect(a.effect, a.amount, a.count)
             fields: dict[str, Any] = {"effect": a.effect.value, "amount": a.amount}
             if a.count is not None:
                 fields["count"] = a.count
             self.emit("row_effect_set", seat=side_seat, row=row.value, source=source, **fields)
+            since = self.s.seq  # the event's own seq: later effects act later
+            self.s.players[side_seat].rows[row].effect = RowEffect(
+                a.effect, a.amount, a.count, since
+            )
 
     def clear_row_effect(
         self, seat: int, acting: CardInstance | None, a: Ability, source: str

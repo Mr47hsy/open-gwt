@@ -94,7 +94,12 @@ def _row_to_dict(side: RowSide) -> dict[str, Any]:
     return {
         "cards": [_instance_to_dict(u) for u in side.cards],
         "effect": (
-            {"effect": effect.effect.value, "amount": effect.amount, "count": effect.count}
+            {
+                "effect": effect.effect.value,
+                "amount": effect.amount,
+                "count": effect.count,
+                "since": effect.since,
+            }
             if effect is not None
             else None
         ),
@@ -110,6 +115,7 @@ def _row_from_dict(d: dict[str, Any]) -> RowSide:
                 RowEffectKind(e["effect"]),
                 int(e["amount"]),
                 None if e["count"] is None else int(e["count"]),
+                int(e["since"]),
             )
             if e is not None
             else None

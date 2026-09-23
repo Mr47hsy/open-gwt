@@ -636,9 +636,13 @@ class CardInstance:
 
 @dataclass
 class RowEffect:
+    """A row-side's effect; ``since`` is the ``seq`` of the event that set it, which orders the
+    per-turn effects of one player's row-sides (cards.md §10)."""
+
     effect: RowEffectKind
     amount: int
     count: int | None = None
+    since: int = 0
 
 
 @dataclass
@@ -652,7 +656,7 @@ class RowSide:
         effect = self.effect
         return RowSide(
             [c.clone() for c in self.cards],
-            RowEffect(effect.effect, effect.amount, effect.count) if effect else None,
+            RowEffect(effect.effect, effect.amount, effect.count, effect.since) if effect else None,
         )
 
 
