@@ -73,8 +73,7 @@ def hit(amount: int) -> dict[str, Any]:
 def options(state: Any) -> list[str]:
     """The card ids a pending choice offers, in option order."""
     assert state.pending is not None
-    by_id = {c.instance: c.card for p in state.players for s in p.rows.values() for c in s.cards}
-    return [by_id[i] for i in state.pending.options]
+    return [o.card for o in state.pending.options]
 
 
 # --- damage, armour, shields ------------------------------------------------------------------

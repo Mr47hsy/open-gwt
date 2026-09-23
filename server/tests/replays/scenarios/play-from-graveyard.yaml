@@ -1,0 +1,50 @@
+# play_from_graveyard (cards.md §8): a card picked from a graveyard, which is public and keeps
+# its order, is played as if from hand — its on_play fires again. The first choice of an
+# activated ability that shows nothing hidden can be cancelled, leaving the match as it was
+# (§6.3).
+cards:
+  raiser:
+    kind: leader
+    provision_bonus: 15
+    activation: {charges: 1}
+    abilities:
+      - when: on_activate
+        do: play_from_graveyard
+        cards: {pick: chosen, where: {kind: [unit]}}
+  frail:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 1
+    abilities:
+      - {when: on_play, do: boost, amount: 1, target: {units: this}}
+seed: 2
+decks:
+  - {cards: [frail, spare, spare], leader: raiser}
+  - [zap2, spare, spare]
+steps:
+  - [0, play, frail, melee]
+  - [0, end]
+  - [1, play, zap2, melee]
+  - [1, choose, frail]          # 2 damage: frail is destroyed
+  - [1, end]
+  - [0, order, leader]
+  - [0, cancel]
+  - [0, order, leader]
+  - [0, choose, frail]
+  - [0, choose, "me:ranged:0"]
+  - [0, play, spare, melee]
+  - [0, end]
+events:
+  - {type: card_destroyed, card: frail}
+  - {type: choice_requested, kind: card, prompt_key: choice.play-from-graveyard, option_count: 1, cancellable: true}
+  - {type: choice_cancelled, seat: 0}
+  - {type: choice_requested, kind: card, cancellable: true}
+  - {type: order_used, card: raiser, charges: 0}
+  - {type: choice_requested, kind: place, cancellable: false}
+  - {type: card_played, seat: 0, card: frail, from: graveyard, row: ranged, position: 0}
+  - {type: unit_boosted, card: frail, power: 2}
+board:
+  0: {melee: ["spare:1"], ranged: ["frail:2"]}
+graveyard:
+  0: []

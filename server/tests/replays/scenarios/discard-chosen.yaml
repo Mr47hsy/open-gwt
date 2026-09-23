@@ -1,0 +1,24 @@
+# discard with cards.pick: chosen (cards.md §7.3, §8): a card picked from the hand — a choice
+# of kind card, listed by card id then instance id — leaves it for the graveyard.
+cards:
+  purge:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - {when: on_play, do: discard, cards: {pick: chosen}}
+seed: 2
+decks:
+  - [purge, spare, plain8, plain5]
+  - [spare, spare]
+steps:
+  - [0, play, purge]
+  - [0, choose, plain8]
+  - [0, end]
+events:
+  - {type: choice_requested, kind: card, prompt_key: choice.discard, option_count: 3}
+  - {type: card_discarded, seat: 0, card: plain8}
+graveyard:
+  0: [plain8, purge]
+hand:
+  0: [plain5, spare]

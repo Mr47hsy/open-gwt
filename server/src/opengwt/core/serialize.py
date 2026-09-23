@@ -9,6 +9,7 @@ from typing import Any
 from .model import (
     CardInstance,
     ChoiceKind,
+    ChoiceOption,
     Deck,
     Invocation,
     MatchState,
@@ -16,6 +17,7 @@ from .model import (
     NextRoundStarter,
     PendingChoice,
     Phase,
+    Placement,
     PlayerState,
     RoundResult,
     Row,
@@ -25,6 +27,7 @@ from .model import (
     Rules,
     Status,
     StatusEntry,
+    Step,
     TieRule,
 )
 
@@ -86,6 +89,57 @@ def _invocation_from_dict(d: dict[str, Any]) -> Invocation:
         Row(d["row"]) if d["row"] is not None else None,
         None if d["trigger"] is None else str(d["trigger"]),
         None if previous is None else [str(i) for i in previous],
+    )
+
+
+def _step_to_dict(step: Step) -> dict[str, Any]:
+    if isinstance(step, Placement):
+        return {
+            "play": {
+                "instance": step.instance,
+                "card": step.card,
+                "seat": step.seat,
+                "zone": step.zone,
+                "zone_seat": step.zone_seat,
+                "source": step.source,
+                "source_card": step.source_card,
+            }
+        }
+    return {"ability": _invocation_to_dict(step)}
+
+
+def _step_from_dict(d: dict[str, Any]) -> Step:
+    if "play" in d:
+        p = d["play"]
+        return Placement(
+            str(p["instance"]),
+            str(p["card"]),
+            int(p["seat"]),
+            str(p["zone"]),
+            int(p["zone_seat"]),
+            str(p["source"]),
+            str(p["source_card"]),
+        )
+    return _invocation_from_dict(d["ability"])
+
+
+def _option_to_dict(o: ChoiceOption) -> dict[str, Any]:
+    return {
+        "instance": o.instance,
+        "card": o.card,
+        "seat": o.seat,
+        "row": o.row.value if o.row is not None else None,
+        "position": o.position,
+    }
+
+
+def _option_from_dict(d: dict[str, Any]) -> ChoiceOption:
+    return ChoiceOption(
+        instance=None if d["instance"] is None else str(d["instance"]),
+        card=None if d["card"] is None else str(d["card"]),
+        seat=None if d["seat"] is None else int(d["seat"]),
+        row=None if d["row"] is None else Row(d["row"]),
+        position=None if d["position"] is None else int(d["position"]),
     )
 
 
@@ -242,10 +296,10 @@ def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
     return {
         "seat": p.seat,
         "kind": p.kind.value,
-        "invocation": _invocation_to_dict(p.invocation),
+        "step": _step_to_dict(p.step),
         "prompt_key": p.prompt_key,
-        "options": list(p.options),
-        "queue": [_invocation_to_dict(i) for i in p.queue],
+        "options": [_option_to_dict(o) for o in p.options],
+        "queue": [_step_to_dict(i) for i in p.queue],
         "cancellable": p.cancellable,
         "order": p.order,
         "order_started": p.order_started,
@@ -256,10 +310,10 @@ def _pending_from_dict(d: dict[str, Any]) -> PendingChoice:
     return PendingChoice(
         seat=int(d["seat"]),
         kind=ChoiceKind(d["kind"]),
-        invocation=_invocation_from_dict(d["invocation"]),
+        step=_step_from_dict(d["step"]),
         prompt_key=str(d["prompt_key"]),
-        options=[str(o) for o in d["options"]],
-        queue=[_invocation_from_dict(i) for i in d["queue"]],
+        options=[_option_from_dict(o) for o in d["options"]],
+        queue=[_step_from_dict(i) for i in d["queue"]],
         cancellable=bool(d["cancellable"]),
         order=None if d["order"] is None else str(d["order"]),
         order_started=bool(d["order_started"]),

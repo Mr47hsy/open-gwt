@@ -213,7 +213,7 @@ class ChoiceKind(str, Enum):
 
 # --- phases of ADR 0009 ---------------------------------------------------------------------------
 
-# Words the phase-B engine carries without acting on them; phase C gives them behaviour.
+# The words phase C gave behaviour to — phase B carried them without acting on them.
 PHASE_C_TRIGGERS = frozenset(
     {
         Trigger.ON_ACTIVATE,
@@ -723,18 +723,52 @@ class Invocation:
 
 
 @dataclass
+class Placement:
+    """A card an ability plays — ``play_from_deck``, ``play_from_graveyard``, ``create`` — waiting
+    in the queue, ahead of the next ability, to be put on the board or, for a special, resolved
+    (cards.md §8). It stays in its ``zone`` — ``deck`` or ``graveyard`` of ``zone_seat``, or
+    ``created``: the resolving cards — until then. ``seat`` plays it; ``source`` is the card
+    whose ability does."""
+
+    instance: str
+    card: str
+    seat: int
+    zone: str
+    zone_seat: int
+    source: str
+    source_card: str
+
+
+Step = Invocation | Placement
+
+
+@dataclass(frozen=True)
+class ChoiceOption:
+    """One option of a pending choice (docs/protocol/match.md §7): a card — ``instance`` and
+    ``card``, without an instance for a card ``create`` offers — a row-side (``seat``, ``row``),
+    or a place on one (and ``position``)."""
+
+    instance: str | None = None
+    card: str | None = None
+    seat: int | None = None
+    row: Row | None = None
+    position: int | None = None
+
+
+@dataclass
 class PendingChoice:
-    """A pick the core waits for. ``queue`` is the rest of the resolution queue, which resolves
+    """A pick the core waits for. ``step`` is the ability that asks, or the card being placed
+    for a choice of kind ``place``. ``queue`` is the rest of the resolution queue, which resolves
     once the pick is made (§11.3). ``order`` is the card whose activated ability is resolving,
     if any, and ``order_started`` whether it has spent its charge yet — until then the choice
     may be cancelled (cards.md §6.3). Without an ``order`` a played card is resolving."""
 
     seat: int
     kind: ChoiceKind
-    invocation: Invocation
+    step: Step
     prompt_key: str
-    options: list[str]
-    queue: list[Invocation]
+    options: list[ChoiceOption]
+    queue: list[Step]
     cancellable: bool = False
     order: str | None = None
     order_started: bool = False
@@ -796,10 +830,10 @@ class MatchState:
                 PendingChoice(
                     p.seat,
                     p.kind,
-                    _clone_invocation(p.invocation),
+                    _clone_step(p.step),
                     p.prompt_key,
                     list(p.options),
-                    [_clone_invocation(i) for i in p.queue],
+                    [_clone_step(i) for i in p.queue],
                     p.cancellable,
                     p.order,
                     p.order_started,
@@ -812,6 +846,20 @@ class MatchState:
             played=self.played,
             ordered=self.ordered,
         )
+
+
+def _clone_step(step: Step) -> Step:
+    if isinstance(step, Placement):
+        return Placement(
+            step.instance,
+            step.card,
+            step.seat,
+            step.zone,
+            step.zone_seat,
+            step.source,
+            step.source_card,
+        )
+    return _clone_invocation(step)
 
 
 def _clone_invocation(inv: Invocation) -> Invocation:

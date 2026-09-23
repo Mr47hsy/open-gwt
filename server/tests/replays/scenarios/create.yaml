@@ -1,0 +1,40 @@
+# create (cards.md §8): card ids of the acting player's faction or neutral, matching the pool,
+# are offered (kind card, by card id; none has an instance yet); a new instance of the one
+# picked, owned by the acting player, is played. The offer is drawn with the seeded PRNG.
+cards:
+  craft:
+    kind: special
+    color: bronze
+    provisions: 6
+    abilities:
+      - {when: on_play, do: create, pool: {tags_any: [crafted]}}
+  anvil:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    tags: [crafted]
+  bellows:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 2
+    tags: [crafted]
+    rows: [ranged]
+seed: 1
+decks:
+  - [craft, spare]
+  - [spare, spare]
+steps:
+  - [0, play, craft]
+  - [0, choose, bellows]        # a ranged-only unit on an empty row: one place, no choice
+  - [0, end]
+events:
+  - {type: choice_requested, kind: card, prompt_key: choice.create, option_count: 2}
+  - {type: card_played, seat: 0, card: bellows, from: created, row: ranged, position: 0}
+absent:
+  - {type: choice_requested, kind: place}
+board:
+  0: {ranged: ["bellows:2"]}
+graveyard:
+  0: [craft]

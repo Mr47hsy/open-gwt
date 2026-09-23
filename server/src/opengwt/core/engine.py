@@ -38,6 +38,7 @@ from .model import (
     CardSource,
     ChargeTarget,
     ChoiceKind,
+    ChoiceOption,
     Conditions,
     Deck,
     Invocation,
@@ -48,6 +49,7 @@ from .model import (
     NextRoundStarter,
     PendingChoice,
     Phase,
+    Placement,
     PlayerState,
     RoundResult,
     Row,
@@ -59,6 +61,7 @@ from .model import (
     Side,
     Status,
     StatusEntry,
+    Step,
     TieRule,
     Trigger,
     Units,
@@ -81,6 +84,9 @@ class IllegalIntent(Exception):
 
 NEUTRAL = "neutral"
 DUEL_STRIKES_MAX = 64
+CREATE_OFFER = 3
+# What an ability can play from a zone or create (§8).
+PLAYABLE = frozenset({Kind.UNIT, Kind.SPECIAL, Kind.ARTIFACT})
 # Most abilities one resolution resolves; content that triggers itself for ever stops here (§11.3).
 QUEUE_STEPS_MAX = 1000
 
@@ -394,7 +400,7 @@ class _Ctx:
         self.rng: Stream = engine_stream(state.seed, state.rng_block, state.rng_pos)
         self._checking = False
         # the resolution queue (§11.3): what is left of it lives in a pending choice meanwhile
-        self.queue: list[Invocation] = []
+        self.queue: list[Step] = []
         self.resolved = 0
         # the activated ability whose abilities are resolving, and whether it spent its charge
         self.order: str | None = None
@@ -1196,7 +1202,7 @@ class _Ctx:
             loc = self.loc(acting.instance) if acting is not None else None
             return [(loc.seat, loc.row)] if loc is not None else []
         if pick is RowPick.CHOSEN:
-            return []
+            return []  # asked as a choice of kind row
         start = self.s.active
         return [
             (s, r)
@@ -1240,18 +1246,72 @@ class _Ctx:
         ]
 
     def pick_cards(self, cands: list[CardInstance], source: CardSource) -> list[CardInstance]:
-        """``first``, ``random`` and ``all`` of §7.3, in zone order; ``chosen`` is phase C."""
+        """``first``, ``random`` and ``all`` of §7.3, in zone order; ``chosen`` asks a choice."""
         if source.pick is CardPick.FIRST:
             return cands[: source.count or 1]
         if source.pick is CardPick.ALL:
             return cands if source.count is None else cands[: source.count]
         if source.pick is CardPick.RANDOM:
-            pool = list(range(len(cands)))
-            chosen: list[int] = []
-            for _ in range(min(source.count or 1, len(pool))):
-                chosen.append(pool.pop(self.rng.below(len(pool))))
-            return [cands[i] for i in sorted(chosen)]
+            return [cands[i] for i in self.draw_distinct(len(cands), source.count or 1)]
         return []
+
+    def draw_distinct(self, size: int, count: int) -> list[int]:
+        """``count`` distinct indices below ``size`` drawn with the seeded PRNG — all of them if
+        there are fewer — in ascending order."""
+        pool = list(range(size))
+        chosen: list[int] = []
+        for _ in range(min(count, size)):
+            chosen.append(pool.pop(self.rng.below(len(pool))))
+        return sorted(chosen)
+
+    def zone_of(self, seat: int, a: Ability) -> tuple[int, str, list[CardInstance]]:
+        """The zone an action with ``cards`` takes from (§7.3): whose, which, and the cards."""
+        assert a.cards is not None
+        zone_seat = self.side_seat(seat, a.cards.side)
+        player = self.s.players[zone_seat]
+        if a.do is Action.DISCARD:
+            return zone_seat, "hand", player.hand
+        if a.do is Action.PLAY_FROM_GRAVEYARD:
+            return zone_seat, "graveyard", player.graveyard
+        return zone_seat, "deck", player.deck
+
+    def zone_cands(self, seat: int, acting: CardInstance | None, a: Ability) -> list[CardInstance]:
+        """The candidates of ``cards``: the zone's cards that match the filter and that the action
+        can take — only units and artifacts for a summon."""
+        assert a.cards is not None
+        cands = self.zone_candidates(self.zone_of(seat, a)[2], a.cards, acting)
+        if a.do is Action.SUMMON_FROM_DECK:
+            return [c for c in cands if self.defn(c).placed]
+        if a.do in (Action.PLAY_FROM_DECK, Action.PLAY_FROM_GRAVEYARD):
+            return [c for c in cands if self.defn(c).kind in PLAYABLE]
+        return cands
+
+    def selected_cards(
+        self, seat: int, acting: CardInstance | None, a: Ability, chosen: ChoiceOption | None
+    ) -> list[CardInstance]:
+        """The cards ``cards`` selects: the one the player chose, or the pick's."""
+        assert a.cards is not None
+        cands = self.zone_cands(seat, acting, a)
+        if chosen is not None:
+            return [c for c in cands if c.instance == chosen.instance]
+        return self.pick_cards(cands, a.cards)
+
+    def create_offer(self, seat: int, acting: CardInstance | None, a: Ability) -> list[str]:
+        """§8 ``create``: ``offer`` distinct card ids drawn with the seeded PRNG from the cards of
+        the acting player's faction and neutral that match ``pool`` — never tokens, leaders or
+        stratagems — in card id order."""
+        pool = a.pool or Where()
+        faction = self.s.players[seat].faction
+        ids = [
+            cid
+            for cid in sorted(self.lib)
+            if (d := self.lib[cid]).faction in (faction, NEUTRAL)
+            and d.kind in PLAYABLE
+            and not d.token
+            and (pool.kind is None or d.kind in pool.kind)
+            and self.where_ok(CardInstance("", cid, seat), pool, acting)
+        ]
+        return [ids[i] for i in self.draw_distinct(len(ids), a.offer or CREATE_OFFER)]
 
     def place_stratagem(self, seat: int, card_id: str) -> None:
         """ADR 0011: the round-one starter's stratagem starts on their side of the board, at the
@@ -1539,6 +1599,11 @@ class _Ctx:
     def finish_play(self, seat: int) -> None:
         """After a played card and everything it caused resolved: specials go to their owner's
         graveyard. The turn goes on until ``seat`` ends it (§11.4 step 5)."""
+        self.flush_resolving()
+
+    def flush_resolving(self) -> None:
+        """The specials played while the queue ran go to their owners' graveyards, in the order
+        they were played."""
         for special in list(self.s.resolving):
             self.s.resolving.remove(special)
             self.reset(special)
@@ -1585,6 +1650,7 @@ class _Ctx:
         stratagem, used once, leaves the board for its owner's banished zone (ADR 0011)."""
         if not started:
             self.start_order(iid)
+        self.flush_resolving()
         loc = self.loc(iid)
         if loc is None or self.defn(loc.card).kind is not Kind.STRATAGEM:
             return
@@ -1611,18 +1677,38 @@ class _Ctx:
         self.queue = pending.queue
         self.order, self.order_started = pending.order, pending.order_started
         self.may_ask = True
-        inv = pending.invocation
-        ability = self.ability(inv)
-        acting = self.acting_card(inv)
-        target = self.loc(pending.options[option])
-        targets = [target] if target is not None else []
-        self.start_pending_order()
-        self.perform(inv, acting, ability, targets)
-        self.hand_on(inv, targets)
+        picked = pending.options[option]
+        step = pending.step
+        if isinstance(step, Placement):
+            card = self.placement_card(step)
+            if card is not None:
+                self.place_at(step, card, picked)
+        else:
+            self.act_on_choice(step, pending.kind, picked)
         if self.settle() or pending.order is not None:
             return
         assert s.turn is not None
         self.finish_play(s.turn)
+
+    def act_on_choice(self, inv: Invocation, kind: ChoiceKind, picked: ChoiceOption) -> None:
+        """The ability that asked resolves on what was picked: the unit, every candidate on the
+        row-side (``chosen_row``), the row-side (``row_target``) or the card (§7)."""
+        ability = self.ability(inv)
+        acting = self.acting_card(inv)
+        targets: list[Loc] = []
+        t = ability.target
+        if kind is ChoiceKind.UNIT and picked.instance is not None:
+            loc = self.loc(picked.instance)
+            targets = [loc] if loc is not None else []
+        elif kind is ChoiceKind.ROW and t is not None:
+            targets = [
+                loc
+                for loc in self.unit_candidates(inv.seat, acting, t, ability.do)
+                if loc.seat == picked.seat and loc.row is picked.row
+            ]
+        self.start_pending_order()
+        self.perform(inv, acting, ability, targets, picked)
+        self.hand_on(inv, targets)
 
     def cancel_choice(self, seat: int) -> None:
         pending = self.s.pending
@@ -1691,7 +1777,8 @@ class _Ctx:
         when = self.ability(inv).when
         for nxt in self.queue:
             if (
-                nxt.instance == inv.instance
+                isinstance(nxt, Invocation)
+                and nxt.instance == inv.instance
                 and nxt.ability_index > inv.ability_index
                 and self.ability(nxt).when is when
             ):
@@ -1727,64 +1814,195 @@ class _Ctx:
     def run(self) -> bool:
         """Run the queue first in, first out (§11.3). True when paused for a choice; the rest of
         the queue then waits in the pending choice."""
-        s = self.s
         while self.queue:
             if self.resolved >= QUEUE_STEPS_MAX:
                 self.queue.clear()  # content that keeps triggering itself stops here
                 return False
             self.resolved += 1
-            inv = self.queue.pop(0)
+            step = self.queue.pop(0)
+            if isinstance(step, Placement):
+                if self.play_placement(step):
+                    return True
+                continue
+            inv = step
             ability = self.ability(inv)
             acting = self.acting_card(inv)
             if not self.may_fire(inv, acting, ability):
                 self.hand_on(inv, [])
                 continue
-            t = ability.target
-            if t is not None and t.units is Units.CHOSEN:
-                options = self.unit_candidates(inv.seat, acting, t, ability.do)
+            asked = self.choice_of(inv, acting, ability)
+            if asked is not None:
+                kind, options = asked
                 if not options or not self.may_ask:
                     self.hand_on(inv, [])
                     continue
-                pending = PendingChoice(
-                    seat=inv.seat,
-                    kind=ChoiceKind.UNIT,
-                    invocation=inv,
-                    prompt_key="choice." + ability.do.value.replace("_", "-"),
-                    options=[loc.card.instance for loc in options],
-                    queue=self.queue,
-                    cancellable=self.order is not None and not self.order_started,
-                    order=self.order,
-                    order_started=self.order_started,
-                )
-                self.queue = []
-                self.order, self.order_started = None, True
-                s.pending = pending
-                s.phase = Phase.CHOOSING
-                self.emit(
-                    "choice_requested",
-                    seat=inv.seat,
-                    kind=pending.kind.value,
-                    prompt_key=pending.prompt_key,
-                    option_count=len(pending.options),
-                    source=inv.instance,
-                    cancellable=pending.cancellable,
-                )
+                prompt = "choice." + ability.do.value.replace("_", "-")
+                self.ask(inv, kind, prompt, options, self.cancellable(kind, ability))
                 return True
             self.start_pending_order()
+            t = ability.target
             targets = self.select_units(inv, acting, t, ability.do) if t is not None else []
             self.perform(inv, acting, ability, targets)
             self.hand_on(inv, targets)
         return False
 
+    def choice_of(
+        self, inv: Invocation, acting: CardInstance | None, a: Ability
+    ) -> tuple[ChoiceKind, list[ChoiceOption]] | None:
+        """The choice an ability asks before it acts, with its options (§7, match.md §7), or
+        ``None`` when it asks nothing. Options from a deck or a hand are listed by card id, then
+        instance id, never in zone order; a graveyard is public and keeps its order."""
+        seat, t = inv.seat, a.target
+        if t is not None and t.units is Units.CHOSEN:
+            locs = self.unit_candidates(seat, acting, t, a.do)
+            return ChoiceKind.UNIT, [ChoiceOption(loc.card.instance, loc.card.card) for loc in locs]
+        if t is not None and t.units is Units.CHOSEN_ROW:
+            sides: list[tuple[int, Row]] = []
+            for loc in self.unit_candidates(seat, acting, t, a.do):
+                if (loc.seat, loc.row) not in sides:
+                    sides.append((loc.seat, loc.row))
+            return ChoiceKind.ROW, [ChoiceOption(seat=st, row=row) for st, row in sides]
+        if a.row_target is not None and a.row_target.pick is RowPick.CHOSEN:
+            rt = a.row_target
+            sides = self.row_sides(seat, acting, RowPick.ALL, rt.side, rt.rows)
+            return ChoiceKind.ROW, [ChoiceOption(seat=st, row=row) for st, row in sides]
+        if a.cards is not None and a.cards.pick is CardPick.CHOSEN:
+            cands = self.zone_cands(seat, acting, a)
+            if a.cards.offer is not None:
+                cands = [cands[i] for i in self.draw_distinct(len(cands), a.cards.offer)]
+            if self.zone_of(seat, a)[1] != "graveyard":
+                cands = sorted(cands, key=lambda c: (c.card, c.instance))
+            return ChoiceKind.CARD, [ChoiceOption(c.instance, c.card) for c in cands]
+        if a.do is Action.CREATE:
+            return ChoiceKind.CARD, [
+                ChoiceOption(card=cid) for cid in self.create_offer(seat, acting, a)
+            ]
+        return None
+
+    def cancellable(self, kind: ChoiceKind, a: Ability) -> bool:
+        """§6.3: only the first choice of an activated ability, before its first ability acts —
+        and only when the options showed nothing hidden and took no random draw: a unit, a row,
+        or a card from a graveyard without an offer."""
+        if self.order is None or self.order_started:
+            return False
+        if kind in (ChoiceKind.UNIT, ChoiceKind.ROW):
+            return True
+        return (
+            kind is ChoiceKind.CARD
+            and a.do is Action.PLAY_FROM_GRAVEYARD
+            and a.cards is not None
+            and a.cards.offer is None
+        )
+
+    def ask(
+        self,
+        step: Step,
+        kind: ChoiceKind,
+        prompt_key: str,
+        options: list[ChoiceOption],
+        cancellable: bool,
+    ) -> None:
+        """Pause the queue for a choice of the acting player; the rest of the queue waits in it."""
+        seat = step.seat
+        pending = PendingChoice(
+            seat=seat,
+            kind=kind,
+            step=step,
+            prompt_key=prompt_key,
+            options=options,
+            queue=self.queue,
+            cancellable=cancellable,
+            order=self.order,
+            order_started=self.order_started,
+        )
+        self.queue = []
+        self.order, self.order_started = None, True
+        self.s.pending = pending
+        self.s.phase = Phase.CHOOSING
+        self.emit(
+            "choice_requested",
+            seat=seat,
+            kind=kind.value,
+            prompt_key=prompt_key,
+            option_count=len(options),
+            source=step.source if isinstance(step, Placement) else step.instance,
+            cancellable=cancellable,
+        )
+
+    # --- cards an ability plays ----------------------------------------------------------------
+
+    def placement_card(self, p: Placement) -> CardInstance | None:
+        """The card a placement plays, if it is still where it waits."""
+        return next((c for c in self.placement_zone(p) if c.instance == p.instance), None)
+
+    def placement_zone(self, p: Placement) -> list[CardInstance]:
+        if p.zone == "created":
+            return self.s.resolving
+        player = self.s.players[p.zone_seat]
+        return player.deck if p.zone == "deck" else player.graveyard
+
+    def play_placement(self, p: Placement) -> bool:
+        """Play a card an ability plays (§8): a special resolves; a unit or artifact is placed
+        where the acting player chooses, when more than one place is legal. True when paused."""
+        card = self.placement_card(p)
+        if card is None:
+            return False
+        defn = self.defn(card)
+        if defn.kind is Kind.SPECIAL:
+            self.placement_zone(p).remove(card)
+            self.s.resolving.append(card)
+            self.emit(
+                "card_played",
+                seat=p.seat,
+                instance=card.instance,
+                card=card.card,
+                **{"from": p.zone},
+            )
+            self.fire(card, Trigger.ON_PLAY, p.seat)
+            return False
+        land = _landing_seat(self.s, p.seat, defn)
+        places = [
+            ChoiceOption(seat=land, row=row, position=i)
+            for row in _allowed_rows(self.s.rules, defn)
+            if len(cards := self.s.players[land].rows[row].cards) < self.s.rules.row_capacity
+            for i in range(len(cards) + 1)
+        ]
+        if not places or not defn.placed:
+            if p.zone == "created":
+                self.s.resolving.remove(card)  # nowhere to go: it never enters the match
+            return False
+        if len(places) > 1 and self.may_ask:
+            self.ask(p, ChoiceKind.PLACE, "choice.place", places, cancellable=False)
+            return True
+        self.place_at(p, card, [o for o in places if o.row is places[0].row][-1])
+        return False
+
+    def place_at(self, p: Placement, card: CardInstance, at: ChoiceOption) -> None:
+        """Put a card an ability plays on the board and fire it as if played from hand."""
+        assert at.seat is not None and at.row is not None and at.position is not None
+        self.placement_zone(p).remove(card)
+        self.enter(card, at.seat, at.row, at.position)
+        self.emit(
+            "card_played",
+            seat=p.seat,
+            instance=card.instance,
+            card=card.card,
+            **{"from": p.zone},
+            row=at.row.value,
+            position=at.position,
+            side="self" if at.seat == p.seat else "opponent",
+        )
+        self.sync_auras()
+        self.arrive(card)
+        self.check_destruction()
+        self.fire(card, Trigger.ON_PLAY, p.seat, row=at.row)
+        self.fire_ally_played(card, p.seat)
+
     def may_fire(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> bool:
         """§11.3: skipped when the card is locked, when it must be on the board and is not — every
-        ability but ``on_destroyed`` and a special's ``on_play`` — or when its conditions fail.
-        Words still waiting for the rest of phase C are skipped too."""
-        if acting is None or a.do in _NOT_YET:
-            return False
-        if a.row_target is not None and a.row_target.pick is RowPick.CHOSEN:
-            return False
-        if a.cards is not None and a.cards.pick is CardPick.CHOSEN:
+        ability but ``on_destroyed``, a special's ``on_play`` and a leader's — or when its
+        conditions fail."""
+        if acting is None:
             return False
         loc = self.loc(acting.instance)
         kind = self.defn(acting).kind
@@ -1800,9 +2018,15 @@ class _Ctx:
         return self.conditions_hold(inv, acting, a.cond)
 
     def perform(
-        self, inv: Invocation, acting: CardInstance | None, a: Ability, targets: list[Loc]
+        self,
+        inv: Invocation,
+        acting: CardInstance | None,
+        a: Ability,
+        targets: list[Loc],
+        chosen: ChoiceOption | None = None,
     ) -> None:
-        """Carry out one ability on its targets, one at a time in board order (§8)."""
+        """Carry out one ability on its targets, one at a time in board order, or on the card or
+        row-side the player chose (§8)."""
         seat, src = inv.seat, inv.instance
         ids = [loc.card.instance for loc in targets]
         do = a.do
@@ -1840,17 +2064,21 @@ class _Ctx:
             elif do is Action.CONSUME:
                 self.consume(acting, iid, src)
         if do is Action.DISCARD and a.cards is not None:
-            self.discard(seat, acting, a.cards)
+            self.discard(seat, acting, a, chosen)
         elif do is Action.DRAW:
             self.draw(self.side_seat(seat, a.side), a.count or 1)
         elif do is Action.SUMMON_FROM_DECK and a.cards is not None:
-            self.summon_from_deck(inv, acting, a)
+            self.summon_from_deck(inv, acting, a, chosen)
+        elif do in (Action.PLAY_FROM_DECK, Action.PLAY_FROM_GRAVEYARD) and a.cards is not None:
+            self.play_from_zone(inv, acting, a, chosen)
+        elif do is Action.CREATE:
+            self.create(inv, chosen)
         elif do is Action.PLACE_NEW_CARD:
             self.place_new_card(inv, acting, a)
         elif do is Action.SET_ROW_EFFECT:
-            self.set_row_effect(seat, acting, a, src)
+            self.set_row_effect(seat, acting, a, src, chosen)
         elif do is Action.CLEAR_ROW_EFFECT:
-            self.clear_row_effect(seat, acting, a, src)
+            self.clear_row_effect(seat, acting, a, src, chosen)
         elif do is Action.ADD_CHARGES:
             self.add_charges(seat, acting, a, src)
         # continuous_boost acts through power (§11.1)
@@ -1918,22 +2146,22 @@ class _Ctx:
         if acting is not None and self.loc(acting.instance) is not None:
             self.boost(acting.instance, gained, Action.CONSUME.value, source)
 
-    def discard(self, seat: int, acting: CardInstance | None, source: CardSource) -> None:
-        owner_seat = self.side_seat(seat, source.side)
-        hand = self.s.players[owner_seat].hand
-        for card in self.pick_cards(self.zone_candidates(hand, source, acting), source):
+    def discard(
+        self, seat: int, acting: CardInstance | None, a: Ability, chosen: ChoiceOption | None
+    ) -> None:
+        owner_seat, _, hand = self.zone_of(seat, a)
+        for card in self.selected_cards(seat, acting, a, chosen):
             hand.remove(card)
             self.s.players[card.owner].graveyard.append(card)
             self.emit("card_discarded", seat=owner_seat, instance=card.instance, card=card.card)
 
-    def summon_from_deck(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> None:
+    def summon_from_deck(
+        self, inv: Invocation, acting: CardInstance | None, a: Ability, chosen: ChoiceOption | None
+    ) -> None:
         seat = inv.seat
-        source = a.cards
-        assert source is not None
-        deck = self.s.players[self.side_seat(seat, source.side)].deck
-        cands = [c for c in self.zone_candidates(deck, source, acting) if self.defn(c).placed]
+        deck = self.zone_of(seat, a)[2]
         last: CardInstance | None = None
-        for card in self.pick_cards(cands, source):
+        for card in self.selected_cards(seat, acting, a, chosen):
             land = _landing_seat(self.s, seat, self.defn(card))
             where = self.placement(card, land, acting, a.row, last, inv.row)
             if where is None or card not in deck:
@@ -1941,6 +2169,31 @@ class _Ctx:
             deck.remove(card)
             self.summon(card, land, where, seat, "deck")
             last = card
+
+    def play_from_zone(
+        self, inv: Invocation, acting: CardInstance | None, a: Ability, chosen: ChoiceOption | None
+    ) -> None:
+        """``play_from_deck`` / ``play_from_graveyard``: each selected card is played as if from
+        hand, one after another, before the next ability (§8, §11.3)."""
+        zone_seat, zone, _ = self.zone_of(inv.seat, a)
+        self.queue[0:0] = [
+            Placement(c.instance, c.card, inv.seat, zone, zone_seat, inv.instance, inv.card)
+            for c in self.selected_cards(inv.seat, acting, a, chosen)
+        ]
+
+    def create(self, inv: Invocation, chosen: ChoiceOption | None) -> None:
+        """``create``: a new instance of the card picked from the offer, owned by the acting
+        player, is played as ``play_from_deck`` plays (§8)."""
+        if chosen is None or chosen.card is None:
+            return
+        card = self.new_instance(chosen.card, inv.seat)
+        self.s.resolving.append(card)
+        self.queue.insert(
+            0,
+            Placement(
+                card.instance, card.card, inv.seat, "created", inv.seat, inv.instance, inv.card
+            ),
+        )
 
     def place_new_card(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> None:
         seat = inv.seat
@@ -1957,13 +2210,27 @@ class _Ctx:
             self.summon(card, land, where, seat, "created", (Status.BANISH_ON_LEAVE,))
             last = card
 
+    def chosen_row_sides(
+        self, seat: int, acting: CardInstance | None, a: Ability, chosen: ChoiceOption | None
+    ) -> list[tuple[int, Row]]:
+        rt = a.row_target
+        assert rt is not None
+        if chosen is not None and chosen.seat is not None and chosen.row is not None:
+            return [(chosen.seat, chosen.row)]
+        return self.row_sides(seat, acting, rt.pick, rt.side, rt.rows)
+
     def set_row_effect(
-        self, seat: int, acting: CardInstance | None, a: Ability, source: str
+        self,
+        seat: int,
+        acting: CardInstance | None,
+        a: Ability,
+        source: str,
+        chosen: ChoiceOption | None = None,
     ) -> None:
         rt = a.row_target
         if rt is None or a.effect is None:
             return
-        for side_seat, row in self.row_sides(seat, acting, rt.pick, rt.side, rt.rows):
+        for side_seat, row in self.chosen_row_sides(seat, acting, a, chosen):
             fields: dict[str, Any] = {"effect": a.effect.value, "amount": a.amount}
             if a.count is not None:
                 fields["count"] = a.count
@@ -1974,12 +2241,17 @@ class _Ctx:
             )
 
     def clear_row_effect(
-        self, seat: int, acting: CardInstance | None, a: Ability, source: str
+        self,
+        seat: int,
+        acting: CardInstance | None,
+        a: Ability,
+        source: str,
+        chosen: ChoiceOption | None = None,
     ) -> None:
         rt = a.row_target
         if rt is None:
             return
-        for side_seat, row in self.row_sides(seat, acting, rt.pick, rt.side, rt.rows):
+        for side_seat, row in self.chosen_row_sides(seat, acting, a, chosen):
             side = self.s.players[side_seat].rows[row]
             effect = side.effect
             if effect is None or (
@@ -1995,9 +2267,6 @@ class _Ctx:
                 source=source,
             )
 
-
-# Actions that wait for the generalised choices of phase C.
-_NOT_YET = frozenset({Action.PLAY_FROM_DECK, Action.PLAY_FROM_GRAVEYARD, Action.CREATE})
 
 # Actions that act on each target of a unit selector in turn.
 _PER_TARGET = frozenset(
