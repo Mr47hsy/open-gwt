@@ -15,7 +15,8 @@ names appear here.
 | row capacity | 行容量 | вместимость ряда | Most cards one player's row holds; nine by default |
 | position / adjacent | 位置 / 相邻 | позиция / соседний | A card's place in its row, left to right, and the cards directly beside it |
 | round | 局 | раунд | One scoring segment; a match is best-of-three |
-| turn | 回合 | ход | One player's go within a round: activated abilities, then one card or a pass |
+| turn | 回合 | ход | One player's go within a round: activated abilities before and after one card, until the player ends it; or a pass instead of the card |
+| end turn | 结束回合 | закончить ход | What a player does once their turn's card is played; a turn never ends by itself (intent `end_turn`) |
 | tie | 平局 | ничья | A round with equal scores; by default it counts as won by both players |
 | match | 对战 | матч | The whole game, up to three rounds |
 | pass | pass / 停手 | пас | Stop playing for the round, keeping the rest of your hand |
@@ -35,7 +36,7 @@ names appear here.
 | guarding | 守护 | охрана | A status: the opponent cannot choose any other card on the guard's row |
 | status-proof | 状态免疫 | защита от статусов | A status: no status can be added to the card |
 | status | 状态 | статус | A marker on a unit that alters how rules apply to it, possibly with a timer |
-| activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn; using it does not end the turn (intent `use_order`) |
+| activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn, before or after its card; using it does not end the turn but commits it to a card (intent `use_order`) |
 | charges / cooldown / ready | 次数 / 冷却 / 就绪 | заряды / перезарядка / готова | Uses an activated ability has left, turns before it can be used again, and whether it can be used now |
 | timer | 计时 | таймер | Turns a status lasts; it ticks at its controller's turn end |
 | bronze / gold | 铜卡 / 金卡 | бронзовая / золотая карта | Card colours that set the copy limit in a deck |

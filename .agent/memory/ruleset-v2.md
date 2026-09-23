@@ -1,6 +1,6 @@
 ---
 name: ruleset-v2
-description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A and B are done, C is next.
+description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A, B and C are done, D is next.
 metadata:
   type: project
 ---
@@ -38,11 +38,22 @@ round-one starter gets it, on the board at the left end of its row where it **ta
 (the owner confirmed), nothing acts on it, it is banished if still unused when round one ends
 (the owner confirmed), is used once through
 `use_order` and is then banished. So `use_order`, `cancel_choice` and `order_used` exist since B,
-ready for stratagems only. `data/` uses only phase-B words, except every leader's activated ability. Still open
-for C: whether activated abilities stay usable after the turn's card is played — ADR 0009 and
-protocol 2 say playing a card ends the turn.
+ready for stratagems only.
+
+Phase C is done (2026-09-24): one resolution queue for every trigger, activated abilities of
+units, artifacts and leaders, `add_charges`, choices of kind `row`, `place` and `card`,
+`play_from_deck` / `play_from_graveyard` / `create`. Decisions the owner took for it, from public
+sources (`cards.md` §16): activated abilities are usable **before and after** the turn's card;
+using one commits the turn to a card (no pass while a card can be played); after the card the
+turn **waits for `end_turn`** and never ends by itself — the owner's own rule, only a timeout
+ends it for the player; a player's units' `on_turn_start` abilities resolve **before** the row
+effects on their rows, which act in the order they were set (`RowEffect.since`); a resolution
+stops after 1000 queued steps; a first choice is cancellable only when it shows nothing hidden and
+took no random draw. `data/`'s starter decks use every phase-C word; the owner will export a
+card set of their own design later, to be imported in one go.
 
 **How to apply:** do not add v1 content or vocabulary; read ADR 0009 and take the next unfinished
 phase from [[backlog]]; vocabulary words describe behaviour and never reuse a distinctive official
-keyword; regenerate goldens when a phase changes rules and say so in the pull request. See
+keyword; regenerate goldens when a phase changes rules and say so in the pull request; rules
+tests are replay scenarios under `server/tests/replays/scenarios/` where they can be. See
 [[card-protocol-yaml]], [[project-status]].

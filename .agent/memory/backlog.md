@@ -8,26 +8,22 @@ metadata:
 Not ordered except for the ruleset phases, which are strictly sequential. One session per item,
 one pull request per concern.
 
-**Ruleset v2 (ADR 0009) — in order, each blocks the next.** Phases A (protocol v2 documents)
-and B (power and board, ADR 0010's random streams) are done; the phases below implement
-`docs/protocol/cards.md` and `match.md` as written, and change them in the same pull request
-where the code proves them wrong. The vocabulary is complete since B: a later phase adds
-behaviour, not words.
-- Phase C: give behaviour to the words `model.phase_c_words` lists — extend `use_order` (working
-  for stratagems since B, ADR 0011) to units, artifacts and leaders with charges / cooldown /
-  `ready_on_play`, leader charges, `on_destroyed`, turn start / end, `on_ally_played`,
-  `on_boosted` / `on_damaged`, the `adjacent`, `trigger_unit` and `previous_targets` selectors,
-  `play_from_deck` / `play_from_graveyard` / `create` / `add_charges`, choices of kind `row`,
-  `place` and `card` and `cancel_choice`; track the row a card was last on for summons from
-  `on_destroyed`; bots use orders.
+**Ruleset v2 (ADR 0009) — in order, each blocks the next.** Phases A (protocol v2 documents),
+B (power and board, ADR 0010's random streams) and C (triggers, activated abilities, generalised
+choices) are done; the phases below implement `docs/protocol/cards.md` and `match.md` as written,
+and change them in the same pull request where the code proves them wrong. The vocabulary is
+complete since B: a later phase adds behaviour, not words.
 - Phase D: provisions, colours, copy limits, minimum units (and the owner's further deck-building
   limits, to be discussed); server validation; pack v2 completed with deck provisions. Decks
   already name a stratagem (ADR 0011).
-- Phase E: the client speaks protocol 2 (the server does since B); targeting UI; statuses and
-  armour on cards; order buttons (a stratagem's is usable already); stratagem choice in decks;
-  the interface texts for statuses, row effects and every `choice.<action>` prompt in three
-  languages.
-- Phase F: original placeholder set covering every vocabulary word; two starter decks per faction.
+- Phase E: the client speaks protocol 2 (the server does since B); an end-turn button (the turn
+  waits for `end_turn` once its card is played) and a pass that `legal_intents` may withhold;
+  choice UIs for every kind — unit, row, place (the view names the card being placed) and card
+  (a `create` offer has no instance); statuses and armour on cards; order buttons; stratagem
+  choice in decks; the interface texts for statuses, row effects and every `choice.<action>`
+  prompt (and `choice.place`) in three languages.
+- Phase F: original placeholder set covering every vocabulary word; two starter decks per
+  faction. The owner will export a card set of their own design to import instead (2026-09-24).
 
 **Client**
 - Event-driven animation: cards flash today; playing, destroying, returning and row effects
@@ -46,7 +42,8 @@ behaviour, not words.
   multi-worker acceptance of ADR 0008. The factories in `backends/factory.py` refuse non-memory
   URLs today. A shared timer is per match and seat and keeps the wait it was set for (the
   mulligan's round, or the `seq`), as the memory one does, so a timer that a move overtook stays
-  a no-op on whichever worker serves it.
+  a no-op on whichever worker serves it; and like it, keeps its deadline through a `use_order`
+  stopped on a cancellable choice and its `cancel_choice` (`_keeps_clock`, match.md §9).
 - Accounts beyond guest tokens are out of scope by decision; a display-name change exists.
 
 **Content and rules** (after phase F)

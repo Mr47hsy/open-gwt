@@ -8,10 +8,11 @@ sends intents; every decision is made on the server. Version 2 carries the two-r
 [`cards.md`](cards.md).
 
 > **Transition.** Since ADR 0009 phase B the server speaks protocol 2: views, intents and events
-> come from the v2 rules core. The Unity client on `develop` still speaks protocol 1 (`git show
+> come from the v2 rules core; phase C completed it — activated abilities of every kind,
+> `end_turn`, and choices of every kind — while no client spoke it yet, so protocol 2 changed in
+> place. The Unity client on `develop` still speaks protocol 1 (`git show
 > b68be93:docs/protocol/match.md`) until phase E; between the two it cannot play, by the owner's
-> decision. Until phase C only a stratagem's activated ability is ever ready (ADR 0011), and
-> every pending choice is of kind `unit`.
+> decision.
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
 rendered to a human carries keys or codes, never sentences ([ADR 0006](../adr/0006-i18n-keys-and-unity-localization.md)).
@@ -26,9 +27,10 @@ Breaking changes bump the version. Adding an optional field or a new event type 
 ignore unknown fields and unknown event types.
 
 What changed from protocol 1: two rows, positions on a row and artifacts; the `use_order`,
-`cancel_choice` and `end_mulligan` intents, one-card `mulligan`, and `use_leader` folded into
-`use_order`; a generalised `pending_choice`; power, armour, statuses and readiness in the view;
-tied rounds with several winners; the events of section 8.
+`end_turn`, `cancel_choice` and `end_mulligan` intents, one-card `mulligan`, and `use_leader`
+folded into `use_order`; a turn that goes on after its card until the player ends it; a
+generalised `pending_choice`; power, armour, statuses and readiness in the view; tied rounds
+with several winners; the events of section 8.
 
 ## 2. HTTP API
 
@@ -106,9 +108,10 @@ Exactly what the rules core accepts; the server only adds authentication and rou
 | --- | --- | --- |
 | `mulligan` | `{card: instance}` | During the mulligan, while this player has redraws left, cards in their deck and has not ended their mulligan: return this card from hand and draw a replacement into its place (`cards.md` §11.5). |
 | `end_mulligan` | `{}` | During the mulligan, until this player's mulligan is over. It ends by itself when the redraws run out. |
-| `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end). Playing a card ends the turn once it has resolved. |
-| `use_order` | `{instance}` | On this player's turn, with no choice pending, for a card of theirs on the board or their leader whose activated ability is ready (`cards.md` §6.3). Does not end the turn. |
-| `pass` | `{}` | On this player's turn, with no choice pending. |
+| `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending, once per turn. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end). Playing a card does not end the turn (`end_turn`). |
+| `use_order` | `{instance}` | On this player's turn, with no choice pending, before or after the turn's card, for a card of theirs on the board or their leader whose activated ability is ready (`cards.md` §6.3). Does not end the turn; once one is used, the turn needs its card. |
+| `end_turn` | `{}` | On this player's turn, with no choice pending, once the turn's card is played. The turn never ends by itself (`cards.md` §11.4). |
+| `pass` | `{}` | On this player's turn, with no choice pending, instead of playing a card: not once the card is played, and not after an activated ability while a card can still be played. |
 | `choose` | `{option: index}` | Only while a choice is pending for this player. Every other intent except `cancel_choice` is illegal until the choice is made. |
 | `cancel_choice` | `{}` | Only while a choice of this player is pending and `cancellable`. |
 
@@ -214,9 +217,13 @@ A card on the board:
 
 `side` is `me` or `opponent`. `source` is the card whose ability asks. `prompt_key` is
 `choice.<action>` with the action's underscores as hyphens (`choice.play-from-deck`), or
-`choice.place` for a placement. `cancellable` is `true` only for the first choice of a
-`use_order`, before anything has changed (`cards.md` §6.3). Options from a deck are listed by card
-id, then instance id. The answer is `choose {option}`, the option's index.
+`choice.place` for a placement; a placement also carries `card: {instance, card}`, the card being
+placed. A card `create` offers has no instance yet: its option is `{card}`. `cancellable` is
+`true` only for the first choice of a `use_order`, before anything has changed, and only when
+the options show nothing hidden and took no random draw — a unit, a row-side, or a card from a
+graveyard without an offer (`cards.md` §6.3). Options from a deck or a hand are listed by card
+id, then instance id; a graveyard keeps its order. The answer is `choose {option}`, the option's
+index.
 
 ## 8. Events
 
@@ -242,7 +249,7 @@ whose ability caused it, or `null` for a status or a row effect.
 | `mulligan_done` | `{seat, count}` | |
 | `turn_started` | `{seat}` | |
 | `turn_ended` | `{seat}` | |
-| `card_played` | `{seat, instance, card, from, row?, position?, side?}` | `from` is `hand`, `deck` or `graveyard`; `row`, `position`, `side` for a unit or artifact. |
+| `card_played` | `{seat, instance, card, from, row?, position?, side?}` | `from` is `hand`, `deck`, `graveyard` or `created`; `row`, `position`, `side` for a unit or artifact. |
 | `order_used` | `{seat, instance, card, charges, cooldown}` | When the order's first ability starts to act (after its choice, if it asks one): remaining charges (`null` when unlimited) and the new cooldown. Replaces protocol 1's `leader_used`. |
 | `card_summoned` | `{seat, instance, card, from, row, position, side}` | Onto the board without being played; `from` is `deck` or `created`. |
 | `card_moved` | `{seat, instance, card, from_row, to_row, position}` | |
@@ -265,7 +272,7 @@ whose ability caused it, or `null` for a status or a row effect.
 | `row_effect_set` | `{seat, row, effect, amount, count?, source}` | Replaces any previous one; no `row_effect_cleared` precedes it. |
 | `row_effect_cleared` | `{seat, row, effect, source}` | By `clear_row_effect`. The end of a round removes row effects without this event (`board_cleared`). |
 | `choice_requested` | `{seat, kind, prompt_key, option_count, source, cancellable}` | The options themselves are only in that player's view. |
-| `choice_made` | `{seat, option}` | |
+| `choice_made` | `{seat, option?}` | `option` for the chooser only: the other player never saw the options, and the index of one among cards from a hidden zone would tell something of them. |
 | `choice_cancelled` | `{seat}` | The match is back where it was before the `use_order`. |
 | `player_passed` | `{seat, auto}` | `auto` is `true` for an automatic pass (`cards.md` §11.4). |
 | `round_ended` | `{round, winners: [seat...], scores: [a, b]}` | Two winners for a tie under `both_win`, none under `neither_wins`. |
@@ -287,10 +294,15 @@ sends `resync {since_seq}` to receive the events it missed for animation. If the
 animate a gap it simply renders the `view`.
 
 A player who stays disconnected keeps their turn until the match's turn timeout, a server setting,
-after which the server passes for them — or, during the mulligan, ends their mulligan, and while a
-choice is pending, cancels it if it can or picks the first option. In the mulligan each player has
+after which the server moves for them: during the mulligan it ends their mulligan; while a choice
+is pending it cancels it if it can or picks the first option; once the turn's card is played it
+ends the turn; otherwise it passes — or, after an activated ability, when a pass is refused, plays
+the first legal card at the right end of its row. A timeout that cancels a choice makes that next
+move too, in the same timeout. In the mulligan each player has
 their own timeout, from the start of the mulligan: neither player's redraws restart it. Otherwise
-the timeout restarts with every change to the match.
+the timeout restarts with every change to the match — except a `use_order` that stops on a
+cancellable choice and the `cancel_choice` of it, which leave the match as it was: the player's
+timer runs on through them.
 
 `resync` is answered from the match's event log. In a multi-worker deployment that log is shared
 (ADR 0008), so a reconnecting client may land on any worker and still receive the same events.
@@ -313,9 +325,11 @@ the timeout restarts with every change to the match.
 | `locale_unsupported`, `invalid_request`, `unknown_message` | Request shape and content. |
 
 Reason keys of `illegal_intent` new in protocol 2: `error.play.row-full`,
-`error.play.position-out-of-range`, `error.play.position-required`, `error.order.not-ready`,
-`error.choice.not-cancellable`, `error.mulligan.none-left`, `error.mulligan.over`. Protocol 1's
-keys for playing, passing and choosing keep their meaning.
+`error.play.position-out-of-range`, `error.play.position-required`,
+`error.play.card-already-played`, `error.pass.card-played`, `error.pass.order-used`,
+`error.end-turn.no-card-played`, `error.order.not-ready`, `error.choice.not-cancellable`,
+`error.mulligan.none-left`, `error.mulligan.over`. Protocol 1's keys for playing, passing and
+choosing keep their meaning.
 
 ## 11. Security notes
 
@@ -330,7 +344,9 @@ keys for playing, passing and choosing keep their meaning.
 - Options drawn from a hidden zone are listed by card id and instance id, never in zone order;
   instance ids are opaque (`cards.md` §5), so neither reveals a position.
 - A `choice_requested` event for the other player reveals the kind, the number of options and
-  the source card — which is public — never the options.
+  the source card — which is public — never the options; its `choice_made` carries no option.
+- A card that chooses from the opponent's deck or hand shows its candidates to the chooser, by
+  design of that card (`cards.md` §7.3).
 - Random picks — `random` targets, offers, tie breaks, mulligan insertion — are drawn on the
   server with the seeded PRNG; a client never supplies randomness. A server-hosted bot draws from
   its own stream (ADR 0010), so its choices say nothing about the match's.

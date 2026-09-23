@@ -5,7 +5,12 @@
   and the vocabulary against public descriptions of the standalone game and corrected them in
   `docs/protocol/cards.md` (§4, §9, §11, §16): two redraws in rounds two and three, a redraw for
   each draw a full hand prevents, status timers at turn end. Leaving stratagems and the coin-toss
-  compensation out is superseded by [ADR 0011](0011-first-player-compensation.md).
+  compensation out is superseded by [ADR 0011](0011-first-player-compensation.md). Phase C
+  (2026-09-24) corrected the turn against public descriptions of the standalone game, with the
+  owner: activated abilities stay usable after the turn's card, using one commits the turn to a
+  card, and the turn ends with the player's `end_turn`, never by itself — not with the card as
+  *Turn* below says (`docs/protocol/cards.md` §11.4, `match.md` §6); and a player's units act at
+  their turn start before the row effects on their rows, which act in the order they were set.
 - Deciders: project owner
 - Supersedes: the game-shape parts of [ADR 0007](0007-mvp-order-and-acceptance.md) (M1 scope)
   and the vocabulary of [ADR 0003](0003-card-effect-protocol-yaml.md) v1; the protocol itself,

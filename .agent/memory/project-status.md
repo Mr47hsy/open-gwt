@@ -1,6 +1,6 @@
 ---
 name: project-status
-description: As of 2026-09-23 the MVP (M1–M3) is merged and ADR 0009 phase B has replaced the v1 rules core — the server speaks protocol 2, the Unity client still speaks 1 and cannot play until phase E; mobile smoke builds deferred, Redis backends (M2b) not started.
+description: As of 2026-09-24 the MVP (M1–M3) is merged and ADR 0009 phases B and C have replaced the v1 rules core — the server speaks protocol 2, the Unity client still speaks 1 and cannot play until phase E; mobile smoke builds deferred, Redis backends (M2b) not started.
 metadata:
   type: project
 ---
@@ -33,6 +33,16 @@ random streams, 256-bit seeds, `opengwt.record/2` and opaque instance ids of ADR
 compensation for going first of ADR 0011 (an extra round-one redraw and a stratagem, with
 `use_order` for stratagems); `data/` and the golden replay are v2 (a breaking replay change). Phase B acceptance: 10 000 random-bot
 matches without an exception, 100 identical replays, canonical state round trips.
+
+Phase C is done too (2026-09-24): every trigger through one resolution queue, the activated
+abilities of units, artifacts and leaders with charges and cooldowns, `end_turn` (a turn waits
+for it once its card is played), choices of kind `row`, `place` and `card`, `play_from_deck`,
+`play_from_graveyard` and `create`; the greedy bot uses activated abilities; the starter decks
+use every phase-C word, and the golden was regenerated (breaking replay). Phase C acceptance:
+10 000 random-bot matches without an exception, 100 identical replays, 300 greedy-versus-greedy
+matches without a stall, a replay scenario for every trigger, the greedy bot using activated
+abilities; an independent review with about 12 000 fuzzed matches found six problems, fixed with
+tests before the pull request.
 
 The server speaks protocol 2. **The Unity client still speaks protocol 1 and cannot play until
 phase E** — the owner accepted that gap: upgrade phases do not keep the client compatible. Its
