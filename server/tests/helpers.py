@@ -54,6 +54,7 @@ CARDS: dict[str, dict[str, Any]] = {
     "plain5": _unit(5),
     "plain3": _unit(3),
     "plain8": _unit(8),
+    "spare": _unit(1),  # scenarios keep one in hand, so that nobody passes automatically
     "melee4": _unit(4, rows=["melee"]),
     "armored4": _unit(4, armor=3),
     "shield4": _unit(4, statuses=["shielded"]),

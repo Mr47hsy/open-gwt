@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from opengwt.core.engine import IllegalIntent, apply, legal_intents
+from opengwt.core.engine import QUEUE_STEPS_MAX, IllegalIntent, apply, legal_intents
 from opengwt.core.intents import Choose, Pass, PlayCard, UseOrder
 from opengwt.core.model import Phase, Rules, Status, StatusEntry
 from opengwt.core.power import score
@@ -33,6 +33,24 @@ def build() -> Builder:
 
 def lib_with(**extra: dict[str, Any]) -> Any:
     return make_library({**CARDS, **extra})
+
+
+THIS = {"units": "this"}
+ALL_ENEMIES = {"units": "all", "side": "opponent"}
+
+
+def _unit_card(power: int, abilities: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "kind": "unit",
+        "color": "bronze",
+        "provisions": 4,
+        "power": power,
+        "abilities": abilities,
+    }
+
+
+def _special_card(*abilities: dict[str, Any]) -> dict[str, Any]:
+    return {"kind": "special", "color": "bronze", "provisions": 4, "abilities": list(abilities)}
 
 
 def hit(amount: int) -> dict[str, Any]:
@@ -575,22 +593,42 @@ def test_strongest_breaks_ties_with_the_seeded_prng() -> None:
     assert len(cards_on(s, 0, MELEE) + cards_on(s, 1, MELEE)) == 1
 
 
-# --- phase C words are carried, not acted on --------------------------------------------------
+# --- the resolution queue ----------------------------------------------------------------------
 
 
-def test_phase_c_words_do_nothing_yet() -> None:
-    s = build().state(
-        hand0=["zap-all", "plain5"],
-        deck1=["plain3"],
-        board1={"melee": ["deathwish"]},
-        leaders=("leader", None),
+def test_a_trigger_loop_stops_after_the_most_abilities_one_resolution_resolves() -> None:
+    """§11.3: content that keeps triggering itself stops, deterministically, and the match goes
+    on."""
+    lib = lib_with(
+        vain=_unit_card(1, [{"when": "on_boosted", "do": "boost", "amount": 1, "target": THIS}])
     )
-    s.players[1].rows[MELEE].cards[0].power = 1
-    s, events = play(LIB, s, 0, "zap-all")
-    assert "card_destroyed" in event_types(events) and len(s.players[1].hand) == 2
-    assert all(not isinstance(i, UseOrder) for i in legal_intents(LIB, s, 1))
-    s, _ = apply(LIB, s, 1, Pass())
+    s = Builder(lib).state(hand0=["boost3", "plain5"], board0={"melee": ["vain"]})
+    s, events = play(lib, s, 0, "boost3")
+    s, events = apply(lib, s, 0, Choose(0))  # the boost, then its triggers up to the limit
+    assert len(events_of(events, "unit_boosted")) == 1 + QUEUE_STEPS_MAX
+    assert powers_on(lib, s, 0, MELEE) == [1 + 3 + QUEUE_STEPS_MAX]
+    assert s.turn == 1 and s.phase is Phase.PLAYING
+
+
+def test_the_queued_abilities_of_a_locked_card_are_skipped() -> None:
+    """§11.3 and §9: the damage reaches the unit, its on_damaged is queued, and the lock added
+    before it resolves stops it."""
+    lib = lib_with(
+        hardy=_unit_card(5, [{"when": "on_damaged", "do": "boost", "amount": 3, "target": THIS}]),
+        sting_then_lock=_special_card(
+            {"when": "on_play", "do": "damage", "amount": 1, "target": ALL_ENEMIES},
+            {"when": "on_play", "do": "add_status", "status": "locked", "target": ALL_ENEMIES},
+        ),
+    )
+    s = Builder(lib).state(hand0=["sting_then_lock", "plain5"], board1={"melee": ["hardy"]})
+    s, events = play(lib, s, 0, "sting_then_lock")
+    assert "unit_boosted" not in event_types(events)
+    assert powers_on(lib, s, 1, MELEE) == [4]
+
+
+def test_the_leader_order_waits_for_the_rest_of_phase_c() -> None:
+    s = build().state(hand0=["plain5", "plain5"], leaders=("leader", None))
+    assert all(not isinstance(i, UseOrder) for i in legal_intents(LIB, s, 0))
     with pytest.raises(IllegalIntent) as info:
         apply(LIB, s, 0, UseOrder(s.players[0].leader.instance))  # type: ignore[union-attr]
     assert info.value.reason == "error.order.not-ready"
-    assert s.phase is Phase.PLAYING

@@ -1,0 +1,50 @@
+# on_ally_played, if.trigger_unit and trigger_unit (cards.md §6.1, §6.2, §7.1, §11.3): playing a
+# unit that lands on its player's own side queues its on_play abilities, then the on_ally_played
+# abilities of the other cards there; a unit sent to the other side triggers none.
+cards:
+  tagged:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    tags: [ta]
+    abilities:
+      - {when: on_play, do: boost, amount: 1, target: {units: this}}
+  tagged-spy:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    side: opponent
+    tags: [ta]
+  mentor:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 2
+    tags: [ta]
+    abilities:
+      - when: on_ally_played
+        if: {trigger_unit: {tags_any: [ta]}}
+        do: add_armor
+        amount: 1
+        target: {units: trigger_unit}
+seed: 1
+decks:
+  - [mentor, tagged, plain5, tagged-spy, spare]
+  - [plain5, plain5, plain5, plain5, spare]
+steps:
+  - [0, play, mentor, melee]    # not its own trigger
+  - [1, play, plain5, melee]
+  - [0, play, tagged, melee]    # its on_play first, then the mentor's armour
+  - [1, play, plain5, melee]
+  - [0, play, plain5, melee]    # no tag: the condition fails
+  - [1, play, plain5, melee]
+  - [0, play, tagged-spy, melee]  # lands on seat 1's side
+events:
+  - {type: unit_boosted, card: tagged, source: tagged}
+  - {type: armor_changed, card: tagged, from: 0, to: 1, source: mentor}
+absent:
+  - {type: armor_changed, card: mentor}
+  - {type: armor_changed, card: plain5}
+  - {type: armor_changed, card: tagged-spy}

@@ -1,0 +1,28 @@
+# on_damaged (cards.md §6.1, §11.2): damage that reaches a unit's power, past armour, and leaves
+# it on the board queues its on_damaged abilities; damage the armour absorbs entirely does not.
+cards:
+  hardy:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    armor: 2
+    abilities:
+      - {when: on_damaged, do: boost, amount: 1, target: {units: this}}
+seed: 3
+decks:
+  - [hardy, plain5, spare]
+  - [zap2, zap2, plain5, spare]
+steps:
+  - [0, play, hardy, melee]
+  - [1, play, zap2, melee]
+  - [1, choose, hardy]          # 2 damage, all of it absorbed: no trigger
+  - [0, play, plain5, melee]
+  - [1, play, zap2, melee]
+  - [1, choose, hardy]          # 2 damage reach power: 4 -> 2, then boosted to 3
+events:
+  - {type: armor_changed, card: hardy, from: 2, to: 0}
+  - {type: unit_damaged, card: hardy, amount: 2, power: 2}
+  - {type: unit_boosted, card: hardy, amount: 1, power: 3, source: hardy}
+board:
+  0: {melee: ["hardy:3", "plain5:5"]}

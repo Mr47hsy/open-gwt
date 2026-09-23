@@ -1,0 +1,36 @@
+# on_destroyed (cards.md §6.1, §8, §11.2): a destroyed card's on_destroyed abilities resolve
+# from the graveyard, and what they place lands on the row the card was last on; a card locked
+# when it is destroyed fires nothing.
+cards:
+  martyr:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 1
+    abilities:
+      - {when: on_destroyed, do: place_new_card, card: tok, count: 2}
+seed: 1
+decks:
+  - [martyr, martyr, plain5, spare]
+  - [zap2, lock, zap2, spare]
+steps:
+  - [0, play, martyr, ranged]
+  - [1, play, zap2, melee]
+  - [1, choose, martyr]         # destroyed on the ranged row: two tokens appear there
+  - [0, play, martyr, melee]
+  - [1, play, lock]
+  - [1, choose, martyr]
+  - [0, play, plain5, melee]
+  - [1, play, zap2, melee]
+  - [1, choose, martyr]         # destroyed while locked: nothing
+events:
+  - {type: card_destroyed, card: martyr, row: ranged}
+  - {type: card_summoned, card: tok, from: created, row: ranged, position: 0}
+  - {type: card_summoned, card: tok, from: created, row: ranged, position: 1}
+  - {type: card_destroyed, card: martyr, row: melee}
+absent:
+  - {type: card_summoned, row: melee}
+board:
+  0: {melee: ["plain5:5"], ranged: ["tok:1", "tok:1"]}
+graveyard:
+  0: [martyr, martyr]

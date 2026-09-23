@@ -702,23 +702,28 @@ class PlayerState:
 
 @dataclass
 class Invocation:
-    """One ability of one card instance, waiting to be resolved on behalf of ``seat``. ``row``
-    is the row a unit was played on, for its ``on_play`` abilities (``if.on_row``, §6.2)."""
+    """One ability of one card instance, waiting to be resolved on behalf of ``seat``.
+
+    ``row`` is the row the card was played on, for its ``on_play`` abilities, or the row it was
+    destroyed on, for its ``on_destroyed`` ones (``if.on_row`` §6.2, summons §8). ``trigger`` is
+    the unit that fired ``on_ally_played``; ``previous`` what the ability before it, of the same
+    card and trigger, acted on (``previous_targets``, §7.1) — set once that ability resolved."""
 
     instance: str
     card: str
     ability_index: int
     seat: int
     row: Row | None = None
+    trigger: str | None = None
+    previous: list[str] | None = None
 
 
 @dataclass
 class PendingChoice:
-    """A pick the core waits for. In phase B every choice is of kind ``unit`` and ``options``
-    are instance ids; ``queue`` is what resolves after it, and ``ends_turn`` whether the turn
-    ends once it has (a played card) or goes on (an activated ability). ``order`` is the card
-    whose activated ability is resolving, if any, and ``order_started`` whether it has spent its
-    charge yet — until then the choice may be cancelled (cards.md §6.3)."""
+    """A pick the core waits for. ``queue`` is the rest of the resolution queue, which resolves
+    once the pick is made (§11.3). ``order`` is the card whose activated ability is resolving,
+    if any, and ``order_started`` whether it has spent its charge yet — until then the choice
+    may be cancelled (cards.md §6.3). Without an ``order`` a played card is resolving."""
 
     seat: int
     kind: ChoiceKind
@@ -727,7 +732,6 @@ class PendingChoice:
     options: list[str]
     queue: list[Invocation]
     cancellable: bool = False
-    ends_turn: bool = True
     order: str | None = None
     order_started: bool = False
 
@@ -790,7 +794,6 @@ class MatchState:
                     list(p.options),
                     [_clone_invocation(i) for i in p.queue],
                     p.cancellable,
-                    p.ends_turn,
                     p.order,
                     p.order_started,
                 )
@@ -803,4 +806,12 @@ class MatchState:
 
 
 def _clone_invocation(inv: Invocation) -> Invocation:
-    return Invocation(inv.instance, inv.card, inv.ability_index, inv.seat, inv.row)
+    return Invocation(
+        inv.instance,
+        inv.card,
+        inv.ability_index,
+        inv.seat,
+        inv.row,
+        inv.trigger,
+        list(inv.previous) if inv.previous is not None else None,
+    )

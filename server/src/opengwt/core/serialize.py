@@ -71,16 +71,21 @@ def _invocation_to_dict(inv: Invocation) -> dict[str, Any]:
         "ability_index": inv.ability_index,
         "seat": inv.seat,
         "row": inv.row.value if inv.row is not None else None,
+        "trigger": inv.trigger,
+        "previous": list(inv.previous) if inv.previous is not None else None,
     }
 
 
 def _invocation_from_dict(d: dict[str, Any]) -> Invocation:
+    previous = d["previous"]
     return Invocation(
         str(d["instance"]),
         str(d["card"]),
         int(d["ability_index"]),
         int(d["seat"]),
         Row(d["row"]) if d["row"] is not None else None,
+        None if d["trigger"] is None else str(d["trigger"]),
+        None if previous is None else [str(i) for i in previous],
     )
 
 
@@ -236,7 +241,6 @@ def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
         "options": list(p.options),
         "queue": [_invocation_to_dict(i) for i in p.queue],
         "cancellable": p.cancellable,
-        "ends_turn": p.ends_turn,
         "order": p.order,
         "order_started": p.order_started,
     }
@@ -251,7 +255,6 @@ def _pending_from_dict(d: dict[str, Any]) -> PendingChoice:
         options=[str(o) for o in d["options"]],
         queue=[_invocation_from_dict(i) for i in d["queue"]],
         cancellable=bool(d["cancellable"]),
-        ends_turn=bool(d["ends_turn"]),
         order=None if d["order"] is None else str(d["order"]),
         order_started=bool(d["order_started"]),
     )

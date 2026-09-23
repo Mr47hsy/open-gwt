@@ -4,9 +4,9 @@
 state with the events it produced. Everything that changes a match goes through it. The rules
 are docs/protocol/cards.md (``opengwt.cards/2``); section numbers below refer to it.
 
-ADR 0009 phase B: the power and board words act, the phase-C words are carried and do nothing
-(``model.phase_c_words``) — their triggers never fire, their actions and selectors are skipped,
-and no activated ability is ever ready.
+ADR 0009 phase C gives the triggers their behaviour: what an ability causes — damage reaching
+a unit, a boost, a destruction, a unit played — queues the abilities it triggers, which resolve
+first in, first out after it (§11.3).
 """
 
 from __future__ import annotations
@@ -29,8 +29,6 @@ from .model import (
     AUTOMATIC_STATUSES,
     DEFAULT_RULES,
     PHASE_C_ACTIONS,
-    PHASE_C_TRIGGERS,
-    PHASE_C_UNITS,
     POWER_ACTIONS,
     Ability,
     Action,
@@ -82,6 +80,8 @@ class IllegalIntent(Exception):
 
 NEUTRAL = "neutral"
 DUEL_STRIKES_MAX = 64
+# Most abilities one resolution resolves; content that triggers itself for ever stops here (§11.3).
+QUEUE_STEPS_MAX = 1000
 
 
 # --- decks --------------------------------------------------------------------------------------
@@ -369,6 +369,14 @@ class _Ctx:
         self.events: list[Event] = []
         self.rng: Stream = engine_stream(state.seed, state.rng_block, state.rng_pos)
         self._checking = False
+        # the resolution queue (§11.3): what is left of it lives in a pending choice meanwhile
+        self.queue: list[Invocation] = []
+        self.resolved = 0
+        # the activated ability whose abilities are resolving, and whether it spent its charge
+        self.order: str | None = None
+        self.order_started = True
+        # a choice is only ever asked while a played card or an activated ability resolves
+        self.may_ask = False
         # the aura of every unit on the board as last reported; see ``sync_auras``
         self._aura: dict[str, int] = self.auras() if state.players else {}
 
@@ -526,26 +534,32 @@ class _Ctx:
             where.damaged and not (on_board and d.kind is Kind.UNIT and card.power < card.base)
         )
 
+    def is_candidate(
+        self, loc: Loc, acting: CardInstance | None, t: UnitTarget, action: Action
+    ) -> bool:
+        """A card a unit selector may take (§7.1): of the filter's kinds — units by default, only
+        units for a power action, never a stratagem — matching the filter, not the acting card."""
+        kinds = t.where.kind or (Kind.UNIT,)
+        if action in POWER_ACTIONS:
+            kinds = tuple(k for k in kinds if k is Kind.UNIT)
+        c = loc.card
+        if acting is not None and c.instance == acting.instance:
+            return False
+        return self.defn(c).kind in kinds and self.where_ok(c, t.where, acting)
+
     def unit_candidates(
         self, seat: int, acting: CardInstance | None, t: UnitTarget, action: Action
     ) -> list[Loc]:
         """The candidates of a sided selector (§7.1): cards on the side and rows that match the
         filter, the acting card excluded; for ``chosen``, immune units and the units a guard
         protects are excluded too."""
-        kinds = t.where.kind or (Kind.UNIT,)
-        if action in POWER_ACTIONS:
-            kinds = tuple(k for k in kinds if k is Kind.UNIT)
         seats = _seats_for(self.s, seat, t.side)
         out: list[Loc] = []
         for loc in self.board():
-            c = loc.card
             if loc.seat not in seats or (t.rows is not None and loc.row not in t.rows):
                 continue
-            if acting is not None and c.instance == acting.instance:
-                continue
-            if self.defn(c).kind not in kinds or not self.where_ok(c, t.where, acting):
-                continue
-            out.append(loc)
+            if self.is_candidate(loc, acting, t, action):
+                out.append(loc)
         if t.units is Units.CHOSEN:
             guarded = {
                 (loc.seat, loc.row)
@@ -561,9 +575,11 @@ class _Ctx:
         return out
 
     def select_units(
-        self, seat: int, acting: CardInstance | None, t: UnitTarget, action: Action
+        self, inv: Invocation, acting: CardInstance | None, t: UnitTarget, action: Action
     ) -> list[Loc]:
-        """The targets of a selector that asks nobody (everything but ``chosen``)."""
+        """The targets of a selector that asks nobody (everything but ``chosen``), in board
+        order."""
+        seat = inv.seat
         if t.units is Units.THIS:
             loc = self.loc(acting.instance) if acting is not None else None
             if loc is None or (action in POWER_ACTIONS and not self.is_unit(loc.card)):
@@ -571,8 +587,27 @@ class _Ctx:
             if self.defn(loc.card).kind is Kind.STRATAGEM:
                 return []  # nothing acts on a stratagem (ADR 0011)
             return [loc] if self.where_ok(loc.card, t.where, acting) else []
-        if t.units in PHASE_C_UNITS:
-            return []
+        if t.units is Units.ADJACENT:
+            here = self.loc(acting.instance) if acting is not None else None
+            if here is None:
+                return []
+            return [
+                loc
+                for loc in self.board()
+                if loc.seat == here.seat
+                and loc.row is here.row
+                and abs(loc.index - here.index) == 1
+                and self.is_candidate(loc, acting, t, action)
+            ]
+        if t.units in (Units.TRIGGER_UNIT, Units.PREVIOUS_TARGETS):
+            wanted = [inv.trigger] if t.units is Units.TRIGGER_UNIT else inv.previous or []
+            return [
+                loc
+                for loc in self.board()
+                if loc.card.instance in wanted and self.is_candidate(loc, acting, t, action)
+            ]
+        if t.units is Units.CHOSEN_ROW:
+            return []  # a choice of kind row: phase C, generalised choices
         cands = self.unit_candidates(seat, acting, t, action)
         if t.units is Units.ALL:
             return cands
@@ -591,7 +626,9 @@ class _Ctx:
             if row is not c.on_row:
                 return False
         if c.trigger_unit is not None:
-            return False
+            trigger = self.card_by_id(inv.trigger) if inv.trigger is not None else None
+            if trigger is None or not self.where_ok(trigger, c.trigger_unit, acting):
+                return False
         if c.this is not None and (acting is None or not self.where_ok(acting, c.this, acting)):
             return False
         if c.hand_at_most is not None and len(self.s.players[inv.seat].hand) > c.hand_at_most:
@@ -679,7 +716,10 @@ class _Ctx:
             self.destroy_at(loc, source)
 
     def destroy_at(self, loc: Loc, source: str | None) -> None:
+        """§11.2: to the graveyard or banished; then, unless the card was locked, its
+        ``on_destroyed`` abilities are queued for its controller, remembering the row it was on."""
         card = loc.card
+        locked = card.has(Status.LOCKED)
         banished = self.leave(loc)
         self.emit(
             "card_destroyed",
@@ -690,6 +730,8 @@ class _Ctx:
             banished=banished,
             source=source,
         )
+        if not locked:
+            self.fire(card, Trigger.ON_DESTROYED, loc.seat, row=loc.row)
         self.sync_auras()
         self.check_destruction()
 
@@ -789,16 +831,19 @@ class _Ctx:
         acting: CardInstance | None,
         row: Row | None,
         after: CardInstance | None = None,
+        last_row: Row | None = None,
     ) -> tuple[Row, int] | None:
         """Where ``summon_from_deck`` and ``place_new_card`` put a card (§8): on ``row`` if
-        given, else the acting card's row, else the first row the card allows; right of the
-        card placed before it by the same ability (``after``), else right of the acting card on
-        that row-side, else at the right end. ``None`` when that row-side is full."""
+        given, else the acting card's row — ``last_row``, the row it was last on, once it has
+        left the board — else the first row the card allows; right of the card placed before it
+        by the same ability (``after``), else right of the acting card on that row-side, else at
+        the right end. ``None`` when that row-side is full."""
         allowed = _allowed_rows(self.s.rules, self.defn(card))
         if not allowed:
             return None
         acting_loc = self.loc(acting.instance) if acting is not None else None
-        chosen = row or (acting_loc.row if acting_loc is not None else None) or allowed[0]
+        acting_row = acting_loc.row if acting_loc is not None else last_row
+        chosen = row or acting_row or allowed[0]
         if chosen not in allowed:
             chosen = allowed[0]
         side = self.s.players[seat].rows[chosen]
@@ -887,6 +932,9 @@ class _Ctx:
             source=source,
         )
         self.check_destruction()
+        survivor = self.loc(iid)
+        if survivor is not None:
+            self.fire(card, Trigger.ON_DAMAGED, survivor.seat)
         return rest
 
     def boost(self, iid: str, amount: int, reason: str, source: str | None) -> None:
@@ -904,6 +952,7 @@ class _Ctx:
             reason=reason,
             source=source,
         )
+        self.fire(loc.card, Trigger.ON_BOOSTED, loc.seat)
 
     def heal(self, iid: str, source: str | None) -> None:
         loc = self.loc(iid)
@@ -1282,6 +1331,8 @@ class _Ctx:
             player.leader.cooldown -= 1
         self.act_row_effects(seat)
         self.check_destruction()
+        self.fire_side(seat, Trigger.ON_TURN_START)
+        self.settle_unasked()
         if not player.hand and not self.any_order_ready(seat):
             self.do_pass(seat, auto=True)
 
@@ -1302,8 +1353,12 @@ class _Ctx:
         self.next_turn(seat)
 
     def end_turn(self, seat: int) -> None:
-        """§11.4 step 7: once the played card has resolved."""
+        """§11.4 steps 6 and 7: the statuses of the player's cards act, then their
+        ``on_turn_end`` abilities; each step resolves with what it causes before the next."""
         self.tick_statuses(seat)
+        self.settle_unasked()
+        self.fire_side(seat, Trigger.ON_TURN_END)
+        self.settle_unasked()
         self.emit("turn_ended", seat=seat)
         self.next_turn(seat)
 
@@ -1321,12 +1376,9 @@ class _Ctx:
         """§11.5 round end."""
         s = self.s
         s.turn = None
-        queue = [
-            Invocation(loc.card.instance, loc.card.card, i, loc.seat)
-            for loc in self.board()
-            for i in self.defn(loc.card).triggered(Trigger.ON_ROUND_END)
-        ]
-        self.resolve(queue, ends_turn=False)
+        for loc in self.board():
+            self.fire(loc.card, Trigger.ON_ROUND_END, loc.seat)
+        self.settle_unasked()
         scores = (score(self.lib, s, 0), score(self.lib, s, 1))
         if scores[0] != scores[1]:
             winners: tuple[int, ...] = (0,) if scores[0] > scores[1] else (1,)
@@ -1430,11 +1482,11 @@ class _Ctx:
             )
         else:
             raise IllegalIntent("illegal_intent", "error.play.not-playable")
-        queue = [
-            Invocation(inst.instance, inst.card, i, seat, row)
-            for i in defn.triggered(Trigger.ON_PLAY)
-        ]
-        if not self.resolve(queue, ends_turn=True):
+        self.fire(inst, Trigger.ON_PLAY, seat, row=row)
+        if defn.placed:
+            self.fire_ally_played(inst, seat)
+        self.may_ask = True
+        if not self.settle():
             self.finish_play(seat)
 
     def finish_play(self, seat: int) -> None:
@@ -1458,12 +1510,10 @@ class _Ctx:
         assert card is not None
         if not order_ready(self.lib, s, seat, card):
             raise IllegalIntent("illegal_intent", "error.order.not-ready")
-        queue = [
-            Invocation(card.instance, card.card, i, seat)
-            for i in self.defn(card).triggered(Trigger.ON_ACTIVATE)
-        ]
-        if not self.resolve(queue, ends_turn=False, order=card.instance, order_started=False):
-            self.finish_order(card.instance, started=True)
+        self.order, self.order_started = card.instance, False
+        self.may_ask = True
+        self.fire(card, Trigger.ON_ACTIVATE, seat)
+        self.settle()
 
     def start_order(self, iid: str) -> None:
         """The order's first ability starts to act: a charge is spent and the cooldown starts."""
@@ -1485,8 +1535,8 @@ class _Ctx:
         )
 
     def finish_order(self, iid: str, started: bool) -> None:
-        """After an order resolved: a stratagem, used once, leaves the board for its owner's
-        banished zone (ADR 0011)."""
+        """After an order resolved — its charge spent now if none of its abilities acted: a
+        stratagem, used once, leaves the board for its owner's banished zone (ADR 0011)."""
         if not started:
             self.start_order(iid)
         loc = self.loc(iid)
@@ -1512,19 +1562,21 @@ class _Ctx:
         s.pending = None
         s.phase = Phase.PLAYING
         self.emit("choice_made", seat=seat, option=option)
+        self.queue = pending.queue
+        self.order, self.order_started = pending.order, pending.order_started
+        self.may_ask = True
         inv = pending.invocation
         ability = self.ability(inv)
         acting = self.acting_card(inv)
         target = self.loc(pending.options[option])
-        if pending.order is not None and not pending.order_started:
-            self.start_order(pending.order)
-        self.perform(inv, acting, ability, [target] if target is not None else [])
-        if self.resolve(pending.queue, pending.ends_turn, pending.order, order_started=True):
+        targets = [target] if target is not None else []
+        self.start_pending_order()
+        self.perform(inv, acting, ability, targets)
+        self.hand_on(inv, targets)
+        if self.settle() or pending.order is not None:
             return
-        if pending.ends_turn:
-            self.finish_play(inv.seat)
-        elif pending.order is not None:
-            self.finish_order(pending.order, started=True)
+        assert s.turn is not None
+        self.finish_play(s.turn)
 
     def cancel_choice(self, seat: int) -> None:
         pending = self.s.pending
@@ -1558,28 +1610,94 @@ class _Ctx:
                 return c
         return None
 
-    def resolve(
+    def fire(
         self,
-        queue: list[Invocation],
-        ends_turn: bool,
-        order: str | None = None,
-        order_started: bool = True,
-    ) -> bool:
-        """Run invocations first in, first out (§11.3). True when paused for a choice. ``order``
-        is the card whose activated ability is resolving; until its first ability acts, a choice
-        it asks may be cancelled and no charge is spent (§6.3)."""
+        card: CardInstance,
+        when: Trigger,
+        seat: int,
+        row: Row | None = None,
+        trigger: str | None = None,
+    ) -> None:
+        """Queue the card's abilities with this trigger, in the order written, on behalf of
+        ``seat`` (§6, §11.3)."""
+        for i in self.defn(card).triggered(when):
+            self.queue.append(Invocation(card.instance, card.card, i, seat, row, trigger))
+
+    def fire_side(self, seat: int, when: Trigger) -> None:
+        """Queue a trigger of every card on ``seat``'s side, in board order."""
+        for loc in self.board():
+            if loc.seat == seat:
+                self.fire(loc.card, when, seat)
+
+    def fire_ally_played(self, played: CardInstance, seat: int) -> None:
+        """``on_ally_played`` of the other cards on the side a unit ``seat`` played landed on —
+        when that is ``seat``'s own side (§6.1) — in board order."""
+        here = self.loc(played.instance)
+        if here is None or here.seat != seat or not self.is_unit(played):
+            return
+        for loc in self.board():
+            if loc.seat == seat and loc.card is not played:
+                self.fire(loc.card, Trigger.ON_ALLY_PLAYED, seat, trigger=played.instance)
+
+    def hand_on(self, inv: Invocation, targets: list[Loc]) -> None:
+        """Give what an ability acted on to the ability after it — the next queued one of the same
+        card and trigger — for ``previous_targets`` (§7.1)."""
+        when = self.ability(inv).when
+        for nxt in self.queue:
+            if (
+                nxt.instance == inv.instance
+                and nxt.ability_index > inv.ability_index
+                and self.ability(nxt).when is when
+            ):
+                nxt.previous = [loc.card.instance for loc in targets]
+                return
+
+    def start_pending_order(self) -> None:
+        """The resolving activated ability's first ability starts to act: its charge is spent."""
+        if self.order is not None and not self.order_started:
+            self.start_order(self.order)
+            self.order_started = True
+
+    def settle(self) -> bool:
+        """Resolve the queue; once it is empty, finish the activated ability that filled it.
+        True when a choice paused it."""
+        self.resolved = 0
+        while True:
+            if self.run():
+                return True
+            if self.order is None:
+                return False
+            order, started = self.order, self.order_started
+            self.order, self.order_started = None, True
+            self.finish_order(order, started)
+
+    def settle_unasked(self) -> None:
+        """Resolve what a turn start, a turn end or a round end queued. Nothing there asks a
+        player (the schema keeps choices to ``on_play`` and ``on_activate``), so nothing pauses."""
+        self.may_ask = False
+        paused = self.settle()
+        assert not paused
+
+    def run(self) -> bool:
+        """Run the queue first in, first out (§11.3). True when paused for a choice; the rest of
+        the queue then waits in the pending choice."""
         s = self.s
-        started = order_started
-        while queue:
-            inv = queue.pop(0)
+        while self.queue:
+            if self.resolved >= QUEUE_STEPS_MAX:
+                self.queue.clear()  # content that keeps triggering itself stops here
+                return False
+            self.resolved += 1
+            inv = self.queue.pop(0)
             ability = self.ability(inv)
             acting = self.acting_card(inv)
             if not self.may_fire(inv, acting, ability):
+                self.hand_on(inv, [])
                 continue
             t = ability.target
             if t is not None and t.units is Units.CHOSEN:
                 options = self.unit_candidates(inv.seat, acting, t, ability.do)
-                if not options:
+                if not options or not self.may_ask:
+                    self.hand_on(inv, [])
                     continue
                 pending = PendingChoice(
                     seat=inv.seat,
@@ -1587,12 +1705,13 @@ class _Ctx:
                     invocation=inv,
                     prompt_key="choice." + ability.do.value.replace("_", "-"),
                     options=[loc.card.instance for loc in options],
-                    queue=queue,
-                    cancellable=order is not None and not started,
-                    ends_turn=ends_turn,
-                    order=order,
-                    order_started=started,
+                    queue=self.queue,
+                    cancellable=self.order is not None and not self.order_started,
+                    order=self.order,
+                    order_started=self.order_started,
                 )
+                self.queue = []
+                self.order, self.order_started = None, True
                 s.pending = pending
                 s.phase = Phase.CHOOSING
                 self.emit(
@@ -1605,32 +1724,27 @@ class _Ctx:
                     cancellable=pending.cancellable,
                 )
                 return True
-            if order is not None and not started:
-                self.start_order(order)
-                started = True
-            targets = self.select_units(inv.seat, acting, t, ability.do) if t is not None else []
+            self.start_pending_order()
+            targets = self.select_units(inv, acting, t, ability.do) if t is not None else []
             self.perform(inv, acting, ability, targets)
-        if order is not None and not started:
-            self.start_order(order)
+            self.hand_on(inv, targets)
         return False
 
     def may_fire(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> bool:
-        """§11.3: skipped when the card is locked, when it must be on the board and is not,
-        when its conditions fail — and in phase B when a phase-C word is involved."""
+        """§11.3: skipped when the card is locked, when it must be on the board and is not — every
+        ability but ``on_destroyed`` and a special's ``on_play`` — or when its conditions fail.
+        Words still waiting for the rest of phase C are skipped too."""
         if acting is None or a.do in PHASE_C_ACTIONS:
-            return False
-        stratagem_order = a.when is Trigger.ON_ACTIVATE and self.defn(acting).kind is Kind.STRATAGEM
-        if a.when in PHASE_C_TRIGGERS and not stratagem_order:
-            return False
-        if a.target is not None and a.target.units in PHASE_C_UNITS:
             return False
         if a.row_target is not None and a.row_target.pick is RowPick.CHOSEN:
             return False
         if a.cards is not None and a.cards.pick is CardPick.CHOSEN:
             return False
         loc = self.loc(acting.instance)
-        needs_board = not (self.defn(acting).kind is Kind.SPECIAL and a.when is Trigger.ON_PLAY)
-        if needs_board and loc is None:
+        off_board = a.when is Trigger.ON_DESTROYED or (
+            self.defn(acting).kind is Kind.SPECIAL and a.when is Trigger.ON_PLAY
+        )
+        if not off_board and loc is None:
             return False
         if loc is not None and acting.has(Status.LOCKED):
             return False
@@ -1681,14 +1795,14 @@ class _Ctx:
         elif do is Action.DRAW:
             self.draw(self.side_seat(seat, a.side), a.count or 1)
         elif do is Action.SUMMON_FROM_DECK and a.cards is not None:
-            self.summon_from_deck(seat, acting, a)
+            self.summon_from_deck(inv, acting, a)
         elif do is Action.PLACE_NEW_CARD:
-            self.place_new_card(seat, acting, a)
+            self.place_new_card(inv, acting, a)
         elif do is Action.SET_ROW_EFFECT:
             self.set_row_effect(seat, acting, a, src)
         elif do is Action.CLEAR_ROW_EFFECT:
             self.clear_row_effect(seat, acting, a, src)
-        # continuous_boost acts through power (§11.1); phase-C actions never get this far
+        # continuous_boost acts through power (§11.1)
 
     def side_seat(self, seat: int, side: Side) -> int:
         return self.s.other(seat) if side is Side.OPPONENT else seat
@@ -1732,7 +1846,8 @@ class _Ctx:
             self.s.players[card.owner].graveyard.append(card)
             self.emit("card_discarded", seat=owner_seat, instance=card.instance, card=card.card)
 
-    def summon_from_deck(self, seat: int, acting: CardInstance | None, a: Ability) -> None:
+    def summon_from_deck(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> None:
+        seat = inv.seat
         source = a.cards
         assert source is not None
         deck = self.s.players[self.side_seat(seat, source.side)].deck
@@ -1740,21 +1855,22 @@ class _Ctx:
         last: CardInstance | None = None
         for card in self.pick_cards(cands, source):
             land = _landing_seat(self.s, seat, self.defn(card))
-            where = self.placement(card, land, acting, a.row, last)
+            where = self.placement(card, land, acting, a.row, last, inv.row)
             if where is None or card not in deck:
                 continue
             deck.remove(card)
             self.summon(card, land, where, seat, "deck")
             last = card
 
-    def place_new_card(self, seat: int, acting: CardInstance | None, a: Ability) -> None:
+    def place_new_card(self, inv: Invocation, acting: CardInstance | None, a: Ability) -> None:
+        seat = inv.seat
         if a.card is None or a.card not in self.lib or not self.lib[a.card].placed:
             return
         land = self.side_seat(seat, a.side)
         last: CardInstance | None = None
         for _ in range(a.count or 1):
             probe = CardInstance("", a.card, seat)
-            where = self.placement(probe, land, acting, a.row, last)
+            where = self.placement(probe, land, acting, a.row, last, inv.row)
             if where is None:
                 return
             card = self.new_instance(a.card, seat)

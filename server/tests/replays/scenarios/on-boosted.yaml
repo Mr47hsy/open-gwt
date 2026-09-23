@@ -1,0 +1,30 @@
+# on_boosted (cards.md §6.1): a boost queues the unit's on_boosted abilities; raising its base
+# power does not.
+cards:
+  proud:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - {when: on_boosted, do: add_armor, amount: 1, target: {units: this}}
+seed: 1
+decks:
+  - [proud, boost3, raise2, spare]
+  - [plain5, plain5, plain5, spare]
+steps:
+  - [0, play, proud, melee]
+  - [1, play, plain5, melee]
+  - [0, play, boost3]
+  - [0, choose, proud]
+  - [1, play, plain5, melee]
+  - [0, play, raise2]
+  - [0, choose, proud]
+events:
+  - {type: unit_boosted, card: proud, amount: 3, source: boost3}
+  - {type: armor_changed, card: proud, from: 0, to: 1, source: proud}
+  - {type: base_power_changed, card: proud, from: 3, to: 5}
+absent:
+  - {type: armor_changed, card: proud, from: 1, to: 2}
+board:
+  0: {melee: ["proud:8"]}
