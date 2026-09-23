@@ -32,7 +32,7 @@ from opengwt.core.intents import (
     PlayCard,
     UseOrder,
 )
-from opengwt.core.model import MatchState, Phase
+from opengwt.core.model import Kind, MatchState, Phase, Row, Side
 from opengwt.core.replay import record_from_dict, replay
 from opengwt.core.rng import bot_stream
 from opengwt.core.serialize import state_from_dict, state_hash
@@ -644,6 +644,62 @@ def test_a_timeout_after_an_activated_ability_plays_a_card(tmp_path: Path) -> No
         room.time_out(starter, room.timer(starter))
         after = room.state()
         assert after.played and after.turn == starter and not after.players[starter].passed
+
+
+def _order_waiting_on_a_cancellable_choice(room: _Room) -> int:
+    """Both decks are starter-b: the starter plays a unit, the other player passes, and the
+    starter's stratagem — boost an ally — is ready. Returns the starter's seat."""
+    lib = room.service.content.library
+    starter = room.state().starter
+    room.move(starter, EndMulligan())
+    room.move(1 - starter, EndMulligan())
+    hand = {c.instance: lib[c.card] for c in room.state().players[starter].hand}
+    play = next(
+        i
+        for i in room.legal(starter)
+        if isinstance(i, PlayCard)
+        and i.row is Row.MELEE
+        and hand[i.card].kind is Kind.UNIT
+        and hand[i.card].side is Side.SELF
+    )
+    room.move(starter, replace(play, position=0))
+    while room.state().pending is not None:
+        room.move(starter, Choose(0))
+    room.move(starter, EndTurn())
+    room.move(1 - starter, Pass())
+    return starter
+
+
+def test_using_an_order_and_cancelling_it_does_not_restart_the_clock(tmp_path: Path) -> None:
+    """match.md §9: a cancelled activated ability leaves the match as it was, so it cannot buy
+    the player a fresh turn timer."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client, ("starter-b", "starter-b"))
+        starter = _order_waiting_on_a_cancellable_choice(room)
+        clock = room.timer(starter)
+        assert clock is not None
+        for _ in range(3):
+            order = next(i for i in room.legal(starter) if isinstance(i, UseOrder))
+            room.move(starter, order)
+            pending = room.state().pending
+            assert pending is not None and pending.cancellable
+            assert room.timer(starter).at == clock.at
+            room.move(starter, CancelChoice())
+            assert room.timer(starter).at == clock.at
+
+
+def test_a_timeout_on_a_cancellable_choice_cancels_it_and_moves_on(tmp_path: Path) -> None:
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client, ("starter-b", "starter-b"))
+        starter = _order_waiting_on_a_cancellable_choice(room)
+        before = room.state().seq
+        order = next(i for i in room.legal(starter) if isinstance(i, UseOrder))
+        room.move(starter, order)
+        room.time_out(starter, room.timer(starter))
+        history = room.portal.call(room.service.history, room.match_id, before)
+        types = [e["type"] for p in history for e in p["events"]]
+        assert "choice_cancelled" in types
+        assert types.index("player_passed") > types.index("choice_cancelled")
 
 
 def test_both_players_mulligan_on_their_own_clock(tmp_path: Path) -> None:
