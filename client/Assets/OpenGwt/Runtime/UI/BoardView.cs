@@ -1,6 +1,7 @@
-// The UI Toolkit controller: three screens (connect, lobby, match). It renders the latest view,
-// offers exactly the server's legal intents, sends what the player picks, and shows every string
-// through the message renderer. No rule lives here (ADR 0001, 0005, 0006).
+// The UI Toolkit controller: three screens (connect, lobby, match). It plays the server's
+// event and view batches one step at a time, rendering each view, moving cards between them and
+// offering exactly the server's legal intents from the newest; it sends what the player picks and
+// shows every string through the message renderer. No rule lives here (ADR 0001, 0005, 0006).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,27 @@ namespace OpenGwt.UI
 {
     public sealed class BoardView : IDisposable
     {
-        private static readonly string[] RowNames = { "melee", "ranged", "siege" };
+        // Rules.rows of the pack (`cards.md` §4); Board.uxml has one element per row and side.
+        private static readonly string[] RowNames = { "melee", "ranged" };
+        private static readonly List<JObject> NoIntents = new List<JObject>();
+
+        /// <summary>How long a step whose cards move stays on screen before the next is shown.</summary>
+        private const float StepHoldSeconds = 0.55f;
+
+        /// <summary>Steps waiting beyond this are skipped: the newest view is shown without motion.</summary>
+        private const int MaxQueuedSteps = 4;
+
+        private sealed class Step
+        {
+            public readonly List<JObject> Events;
+            public readonly MatchView View;
+
+            public Step(List<JObject> events, MatchView view)
+            {
+                Events = events;
+                View = view;
+            }
+        }
 
         private readonly VisualElement root;
         private readonly MatchClient client;
@@ -40,7 +61,12 @@ namespace OpenGwt.UI
         private readonly List<string> log = new List<string>();
         private readonly HashSet<string> mulliganSelection = new HashSet<string>();
         private readonly HashSet<string> flash = new HashSet<string>();
-        private readonly HashSet<string> gone = new HashSet<string>();
+        private readonly Queue<Step> steps = new Queue<Step>();
+        private readonly CardPreview preview;
+        private readonly BoardMotion motion;
+        private List<JObject> batch = new List<JObject>();
+        private MatchView shown;
+        private float nextStepAt;
         private readonly Dictionary<string, string> languageByLabel = new Dictionary<string, string>();
         private readonly Dictionary<string, string> deckByLabel = new Dictionary<string, string>();
         private bool modalForPhase;
@@ -69,6 +95,10 @@ namespace OpenGwt.UI
             language = root.Q<DropdownField>("language");
             deck = root.Q<DropdownField>("deck");
             root.Q<TextField>("server-url").value = defaultServerUrl;
+            preview = new CardPreview(root.Q<VisualElement>("card-preview"), root);
+            motion = new BoardMotion(root.Q<VisualElement>("fx-layer"));
+            leaderButton.AddManipulator(new CardPreviewManipulator(preview, "leader",
+                () => shown?.Me?.Leader == null ? null : Face(shown.Me.Leader.Card)));
 
             root.Q<Button>("btn-connect").clicked += () => Run(ConnectAsync);
             root.Q<Button>("btn-bot").clicked += () => Run(StartBotAsync);
@@ -84,10 +114,10 @@ namespace OpenGwt.UI
             {
                 if (languageByLabel.TryGetValue(evt.newValue, out var locale)) client.SetLocale(locale);
                 ApplyStaticTexts();
-                if (client.View != null) Render(client.View);
+                if (shown != null) Render(shown, steps.Count == 0, false);
             });
 
-            client.ViewChanged += Render;
+            client.ViewChanged += OnView;
             client.EventReceived += OnEvent;
             client.ErrorReceived += OnError;
             client.MatchOver += OnMatchOver;
@@ -184,14 +214,17 @@ namespace OpenGwt.UI
 
         private async Task StartBotAsync()
         {
+            ClearMatch();
             await client.PlayBotAsync(SelectedDeck());
             EnterMatch();
         }
 
         private async Task CreateRoomAsync()
         {
+            ClearMatch();
             var code = await client.CreateRoomAsync(SelectedDeck());
             EnterMatch();
+            if (shown != null) return;
             roomWaitingCode = code;
             statusLabel.text = T("ui.board.room-waiting", "code", code);
         }
@@ -199,19 +232,21 @@ namespace OpenGwt.UI
         private async Task JoinRoomAsync()
         {
             var code = root.Q<TextField>("room-code-input").value;
+            ClearMatch();
             await client.JoinRoomAsync(code, SelectedDeck());
             EnterMatch();
         }
 
-        private void EnterMatch()
+        /// <summary>Empty the board before a match opens: its first view may arrive before the
+        /// request that opened it returns, and must not be thrown away.</summary>
+        private void ClearMatch()
         {
-            connectPanel.AddToClassList("hidden");
-            match.RemoveFromClassList("hidden");
             log.Clear();
             eventLog.text = "";
             messageLabel.text = "";
             statusLabel.text = "";
             roomWaitingCode = null;
+            ResetSteps();
             hand.Clear();
             foreach (var row in RowNames)
             {
@@ -220,9 +255,16 @@ namespace OpenGwt.UI
             }
         }
 
+        private void EnterMatch()
+        {
+            connectPanel.AddToClassList("hidden");
+            match.RemoveFromClassList("hidden");
+        }
+
         private void LeaveMatch()
         {
             HideModal();
+            ResetSteps();
             Run(client.LeaveMatchAsync);
             match.AddToClassList("hidden");
             connectPanel.RemoveFromClassList("hidden");
@@ -254,16 +296,72 @@ namespace OpenGwt.UI
             }
         }
 
+        // --- steps ------------------------------------------------------------------------
+
+        private void OnEvent(JObject evt) => batch.Add(evt);
+
+        private void OnView(MatchView view)
+        {
+            steps.Enqueue(new Step(batch, view));
+            batch = new List<JObject>();
+        }
+
+        /// <summary>Show the next queued step when the previous one has had its time; call once per
+        /// frame, after <see cref="MatchClient.Pump"/>. One step per frame at most, so the board a
+        /// step starts from has always been laid out.</summary>
+        public void Tick()
+        {
+            if (steps.Count == 0 || Time.realtimeSinceStartup < nextStepAt) return;
+            var animate = steps.Count <= MaxQueuedSteps;
+            Step step;
+            if (animate)
+            {
+                step = steps.Dequeue();
+            }
+            else
+            {
+                // Far behind (a resync, a stalled frame): every event line, then the newest view.
+                motion.Reset();
+                var events = new List<JObject>();
+                MatchView last = null;
+                while (steps.Count > 0)
+                {
+                    var next = steps.Dequeue();
+                    events.AddRange(next.Events);
+                    last = next.View;
+                }
+                step = new Step(events, last);
+            }
+            foreach (var evt in step.Events) Describe(evt);
+            Render(step.View, steps.Count == 0, animate);
+            nextStepAt = Time.realtimeSinceStartup + (motion.Busy ? StepHoldSeconds : 0f);
+        }
+
+        private void ResetSteps()
+        {
+            steps.Clear();
+            batch = new List<JObject>();
+            shown = null;
+            nextStepAt = 0f;
+            flash.Clear();
+            motion.Reset();
+            preview.Hide();
+        }
+
         // --- rendering ----------------------------------------------------------------------
 
         private static JObject Intent(string kind) => new JObject { ["kind"] = kind };
 
-        public void Render(MatchView view)
+        /// <param name="live">This is the newest view: offer its legal intents and its choices.</param>
+        /// <param name="animate">Move the cards from the board shown before.</param>
+        private void Render(MatchView view, bool live, bool animate)
         {
             if (view == null) return;
+            shown = view;
             var me = view.Me;
             var opp = view.Opponent;
             var seat = client.Seat;
+            var intents = live ? view.LegalIntents : NoIntents;
             roomWaitingCode = null;
 
             root.Q<Label>("my-score").text = me.Score.ToString();
@@ -277,24 +375,55 @@ namespace OpenGwt.UI
             root.Q<Label>("turn-label").text = TurnText(view);
             statusLabel.text = StatusText(view);
 
+            if (animate) motion.Capture(BoardCards(), hand.Children().OfType<CardElement>());
+            var keep = preview.OwnerKey;
+            var board = new Dictionary<string, CardElement>();
+            var inHand = new Dictionary<string, CardElement>();
             foreach (var row in RowNames)
             {
-                RenderRow(root.Q<VisualElement>("my-row-" + row), me.Rows[row], seat, view, row, true);
-                RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, view, row, false);
+                RenderRow(root.Q<VisualElement>("my-row-" + row), me.Rows[row], seat, view, intents, row, true, board);
+                RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, view, intents, row, false, board);
             }
-            RenderHand(view);
+            RenderHand(view, intents, inHand);
             flash.Clear();
-            gone.Clear();
+            if (animate)
+            {
+                motion.Animate(board, inHand, root.Q<Label>("opp-hand").worldBound, root.Q<VisualElement>("middle").worldBound.center,
+                    id => new CardElement(null, Face(id), Array.Empty<string>()));
+            }
+            else
+            {
+                motion.Settle();
+            }
+            // A re-render replaces the element under the pointer; keep showing the same card.
+            if (keep != null && (board.TryGetValue(keep, out var again) || inHand.TryGetValue(keep, out again)))
+            {
+                preview.Show(again, keep, (CardFace)again.userData);
+            }
 
-            passButton.SetEnabled(HasIntent(view, "pass"));
-            leaderButton.SetEnabled(HasIntent(view, "use_leader"));
+            passButton.SetEnabled(HasIntent(intents, "pass"));
+            leaderButton.SetEnabled(HasIntent(intents, "use_leader"));
             leaderButton.text = me.Leader == null
                 ? T("ui.board.leader-none")
                 : me.Leader.Used ? T("ui.board.leader-used") : T("ui.board.leader", "name", client.CardName(me.Leader.Card));
 
-            if (view.Phase == "mulligan" && view.Mulligan != null && view.Mulligan.Seat == seat) ShowMulligan(view);
-            else if (view.Phase == "choosing" && view.PendingChoice != null) ShowChoice(view);
+            if (live && view.Phase == "mulligan" && view.Mulligan != null && view.Mulligan.Seat == seat) ShowMulligan(view);
+            else if (live && view.Phase == "choosing" && view.PendingChoice != null) ShowChoice(view);
             else if (modalForPhase) HideModal();
+        }
+
+        private IEnumerable<CardElement> BoardCards()
+        {
+            foreach (var row in RowNames)
+            {
+                foreach (var side in new[] { "my-row-", "opp-row-" })
+                {
+                    foreach (var card in root.Q<VisualElement>(side + row).Q<VisualElement>("units").Children().OfType<CardElement>())
+                    {
+                        yield return card;
+                    }
+                }
+            }
         }
 
         private static string Lives(int lives) => new string('♥', Math.Max(0, lives));
@@ -328,7 +457,8 @@ namespace OpenGwt.UI
             return T("ui.board.rounds", "mine", view.Me.RoundsWon, "theirs", view.Opponent.RoundsWon);
         }
 
-        private void RenderRow(VisualElement rowElement, RowView row, int seat, MatchView view, string rowName, bool mine)
+        private void RenderRow(VisualElement rowElement, RowView row, int seat, MatchView view, List<JObject> intents, string rowName, bool mine,
+            Dictionary<string, CardElement> board)
         {
             var units = rowElement.Q<VisualElement>("units");
             units.Clear();
@@ -338,17 +468,14 @@ namespace OpenGwt.UI
                 total += unit.Power;
                 var classes = new List<string>();
                 if ((unit.Owner != seat) == mine) classes.Add("card--foreign");
-                var def = Def(unit.Card);
-                if (IsImmune(def)) classes.Add("card--immune");
-                if ((string)def?["kind"] == "special") classes.Add("card--special");
-                var element = new CardElement(unit.Instance, unit.Card, client.CardName(unit.Card), Meta(def), unit.Power, unit.Base, classes);
-                element.tooltip = client.CardText(unit.Card);
+                var element = Card(unit.Instance, Face(unit.Card, unit.Power, unit.Base), classes);
                 if (flash.Contains(unit.Instance)) Flash(element);
                 units.Add(element);
+                board[unit.Instance] = element;
             }
             rowElement.Q<Label>("total").text = total.ToString();
             rowElement.Q<Label>("effects").text = string.Join("\n", row.Effects.Select(e => T("ui.effect." + e.Replace('_', '-'))));
-            rowElement.EnableInClassList("row--active", mine && view.Turn == "me" && LegalRows(view).Contains(rowName));
+            rowElement.EnableInClassList("row--active", mine && view.Turn == "me" && LegalRows(intents).Contains(rowName));
         }
 
         private static void Flash(VisualElement element)
@@ -357,20 +484,16 @@ namespace OpenGwt.UI
             element.schedule.Execute(() => element.RemoveFromClassList("card--flash")).StartingIn(60);
         }
 
-        private void RenderHand(MatchView view)
+        private void RenderHand(MatchView view, List<JObject> intents, Dictionary<string, CardElement> inHand)
         {
             hand.Clear();
-            var plays = view.LegalIntents.Where(i => (string)i["kind"] == "play_card").ToList();
+            var plays = intents.Where(i => (string)i["kind"] == "play_card").ToList();
             foreach (var card in view.Me.Hand ?? new List<CardRef>())
             {
-                var def = Def(card.Card);
                 var rows = plays.Where(i => (string)i["card"] == card.Instance).Select(i => (string)i["row"]).ToList();
                 var classes = new List<string>();
                 if (rows.Count > 0) classes.Add("card--playable");
-                if ((string)def?["kind"] == "special") classes.Add("card--special");
-                if (IsImmune(def)) classes.Add("card--immune");
-                var element = new CardElement(card.Instance, card.Card, client.CardName(card.Card), Meta(def), (int?)def?["power"], null, classes);
-                element.tooltip = client.CardText(card.Card);
+                var element = Card(card.Instance, Face(card.Card), classes);
                 if (flash.Contains(card.Instance)) Flash(element);
                 if (rows.Count > 0)
                 {
@@ -379,6 +502,7 @@ namespace OpenGwt.UI
                     element.RegisterCallback<ClickEvent>(_ => OnHandCardClicked(instance, options));
                 }
                 hand.Add(element);
+                inHand[card.Instance] = element;
             }
         }
 
@@ -400,22 +524,57 @@ namespace OpenGwt.UI
             ShowModal(T("ui.modal.choose-row"), options, false);
         }
 
-        private HashSet<string> LegalRows(MatchView view) =>
-            new HashSet<string>(view.LegalIntents.Where(i => (string)i["kind"] == "play_card").Select(i => (string)i["row"]).Where(r => r != null));
+        private static HashSet<string> LegalRows(List<JObject> intents) =>
+            new HashSet<string>(intents.Where(i => (string)i["kind"] == "play_card").Select(i => (string)i["row"]).Where(r => r != null));
 
-        private static bool HasIntent(MatchView view, string kind) => view.LegalIntents.Any(i => (string)i["kind"] == kind);
+        private static bool HasIntent(List<JObject> intents, string kind) => intents.Any(i => (string)i["kind"] == kind);
 
         private JObject Def(string cardId) => client.Cards.TryGetValue(cardId, out var def) ? def : null;
 
-        private static bool IsImmune(JObject def) => def?["traits"] is JArray traits && traits.Any(t => (string)t == "immune");
+        private static List<string> Words(JObject def, string field) =>
+            def?[field] is JArray list ? list.Select(w => (string)w).ToList() : new List<string>();
 
-        private string Meta(JObject def)
+        /// <summary>The key's text when the tables have it, else empty — for vocabulary names that
+        /// arrive with the interface texts of a later phase.</summary>
+        private string Known(string key) => client.I18n.Lookup(client.Locale, key) != null ? T(key) : "";
+
+        /// <summary>Everything a card shows, rendered in the current language: kind, rows and
+        /// statuses from the pack as the server serves it (`opengwt.pack/2`). <paramref name="power"/>
+        /// and <paramref name="basePower"/> come from the view for a card on the board; a card
+        /// elsewhere shows the printed power.</summary>
+        private CardFace Face(string cardId, int? power = null, int? basePower = null)
         {
-            if (def == null) return "";
-            var kind = (string)def["kind"];
-            if (kind != "unit") return kind;
-            var rows = def["rows"] as JArray;
-            return rows == null ? "" : string.Join("/", rows.Select(r => T("ui.row." + (string)r)));
+            var def = Def(cardId);
+            var kind = (string)def?["kind"] ?? "";
+            var rows = Words(def, "rows");
+            var statuses = Words(def, "statuses");
+            var face = new CardFace
+            {
+                Card = cardId,
+                Kind = kind,
+                Rows = rows,
+                Statuses = statuses,
+                Power = power ?? (int?)def?["power"],
+                BasePower = basePower,
+                Name = client.CardName(cardId),
+                Text = client.CardText(cardId),
+                KindLabel = kind.Length == 0 ? "" : T("ui.kind." + kind),
+                RowLabels = rows.Select(r => T("ui.row." + r)).ToList(),
+                StatusLabels = statuses.Select(st => Known("status." + st.Replace('_', '-') + ".name")).ToList(),
+            };
+            if (power.HasValue && basePower.HasValue && power.Value != basePower.Value)
+            {
+                face.PowerNote = T("ui.preview.base-power", "power", basePower.Value);
+            }
+            return face;
+        }
+
+        /// <summary>A card that opens the preview on hover or long press.</summary>
+        private CardElement Card(string instance, CardFace face, IEnumerable<string> classes)
+        {
+            var element = new CardElement(instance, face, classes) { userData = face };
+            element.AddManipulator(new CardPreviewManipulator(preview, instance ?? face.Card, () => face));
+            return element;
         }
 
         // --- modals -------------------------------------------------------------------------
@@ -430,9 +589,7 @@ namespace OpenGwt.UI
             modalOptions.Clear();
             foreach (var card in view.Me.Hand)
             {
-                var def = Def(card.Card);
-                var element = new CardElement(card.Instance, card.Card, client.CardName(card.Card), Meta(def), (int?)def?["power"], null, new[] { "card--playable" });
-                element.tooltip = client.CardText(card.Card);
+                var element = Card(card.Instance, Face(card.Card), new[] { "card--playable" });
                 var instance = card.Instance;
                 element.RegisterCallback<ClickEvent>(_ =>
                 {
@@ -468,6 +625,13 @@ namespace OpenGwt.UI
             }
             ShowModal(T(choice.PromptKey), options, true);
             modalCancel.style.display = DisplayStyle.None;
+            // Each option is a card: let the player read it before choosing.
+            var buttons = modalOptions.Children().ToList();
+            for (var i = 0; i < buttons.Count && i < choice.Options.Count; i++)
+            {
+                var face = Face(choice.Options[i].Card);
+                buttons[i].AddManipulator(new CardPreviewManipulator(preview, "choice:" + i, () => face));
+            }
         }
 
         private void ShowModal(string title, List<(string label, Action onClick)> options, bool forPhase)
@@ -497,7 +661,9 @@ namespace OpenGwt.UI
 
         private string Who(JObject evt) => (int?)evt["seat"] == client.Seat ? "@ui.who.you" : "@ui.who.opponent";
 
-        private void OnEvent(JObject evt)
+        /// <summary>Apply one event of the step being shown: its log line, a flash on the card it
+        /// touched, and what the motion needs to know about it.</summary>
+        private void Describe(JObject evt)
         {
             var type = (string)evt["type"];
             var card = (string)evt["card"];
@@ -506,16 +672,18 @@ namespace OpenGwt.UI
             switch (type)
             {
                 case "card_played":
+                    motion.NotePlayed(instance, card, (int?)evt["seat"] == client.Seat);
+                    line = T("ui.event.card-played", "who", Who(evt), "card", "@card." + card + ".name");
+                    break;
                 case "unit_summoned":
                 case "card_placed":
-                    if (instance != null) flash.Add(instance);
-                    line = T(type == "card_played" ? "ui.event.card-played" : "ui.event.unit-summoned", "who", Who(evt), "card", "@card." + card + ".name");
+                    line = T("ui.event.unit-summoned", "who", Who(evt), "card", "@card." + card + ".name");
                     break;
                 case "unit_destroyed":
+                    motion.NoteDestroyed(instance);
                     line = T("ui.event.unit-destroyed", "card", "@card." + card + ".name");
                     break;
                 case "unit_returned":
-                    if (instance != null) flash.Add(instance);
                     line = T("ui.event.unit-returned", "who", Who(evt), "card", "@card." + card + ".name");
                     break;
                 case "leader_used":
@@ -544,7 +712,7 @@ namespace OpenGwt.UI
             }
             if (line == null) return;
             log.Add(line);
-            while (log.Count > 4) log.RemoveAt(0);
+            while (log.Count > 3) log.RemoveAt(0);
             eventLog.text = string.Join("\n", log);
         }
 
@@ -573,7 +741,7 @@ namespace OpenGwt.UI
 
         public void Dispose()
         {
-            client.ViewChanged -= Render;
+            client.ViewChanged -= OnView;
             client.EventReceived -= OnEvent;
             client.ErrorReceived -= OnError;
             client.MatchOver -= OnMatchOver;

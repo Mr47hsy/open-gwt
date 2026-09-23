@@ -32,8 +32,22 @@ cd server && OPENGWT_DATABASE_URL=sqlite+aiosqlite:////tmp/e2e.db OPENGWT_PORT=8
 OPENGWT_TEST_SERVER=http://127.0.0.1:8765 "$UNITY" -batchmode -nographics -projectPath "$PWD/client" -runTests -testPlatform PlayMode -testResults /tmp/playmode.xml -logFile /tmp/playmode.log
 ```
 
-The test plays a whole match through `MatchClient` and asserts the opponent's hand never
-appears. Stop the server afterwards.
+`ClientMatchTests` plays a whole match through `MatchClient` and asserts the opponent's hand never
+appears; `BoardViewTests` runs in the same pass without the server. Stop the server afterwards.
+Until ADR 0009 phase E moves the client to protocol 2, `ClientMatchTests` fails against a current
+server (it expects v1 content and protocol 1); that failure is known, and `BoardViewTests` is what
+gates a board change meanwhile.
+
+## 3b. Look at it, for any visual change
+
+```bash
+OPENGWT_TEST_SCREENSHOTS=/tmp/shots "$UNITY" -batchmode -projectPath "$PWD/client" -runTests -testPlatform PlayMode -testFilter BoardViewTests -testResults /tmp/board.xml -logFile /tmp/board.log
+```
+
+No `-nographics`: the board renders into a 1600×900 texture and each stage is written as a PNG.
+Open them and check the change the way a player would see it. A run with graphics rewrites the
+dynamic font assets (`Fonts/*-SDF.asset`); unless fonts were your change, restore them with
+`git checkout -- client/Assets/OpenGwt/Fonts/`.
 
 ## 4. Optional macOS build
 

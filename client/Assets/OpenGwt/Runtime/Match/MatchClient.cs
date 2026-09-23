@@ -193,6 +193,10 @@ namespace OpenGwt.Match
             }
         }
 
+        /// <summary>Handle one server message as if it had come over the socket: the seam the
+        /// board's PlayMode tests drive the client through without a server.</summary>
+        internal void Receive(string json) => Dispatch(json);
+
         private void Dispatch(string json)
         {
             var message = JObject.Parse(json);

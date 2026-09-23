@@ -18,6 +18,7 @@ Regenerate after editing:
 | `data/i18n/conformance.yaml` | `opengwt-data conformance-json` | same test file |
 | a font TTF (via `server/scripts/fonts.py`) | `-executeMethod OpenGwt.Editor.FontSetup.Run` | nothing; check the `*-SDF.asset` files |
 | scene, panel or player settings in code | `-executeMethod OpenGwt.Editor.ProjectSetup.Run` | nothing; it is idempotent |
+| a new SVG under `UI/Art/` | any headless run (it imports as a VectorImage and writes the `.meta`) | `BoardViewTests` checks the art resolves |
 
 Never commit `client/Library`, `Temp`, `Logs`, `UserSettings`, `Builds`, `*.csproj`, `*.slnx`,
 `.vscode`, `mono_crash.*` (all ignored). Always commit the `.meta` next to a new asset; the editor
@@ -27,6 +28,10 @@ Known: a headless `FontSetup.Run` once crashed the mono runtime while exiting, *
 (exit code 255). Judge such a run by the assets it wrote, not by its exit code.
 
 There is no CI for the client (Unity needs a licence); the headless checks are the gate.
+`BoardViewTests` (PlayMode) needs no server; run without `-nographics` and with
+`OPENGWT_TEST_SCREENSHOTS=<dir>` it writes PNGs of the board, which is how an agent looks at a
+visual change. `WaitForEndOfFrame` never comes in a batch-mode editor — a test that waits for it
+hangs; read the panel's render texture after `yield return null` instead.
 
 **Why:** the owner runs the GUI editor; agents do not, and an agent that skips the editor run
 ships assets without `.meta` files or a stale string export that fails the Python tests.

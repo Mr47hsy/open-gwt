@@ -24,6 +24,7 @@ namespace OpenGwt
         private void Update()
         {
             client?.Pump();
+            board?.Tick();
         }
 
         private void OnDisable()

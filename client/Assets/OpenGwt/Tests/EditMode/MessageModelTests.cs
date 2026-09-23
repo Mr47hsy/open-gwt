@@ -13,10 +13,10 @@ namespace OpenGwt.Tests
                     ""hand"": [ { ""instance"": ""c17"", ""card"": ""a-u-0001"" } ], ""deck_count"": 12,
                     ""discard"": [], ""leader"": { ""card"": ""a-l-0001"", ""used"": false }, ""mulligan_done"": true,
                     ""rows"": { ""melee"": { ""effects"": [], ""units"": [ { ""instance"": ""c09"", ""card"": ""a-u-0001"", ""owner"": 0, ""power"": 5, ""base"": 5 } ] },
-                                ""ranged"": { ""effects"": [""power_to_one""], ""units"": [] }, ""siege"": { ""effects"": [], ""units"": [] } } },
+                                ""ranged"": { ""effects"": [""power_to_one""], ""units"": [] } } },
           ""opponent"": { ""seat"": 1, ""faction"": ""placeholder-b"", ""score"": 12, ""lives"": 2, ""rounds_won"": 0, ""passed"": true,
                     ""hand_count"": 8, ""deck_count"": 13, ""discard"": [], ""leader"": null, ""mulligan_done"": true,
-                    ""rows"": { ""melee"": { ""effects"": [], ""units"": [] }, ""ranged"": { ""effects"": [], ""units"": [] }, ""siege"": { ""effects"": [], ""units"": [] } } },
+                    ""rows"": { ""melee"": { ""effects"": [], ""units"": [] }, ""ranged"": { ""effects"": [], ""units"": [] } } },
           ""mulligan"": null,
           ""legal_intents"": [ { ""kind"": ""pass"" }, { ""kind"": ""play_card"", ""card"": ""c17"", ""row"": ""melee"" } ],
           ""pending_choice"": null, ""winner"": null }";
