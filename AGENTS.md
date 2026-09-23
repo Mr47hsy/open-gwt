@@ -26,8 +26,10 @@ so no wall-clock time, no unseeded randomness and no unordered iteration inside 
 content is YAML under `data/` with a closed vocabulary. Decisions: `docs/adr/`; wire and content
 contracts: `docs/protocol/`.
 
-**`client/`, `server/` and `data/` do not exist yet** (2026-09-22; the repository is
-documentation-only). Check the filesystem before describing any module or API as existing.
+**What exists (2026-09-23):** `server/` holds the Python code base with the rules core
+(`opengwt.core`), the data loader, bots and the simulator, all tested; `data/` holds placeholder
+cards, decks and translations. **`client/` and the FastAPI server itself do not exist yet.** Check
+the filesystem before describing any module or API as existing.
 
 ## Working rules
 

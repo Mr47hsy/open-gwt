@@ -33,16 +33,17 @@ shape.
 
 Windows · macOS · iOS · Android, on Unity 6.6 (6000.6.2f1). Online-only.
 
-## Current state — 2026-09-22
+## Current state — 2026-09-23
 
-The repository contains documentation only: trilingual `README` and `CONTRIBUTING`, `LICENSE` (MIT,
-code) and `LICENSE-ASSETS` (CC BY 4.0, original art and audio), a `.gitignore` for Unity and .NET,
-this `.agent/` directory, `docs/adr/` (decisions 0001–0008) and `docs/protocol/` (card, match and
-i18n protocols with schemas and examples).
+Milestone M1 of ADR 0007 is implemented. `server/` is a uv project (Python ≥ 3.10.15) with
+`opengwt.core` (rules engine, PCG32, views, canonical serialisation, replay), `opengwt.data`
+(YAML loading against the protocol schemas), `opengwt.bots` (random, greedy) and `opengwt.sim`
+(the `opengwt-sim` command). `data/` holds placeholder cards for three factions, two starter decks
+and generated en / zh-CN / ru texts. CI runs ruff, mypy, import-linter, pytest and a simulation on
+Python 3.10 and 3.14.
 
-`client/`, `server/` and `data/` do **not exist yet**. Any description of them in
-`02-architecture.md` is intended design, not something you can read out of the code. Do not tell
-a user a module exists because it is mentioned here — check the filesystem.
+`client/` and the FastAPI server (`opengwt.server`, milestone M2) do **not exist yet**. Do not
+tell a user a module exists because it is mentioned here — check the filesystem.
 
 ## Legal position in one line
 

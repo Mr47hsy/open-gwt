@@ -1,0 +1,29 @@
+schema: opengwt.deck/1
+id: starter-b
+faction: placeholder-b
+leader: b-l-0001
+cards:
+  - { id: b-u-0001, count: 2 }
+  - { id: b-u-0002, count: 2 }
+  - { id: b-u-0003, count: 2 }
+  - { id: b-u-0004, count: 2 }
+  - { id: b-u-0005, count: 2 }
+  - { id: b-u-0006, count: 2 }
+  - { id: b-u-0007, count: 2 }
+  - { id: b-u-0008, count: 1 }
+  - { id: b-u-0009, count: 2 }
+  - { id: b-u-0010, count: 1 }
+  - { id: b-u-0011, count: 2 }
+  - { id: b-u-0012, count: 1 }
+  - { id: b-u-0013, count: 1 }
+  - { id: b-u-0014, count: 2 }
+  - { id: b-u-0015, count: 1 }
+  - { id: n-u-0002, count: 1 }
+  - { id: n-u-0003, count: 1 }
+  - { id: b-s-0001, count: 1 }
+  - { id: n-s-0002, count: 1 }
+  - { id: n-s-0003, count: 1 }
+  - { id: n-s-0004, count: 1 }
+  - { id: n-s-0006, count: 1 }
+  - { id: n-s-0008, count: 1 }
+  - { id: n-s-0009, count: 1 }

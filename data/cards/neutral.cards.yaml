@@ -1,0 +1,54 @@
+# Placeholder content for the MVP. Ids are opaque and never shown; every name is a TODO for a
+# human writer (data/i18n/<locale>/cards.yaml). Mechanics only — see docs/protocol/cards.md.
+schema: opengwt.cards/1
+faction: neutral
+
+cards:
+  n-u-0001: { kind: unit, rows: [melee, ranged], power: 7 }
+  n-u-0002: { kind: unit, rows: [siege], power: 8 }
+  n-u-0003: { kind: unit, rows: [melee], power: 15, traits: [immune] }
+
+  # row effects, both sides
+  n-s-0001:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [melee], sides: both }
+  n-s-0002:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [ranged], sides: both }
+  n-s-0003:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [siege], sides: both }
+  # clears the power-to-one effect everywhere; doubling stays
+  n-s-0004:
+    kind: special
+    abilities:
+      - { when: played, do: clear_row_effects, effects: [power_to_one] }
+
+  # row doubling, own side
+  n-s-0005:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: double_power, rows: [melee], sides: self }
+  n-s-0006:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: double_power, rows: [ranged], sides: self }
+  n-s-0007:
+    kind: special
+    abilities:
+      - { when: played, do: apply_row_effect, effect: double_power, rows: [siege], sides: self }
+
+  # takes the place of one of your units, which returns to hand
+  n-s-0008:
+    kind: special
+    abilities:
+      - { when: played, do: swap_with_board_unit, where: { traits_none: [immune] }, choose: player }
+
+  # destroys the strongest non-immune units on the whole board
+  n-s-0009:
+    kind: special
+    abilities:
+      - { when: played, do: destroy, target: { side: both, units: strongest } }

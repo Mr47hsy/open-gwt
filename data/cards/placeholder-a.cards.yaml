@@ -1,0 +1,57 @@
+# Placeholder faction A: copies that pull each other from the deck and grow together.
+schema: opengwt.cards/1
+faction: placeholder-a
+
+cards:
+  a-u-0001: { kind: unit, rows: [melee], power: 5 }
+  a-u-0002: { kind: unit, rows: [melee], power: 6 }
+  a-u-0003: { kind: unit, rows: [ranged], power: 5 }
+  a-u-0004: { kind: unit, rows: [ranged], power: 6 }
+  a-u-0005: { kind: unit, rows: [siege], power: 6 }
+  a-u-0006: { kind: unit, rows: [siege], power: 8 }
+  a-u-0007:
+    kind: unit
+    rows: [melee]
+    power: 4
+    abilities:
+      - { when: played, do: summon_from_deck, same_id: true }
+  a-u-0008:
+    kind: unit
+    rows: [ranged]
+    power: 4
+    abilities:
+      - { when: played, do: summon_from_deck, same_id: true }
+  a-u-0009:
+    kind: unit
+    rows: [melee]
+    power: 4
+    abilities:
+      - { when: always, do: multiply_power_by_copies }
+  a-u-0010:
+    kind: unit
+    rows: [siege]
+    power: 5
+    abilities:
+      - { when: always, do: multiply_power_by_copies }
+  a-u-0011:
+    kind: unit
+    rows: [ranged]
+    power: 2
+    abilities:
+      - { when: always, do: boost_row_others, amount: 1 }
+  a-u-0012: { kind: unit, rows: [melee], power: 10, traits: [immune] }
+  a-u-0013: { kind: unit, rows: [ranged], power: 10, traits: [immune] }
+  a-u-0014: { kind: unit, rows: [melee, ranged], power: 5 }
+
+  # destroys the strongest opponent melee units once that row totals 10 or more
+  a-s-0001:
+    kind: special
+    abilities:
+      - when: played
+        do: destroy
+        target: { side: opponent, rows: [melee], units: strongest, where: { row_total_at_least: 10 } }
+
+  a-l-0001:
+    kind: leader
+    abilities:
+      - { when: activated, do: clear_row_effects }

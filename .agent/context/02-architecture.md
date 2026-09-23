@@ -1,8 +1,9 @@
 # Architecture
 
-> **Status: decided, not yet built.** The decisions are recorded in `docs/adr/` (0001–0008,
-> 2026-09-22) and the wire contracts in `docs/protocol/`. No code exists yet. When code lands and
-> disagrees with this file, the code wins — update this file in the same pull request.
+> **Status: decided; the rules core, data loader, bots and simulator exist (M1); the server and
+> the client do not.** The decisions are recorded in `docs/adr/` (0001–0008) and the wire contracts
+> in `docs/protocol/`. When code and this file disagree, the code wins — update this file in the
+> same pull request.
 
 ## Three layers, two languages
 

@@ -112,8 +112,8 @@ target:
 | `draw` | `side` (default `self`), `count` (default 1) | no | The side draws from its deck; stops silently when the deck is empty. |
 | `boost` | `target`, `amount` ≥ 1 | yes | Adds `amount` to the targets' current power. |
 | `set_power` | `target`, `value` ≥ 0 | yes | Sets the targets' current power. |
-| `apply_row_effect` | `effect`, `rows`, `sides` | no | Puts a row effect (section 6) on each listed row on each listed side, replacing any existing one. |
-| `clear_row_effects` | `rows` (default all), `sides` (default `both`) | no | Removes row effects. |
+| `apply_row_effect` | `effect`, `rows`, `sides` | no | Adds a row effect (section 6) to each listed row on each listed side; a row-side that already has that effect is unchanged. |
+| `clear_row_effects` | `rows` (default all), `sides` (default `both`), `effects` (default all) | no | Removes the listed row effects, or every row effect when `effects` is absent. |
 | `summon_from_deck` | exactly one of `same_id: true` or `card: <id>`; `count` (default all) | no | Moves matching cards from the owner's deck onto the board and resolves their `played` abilities in deck order. |
 | `return_from_discard` | `side` (default `self`), `where` | yes | Plays a unit from the discard pile as if from hand. Use `choose: player` for a player pick; without it, every candidate returns. |
 | `swap_with_board_unit` | `where` | yes (required) | The owner picks one of their own non-immune board units; it returns to hand and the acting card takes its place on that row. |
@@ -125,7 +125,10 @@ target:
 
 ## 6. Row effects and effective power
 
-Two row effects exist in v1. A row-side holds at most one; applying another replaces it.
+Two row effects exist in v1. A row-side holds a *set* of effects, at most one of each kind, so
+`power_to_one` and `double_power` can be in force on the same row-side at the same time — which
+is exactly what makes the order below matter. Applying an effect the row-side already has does
+nothing.
 
 | Effect | Meaning |
 | --- | --- |

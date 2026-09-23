@@ -1,0 +1,64 @@
+# Placeholder faction B: units that deploy on the other side, bring units back, and strike rows.
+schema: opengwt.cards/1
+faction: placeholder-b
+
+cards:
+  b-u-0001: { kind: unit, rows: [melee], power: 5 }
+  b-u-0002: { kind: unit, rows: [melee], power: 7 }
+  b-u-0003: { kind: unit, rows: [ranged], power: 5 }
+  b-u-0004: { kind: unit, rows: [ranged], power: 7 }
+  b-u-0005: { kind: unit, rows: [siege], power: 5 }
+  b-u-0006: { kind: unit, rows: [siege], power: 7 }
+  b-u-0007:
+    kind: unit
+    rows: [melee]
+    power: 4
+    deploy: opponent
+    abilities:
+      - { when: played, do: draw, count: 2 }
+  b-u-0008:
+    kind: unit
+    rows: [ranged]
+    power: 3
+    deploy: opponent
+    abilities:
+      - { when: played, do: draw, count: 2 }
+  b-u-0009:
+    kind: unit
+    rows: [melee]
+    power: 5
+    abilities:
+      - { when: played, do: return_from_discard, where: { traits_none: [immune] }, choose: player }
+  b-u-0010:
+    kind: unit
+    rows: [ranged]
+    power: 5
+    abilities:
+      - { when: played, do: return_from_discard, where: { traits_none: [immune] }, choose: player }
+  b-u-0011:
+    kind: unit
+    rows: [siege]
+    power: 6
+    abilities:
+      - { when: played, do: boost, target: { side: self, rows: [siege] }, amount: 1 }
+  b-u-0012: { kind: unit, rows: [melee], power: 10, traits: [immune] }
+  b-u-0013: { kind: unit, rows: [siege], power: 10, traits: [immune] }
+  b-u-0014: { kind: unit, rows: [ranged, siege], power: 6 }
+  b-u-0015:
+    kind: unit
+    rows: [melee]
+    power: 1
+    abilities:
+      - when: played
+        do: destroy
+        target: { side: opponent, rows: [ranged], units: strongest, where: { row_total_at_least: 10 } }
+
+  b-s-0001:
+    kind: special
+    abilities:
+      - { when: played, do: draw, count: 2 }
+
+  b-l-0001:
+    kind: leader
+    abilities:
+      - { when: activated, do: apply_row_effect, effect: double_power, rows: [melee], sides: self }
