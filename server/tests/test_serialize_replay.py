@@ -8,6 +8,7 @@ from opengwt.core.rng import seed_from_int
 from opengwt.core.serialize import canonical_json, state_from_dict, state_hash, state_to_dict
 from opengwt.core.view import player_view
 from opengwt.sim.cli import run_match, sim_bot
+from tests.helpers import CARDS, Builder, make_library, play
 
 GOLDEN = Path(__file__).parent / "replays" / "random-vs-random-seed-1.json"
 SEED_A = "5eed" * 16
@@ -33,6 +34,37 @@ def test_state_round_trips_canonically(library: Library, starter_decks: tuple[De
         again = canonical_json(state_to_dict(state_from_dict(json.loads(once))))
         assert once == again
         assert state_hash(state) == state_hash(state_from_dict(json.loads(once)))
+
+
+def test_a_paused_queue_round_trips() -> None:
+    """A choice pauses the queue with triggers waiting in it — here the ally's on_ally_played,
+    which carries the unit that fired it."""
+    lib = make_library(
+        {
+            **CARDS,
+            "mentor": {
+                "kind": "unit",
+                "color": "bronze",
+                "provisions": 4,
+                "power": 2,
+                "abilities": [
+                    {
+                        "when": "on_ally_played",
+                        "do": "boost",
+                        "amount": 1,
+                        "target": {"units": "trigger_unit"},
+                    }
+                ],
+            },
+        }
+    )
+    s = Builder(lib).state(
+        hand0=["zap2", "plain5"], board0={"melee": ["mentor"]}, board1={"melee": ["plain3"]}
+    )
+    s, _ = play(lib, s, 0, "zap2")
+    assert s.pending is not None and s.pending.queue[0].trigger is not None
+    once = canonical_json(state_to_dict(s))
+    assert canonical_json(state_to_dict(state_from_dict(json.loads(once)))) == once
 
 
 def test_apply_does_not_mutate_its_input(

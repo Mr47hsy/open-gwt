@@ -1,0 +1,34 @@
+# on_turn_start and adjacent (cards.md §6.1, §7.1, §11.4): at each of its controller's turn
+# starts the card's abilities resolve; adjacent is the cards directly left and right of it.
+cards:
+  warmer:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 2
+    abilities:
+      - {when: on_turn_start, do: boost, amount: 1, target: {units: adjacent}}
+seed: 1
+decks:
+  - [plain3, plain3, warmer, plain5, spare]
+  - [plain5, plain5, plain5, plain5, spare]
+steps:
+  - [0, play, plain3, melee]
+  - [0, end]
+  - [1, play, plain5, melee]
+  - [1, end]
+  - [0, play, plain3, melee]
+  - [0, end]
+  - [1, play, plain5, melee]
+  - [1, end]
+  - [0, play, warmer, melee, 1]
+  - [0, end]
+  - [1, play, plain5, melee]
+  - [1, end]                    # seat 1's turn start boosts nothing; seat 0's boosts both
+events:
+  - {type: turn_started, seat: 0}
+  - {type: unit_boosted, card: plain3, amount: 1, source: warmer}
+  - {type: unit_boosted, card: plain3, amount: 1, source: warmer}
+board:
+  0: {melee: ["plain3:4", "warmer:2", "plain3:4"]}
+turn: 0

@@ -1,15 +1,15 @@
-# Legal under the default Rules (cards.md §12): 25 cards, 21 units, bronze at most twice, gold
-# once, 135 provisions of a 150 + 15 budget, and no neutral card among its cards.
+# Legal under the default Rules (cards.md §12): 30 cards, 23 units, bronze at most twice, gold
+# once, 163 provisions of a 150 + 15 budget, and no neutral card among its cards.
 schema: opengwt.deck/2
 id: starter-a
 faction: placeholder-a
 leader: l-1001
 stratagem: g-0002
 cards:
-  - { id: u-1001, count: 2 }
-  - { id: u-1002, count: 2 }
+  - { id: u-1001, count: 1 }
+  - { id: u-1002, count: 1 }
   - { id: u-1003, count: 2 }
-  - { id: u-1004, count: 2 }
+  - { id: u-1004, count: 1 }
   - { id: u-1005, count: 1 }
   - { id: u-1006, count: 1 }
   - { id: u-1007, count: 2 }
@@ -22,7 +22,15 @@ cards:
   - { id: u-1014, count: 1 }
   - { id: u-1015, count: 1 }
   - { id: u-1016, count: 1 }
+  - { id: u-1017, count: 1 }
+  - { id: u-1018, count: 1 }
+  - { id: u-1019, count: 1 }
+  - { id: u-1020, count: 1 }
+  - { id: u-1021, count: 1 }
   - { id: s-1001, count: 1 }
   - { id: s-1002, count: 1 }
   - { id: s-1003, count: 1 }
+  - { id: s-1004, count: 1 }
+  - { id: s-1005, count: 1 }
   - { id: a-1001, count: 1 }
+  - { id: a-1002, count: 1 }

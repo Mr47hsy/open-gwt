@@ -1,6 +1,6 @@
-# Placeholder content for ADR 0009 phase B. Ids are opaque and never shown; every name is a TODO
-# for a human writer (data/i18n/<locale>/cards.yaml). Mechanics only — see docs/protocol/cards.md.
-# data/ uses only the words the phase-B engine acts on; leaders' activated abilities wait for C.
+# Placeholder content for ADR 0009 phases B and C. Ids are opaque and never shown; every name is a
+# TODO for a human writer (data/i18n/<locale>/cards.yaml). Mechanics only — see
+# docs/protocol/cards.md.
 schema: opengwt.cards/2
 faction: neutral
 
@@ -49,6 +49,17 @@ cards:
         do: damage
         amount: 2
         target: { units: all, side: self, where: { statuses_any: [on_enemy_side] } }
+
+  # when destroyed, the next copy steps from the deck onto the row it was on
+  u-0006:
+    kind: unit
+    color: bronze
+    provisions: 3
+    power: 3
+    abilities:
+      - when: on_destroyed
+        do: summon_from_deck
+        cards: { pick: first, where: { same_id_as_this: true } }
 
   # a token some stratagems place
   t-0001:

@@ -1,0 +1,23 @@
+# summon_from_deck with cards.pick: chosen (cards.md §7.3, §8), from a leader's activated
+# ability: the card picked from the deck moves onto the row the ability names.
+cards:
+  herald:
+    kind: leader
+    provision_bonus: 15
+    activation: {charges: 1}
+    abilities:
+      - {when: on_activate, do: summon_from_deck, cards: {pick: chosen}, row: ranged}
+rules:
+  draws_per_round: [0]
+seed: 2
+decks:
+  - {cards: [plain5, plain3], leader: herald}
+  - [spare]
+steps:
+  - [0, order, leader]
+  - [0, choose, plain3]
+events:
+  - {type: choice_requested, kind: card, prompt_key: choice.summon-from-deck, option_count: 2, cancellable: false}
+  - {type: card_summoned, card: plain3, from: deck, row: ranged}
+board:
+  0: {ranged: ["plain3:3"]}

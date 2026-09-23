@@ -1,10 +1,10 @@
 """Vocabulary and state of the rules core — docs/protocol/cards.md (``opengwt.cards/2``).
 
 Definitions (``CardDef`` and friends) are immutable and built from plain mappings shaped like the
-cards files. The whole v2 vocabulary loads: ADR 0009 phase B implements the power and board words
-and phase C the triggers, activation and generalised choices; until then the phase-C words of a
-card are carried and do nothing (``phase_c_words`` lists them). Match state is mutable and only
-ever changed by ``engine.apply``.
+cards files. The whole v2 vocabulary loads and acts: ADR 0009 phase B implemented the power and
+board words, phase C the triggers, activation and generalised choices (``phase_c_words`` lists
+the words of a card that phase C gave behaviour to). Match state is mutable and only ever changed
+by ``engine.apply``.
 """
 
 from __future__ import annotations
@@ -213,7 +213,7 @@ class ChoiceKind(str, Enum):
 
 # --- phases of ADR 0009 ---------------------------------------------------------------------------
 
-# Words the phase-B engine carries without acting on them; phase C gives them behaviour.
+# The words phase C gave behaviour to — phase B carried them without acting on them.
 PHASE_C_TRIGGERS = frozenset(
     {
         Trigger.ON_ACTIVATE,
@@ -561,11 +561,9 @@ def card_def_from_mapping(card_id: str, faction: str, m: Mapping[str, Any]) -> C
 
 
 def phase_c_words(defn: CardDef) -> list[str]:
-    """The words of ``defn`` whose behaviour arrives with ADR 0009 phase C, as ``kind:word``.
-
-    The phase-B engine loads them and does nothing with them: those triggers never fire, those
-    actions and selectors do nothing, and no activated ability is ready.
-    """
+    """The words of ``defn`` that ADR 0009 phase C gave behaviour to, as ``kind:word`` — the
+    phase-B engine carried them without acting on them. A stratagem's activated ability acted
+    from phase B on (ADR 0011) and is not listed."""
     words: list[str] = []
     stratagem = defn.kind is Kind.STRATAGEM  # its activated ability acts from phase B (ADR 0011)
     if defn.activation is not None and not stratagem:
@@ -636,9 +634,13 @@ class CardInstance:
 
 @dataclass
 class RowEffect:
+    """A row-side's effect; ``since`` is the ``seq`` of the event that set it, which orders the
+    per-turn effects of one player's row-sides (cards.md §10)."""
+
     effect: RowEffectKind
     amount: int
     count: int | None = None
+    since: int = 0
 
 
 @dataclass
@@ -652,7 +654,7 @@ class RowSide:
         effect = self.effect
         return RowSide(
             [c.clone() for c in self.cards],
-            RowEffect(effect.effect, effect.amount, effect.count) if effect else None,
+            RowEffect(effect.effect, effect.amount, effect.count, effect.since) if effect else None,
         )
 
 
@@ -702,34 +704,74 @@ class PlayerState:
 
 @dataclass
 class Invocation:
-    """One ability of one card instance, waiting to be resolved on behalf of ``seat``. ``row``
-    is the row a unit was played on, for its ``on_play`` abilities (``if.on_row``, §6.2)."""
+    """One ability of one card instance, waiting to be resolved on behalf of ``seat``.
+
+    ``row`` is the row the card was played on, for its ``on_play`` abilities, or the row it was
+    destroyed on, for its ``on_destroyed`` ones (``if.on_row`` §6.2, summons §8). ``trigger`` is
+    the unit that fired ``on_ally_played``; ``previous`` what the ability before it, of the same
+    card and trigger, acted on (``previous_targets``, §7.1) — set once that ability resolved."""
 
     instance: str
     card: str
     ability_index: int
     seat: int
     row: Row | None = None
+    trigger: str | None = None
+    previous: list[str] | None = None
+
+
+@dataclass
+class Placement:
+    """A card an ability plays — ``play_from_deck``, ``play_from_graveyard``, ``create`` — waiting
+    in the queue, ahead of the next ability, to be put on the board or, for a special, resolved
+    (cards.md §8). It stays in its ``zone`` — ``deck`` or ``graveyard`` of ``zone_seat``, or
+    ``created``: the resolving cards — until then. ``seat`` plays it; ``source`` is the card
+    whose ability does."""
+
+    instance: str
+    card: str
+    seat: int
+    zone: str
+    zone_seat: int
+    source: str
+    source_card: str
+
+
+Step = Invocation | Placement
+
+
+@dataclass(frozen=True)
+class ChoiceOption:
+    """One option of a pending choice (docs/protocol/match.md §7): a card — ``instance`` and
+    ``card``, without an instance for a card ``create`` offers — a row-side (``seat``, ``row``),
+    or a place on one (and ``position``)."""
+
+    instance: str | None = None
+    card: str | None = None
+    seat: int | None = None
+    row: Row | None = None
+    position: int | None = None
 
 
 @dataclass
 class PendingChoice:
-    """A pick the core waits for. In phase B every choice is of kind ``unit`` and ``options``
-    are instance ids; ``queue`` is what resolves after it, and ``ends_turn`` whether the turn
-    ends once it has (a played card) or goes on (an activated ability). ``order`` is the card
-    whose activated ability is resolving, if any, and ``order_started`` whether it has spent its
-    charge yet — until then the choice may be cancelled (cards.md §6.3)."""
+    """A pick the core waits for. ``step`` is the ability that asks, or the card being placed
+    for a choice of kind ``place``. ``queue`` is the rest of the resolution queue, which resolves
+    once the pick is made (§11.3). ``order`` is the card whose activated ability is resolving,
+    if any, and ``order_started`` whether it has spent its charge yet — until then the choice
+    may be cancelled (cards.md §6.3). Without an ``order`` a played card is resolving.
+    ``resolved`` counts the steps the resolution has resolved so far (§11.3)."""
 
     seat: int
     kind: ChoiceKind
-    invocation: Invocation
+    step: Step
     prompt_key: str
-    options: list[str]
-    queue: list[Invocation]
+    options: list[ChoiceOption]
+    queue: list[Step]
     cancellable: bool = False
-    ends_turn: bool = True
     order: str | None = None
     order_started: bool = False
+    resolved: int = 0
 
 
 @dataclass
@@ -743,7 +785,8 @@ class RoundResult:
 class MatchState:
     """A match in progress. ``turn`` is whose turn it is (``None`` during the mulligan and after
     the match); ``active`` is the player whose turn it is or who took the last one, which is the
-    side board order starts from (cards.md §5)."""
+    side board order starts from (cards.md §5). ``played`` and ``ordered`` say whether the turn's
+    card has been played and whether an activated ability has been used this turn (§11.4)."""
 
     rules: Rules
     seed: str
@@ -761,6 +804,8 @@ class MatchState:
     pending: PendingChoice | None
     resolving: list[CardInstance]
     rounds: list[RoundResult]
+    played: bool = False
+    ordered: bool = False
 
     def other(self, seat: int) -> int:
         return 1 - seat
@@ -785,22 +830,46 @@ class MatchState:
                 PendingChoice(
                     p.seat,
                     p.kind,
-                    _clone_invocation(p.invocation),
+                    _clone_step(p.step),
                     p.prompt_key,
                     list(p.options),
-                    [_clone_invocation(i) for i in p.queue],
+                    [_clone_step(i) for i in p.queue],
                     p.cancellable,
-                    p.ends_turn,
                     p.order,
                     p.order_started,
+                    p.resolved,
                 )
                 if p
                 else None
             ),
             resolving=[c.clone() for c in self.resolving],
             rounds=[RoundResult(r.round, r.winners, r.scores) for r in self.rounds],
+            played=self.played,
+            ordered=self.ordered,
         )
 
 
+def _clone_step(step: Step) -> Step:
+    if isinstance(step, Placement):
+        return Placement(
+            step.instance,
+            step.card,
+            step.seat,
+            step.zone,
+            step.zone_seat,
+            step.source,
+            step.source_card,
+        )
+    return _clone_invocation(step)
+
+
 def _clone_invocation(inv: Invocation) -> Invocation:
-    return Invocation(inv.instance, inv.card, inv.ability_index, inv.seat, inv.row)
+    return Invocation(
+        inv.instance,
+        inv.card,
+        inv.ability_index,
+        inv.seat,
+        inv.row,
+        inv.trigger,
+        list(inv.previous) if inv.previous is not None else None,
+    )

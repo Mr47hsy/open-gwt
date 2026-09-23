@@ -1,4 +1,4 @@
-# Legal under the default Rules (cards.md §12): 29 cards, 22 units, bronze at most twice, gold
+# Legal under the default Rules (cards.md §12): 30 cards, 21 units, bronze at most twice, gold
 # once, 164 provisions of a 150 + 15 budget.
 schema: opengwt.deck/2
 id: starter-b
@@ -6,28 +6,32 @@ faction: placeholder-b
 leader: l-2001
 stratagem: g-0001
 cards:
-  - { id: u-2001, count: 2 }
-  - { id: u-2002, count: 2 }
-  - { id: u-2003, count: 2 }
+  - { id: u-2001, count: 1 }
+  - { id: u-2002, count: 1 }
+  - { id: u-2003, count: 1 }
   - { id: u-2004, count: 1 }
   - { id: u-2005, count: 1 }
-  - { id: u-2006, count: 1 }
   - { id: u-2007, count: 1 }
   - { id: u-2008, count: 1 }
-  - { id: u-2009, count: 2 }
+  - { id: u-2009, count: 1 }
   - { id: u-2010, count: 1 }
   - { id: u-2011, count: 1 }
   - { id: u-2012, count: 1 }
   - { id: u-2013, count: 1 }
   - { id: u-2014, count: 1 }
   - { id: u-2015, count: 1 }
+  - { id: u-2016, count: 1 }
+  - { id: u-2017, count: 1 }
+  - { id: u-2018, count: 1 }
   - { id: s-2001, count: 1 }
   - { id: s-2002, count: 1 }
   - { id: s-2003, count: 1 }
   - { id: s-2004, count: 1 }
+  - { id: s-2005, count: 1 }
+  - { id: s-2006, count: 1 }
   - { id: a-2001, count: 1 }
-  - { id: u-0001, count: 1 }
+  - { id: a-2002, count: 1 }
   - { id: u-0002, count: 1 }
   - { id: u-0003, count: 1 }
+  - { id: u-0006, count: 2 }
   - { id: s-0002, count: 1 }
-  - { id: s-0003, count: 1 }

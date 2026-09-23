@@ -30,14 +30,18 @@ from opengwt.core.engine import (
     apply,
     legal_intents,
     new_match,
+    play_positions,
 )
 from opengwt.core.events import Event, event_to_dict
 from opengwt.core.intents import (
     CancelChoice,
     Choose,
     EndMulligan,
+    EndTurn,
     Intent,
     Pass,
+    PlayCard,
+    UseOrder,
     intent_from_dict,
     intent_to_dict,
 )
@@ -134,6 +138,15 @@ def _wait(state: MatchState) -> _Wait:
     if state.phase is Phase.MULLIGAN:
         return ("mulligan", state.round)
     return ("seq", state.seq)
+
+
+def _keeps_clock(intent: Intent, state: MatchState) -> bool:
+    """An activated ability stopped on a choice that can still be cancelled, and the cancelling
+    of it, leave the match as it was (cards.md §6.3): the player's turn timer runs on, so using
+    an ability and cancelling it cannot buy time (match.md §9)."""
+    if isinstance(intent, CancelChoice):
+        return True
+    return isinstance(intent, UseOrder) and state.pending is not None and state.pending.cancellable
 
 
 class _Deadline(NamedTuple):
@@ -337,25 +350,41 @@ class MatchService:
     async def apply(
         self, match_id: str, seat: int, intent: Intent, intent_id: str | None = None
     ) -> None:
-        await self._move(match_id, seat, lambda state: intent, intent_id)
+        await self._move(match_id, seat, lambda state: [intent], intent_id)
 
     async def timeout_move(self, match_id: str, seat: int, wait: _Wait) -> None:
-        """When a turn timer expires (match.md §9): end the mulligan, cancel a choice or pick its
-        first option, otherwise pass. The move is decided under the match lock and only while the
-        wait the timer was set for goes on, so a player's own intent that lands first is never
-        followed by a move they did not make, and the other player's redraws in a mulligan
-        neither cancel nor restart it."""
+        """When a turn timer expires (match.md §9): end the mulligan; cancel a choice — and then
+        move on as below, since cancelling alone changes nothing — or pick its first option; end
+        the turn once its card is played; pass if the player may; and, after an activated
+        ability, when a pass is no longer allowed, play the first card at the right end. The move
+        is decided under the match lock and only while the wait the timer was set for goes on, so
+        a player's own intent that lands first is never followed by a move they did not make, and
+        the other player's redraws in a mulligan neither cancel nor restart it."""
+        lib = self.content.library
 
-        def decide(state: MatchState) -> Intent | None:
-            if seat not in acting_seats(state) or _wait(state) != wait:
-                return None
-            legal = legal_intents(self.content.library, state, seat)
+        def default(state: MatchState) -> Intent | None:
+            legal = legal_intents(lib, state, seat)
             if not legal:
                 return None
-            for intent in (EndMulligan(), CancelChoice(), Choose(0)):
+            for intent in (EndMulligan(), CancelChoice(), Choose(0), EndTurn(), Pass()):
                 if intent in legal:
                     return intent
-            return Pass()
+            play = next(i for i in legal if isinstance(i, PlayCard))
+            if play.row is None:
+                return play
+            return PlayCard(play.card, play.row, play_positions(lib, state, seat, play) - 1)
+
+        def decide(state: MatchState) -> list[Intent]:
+            if seat not in acting_seats(state) or _wait(state) != wait:
+                return []
+            first = default(state)
+            if first is None:
+                return []
+            if not isinstance(first, CancelChoice):
+                return [first]
+            cancelled, _ = apply(lib, state, seat, first)
+            then = default(cancelled)
+            return [first] if then is None else [first, then]
 
         await self._move(match_id, seat, decide)
 
@@ -363,11 +392,11 @@ class MatchService:
         self,
         match_id: str,
         seat: int,
-        decide: Callable[[MatchState], Intent | None],
+        decide: Callable[[MatchState], list[Intent]],
         intent_id: str | None = None,
     ) -> None:
-        """Apply the intent ``decide`` picks from the current state, all under the match lock;
-        ``None`` leaves the match as it is."""
+        """Apply the intents ``decide`` picks from the current state, in order, all under the
+        match lock; none leaves the match as it is."""
         info = await self.get_info(match_id)
         if not info.started:
             raise AppError("match_not_started", 409)
@@ -381,24 +410,28 @@ class MatchService:
             if intent_id is not None and intent_id in data["intent_ids"]:
                 return
             state = state_from_dict(data["state"])
-            intent = decide(state)
-            if intent is None:
+            intents = decide(state)
+            if not intents:
                 return
-            try:
-                state, events = apply(self.content.library, state, seat, intent)
-            except IllegalIntent as e:
-                raise AppError(
-                    e.code, 409, details={"reason": e.reason} if e.reason else None
-                ) from e
-            accepted = [(seat, intent)]
-            state, events, more = await self._bot_moves(
+            events: list[Event] = []
+            for intent in intents:
+                try:
+                    state, more = apply(self.content.library, state, seat, intent)
+                except IllegalIntent as e:
+                    raise AppError(
+                        e.code, 409, details={"reason": e.reason} if e.reason else None
+                    ) from e
+                events.extend(more)
+            accepted: list[tuple[int, Intent]] = [(seat, intent) for intent in intents]
+            keep_clock = _keeps_clock(intents[-1], state)
+            state, events, bot = await self._bot_moves(
                 info, state, events, int(data["next_index"]) + len(accepted)
             )
-            accepted.extend(more)
+            accepted.extend(bot)
             if intent_id is not None:
                 data["intent_ids"] = [*data["intent_ids"], intent_id][-RECENT_INTENT_IDS:]
             await self._persist(match_id, data, state, accepted, version)
-            await self._publish(info, state, events)
+            await self._publish(info, state, events, keep_clock)
 
     async def _bot_moves(
         self, info: MatchInfo, state: MatchState, events: list[Event], log_index: int
@@ -471,7 +504,9 @@ class MatchService:
             "final_hash": state_hash(state),
         }
 
-    async def _publish(self, info: MatchInfo, state: MatchState, events: list[Event]) -> None:
+    async def _publish(
+        self, info: MatchInfo, state: MatchState, events: list[Event], keep_clock: bool = False
+    ) -> None:
         over = state.phase is Phase.MATCH_OVER
         payload: dict[str, Any] = {
             "events": [event_to_dict(e) for e in events],
@@ -484,7 +519,7 @@ class MatchService:
         if over:
             payload["result"] = self._result(state)
         await self.bus.publish(info.match_id, state.seq, payload)
-        self._schedule_timer(info, state)
+        self._schedule_timer(info, state, keep_clock)
         if over:
             self.tasks.spawn(self._after_match(info), name=f"after-match:{info.match_id}")
 
@@ -504,9 +539,10 @@ class MatchService:
 
     # --- timers ----------------------------------------------------------------------------
 
-    def _schedule_timer(self, info: MatchInfo, state: MatchState) -> None:
+    def _schedule_timer(self, info: MatchInfo, state: MatchState, keep_clock: bool = False) -> None:
         """Give every player the rules wait on a timer, keeping the one they have while its wait
-        goes on; a player the rules no longer wait on, or a bot, has none."""
+        goes on; a player the rules no longer wait on, or a bot, has none. With ``keep_clock``
+        a player's timer runs on through a move that changed nothing (``_keeps_clock``)."""
         timeout = self.settings.turn_timeout_seconds
         if timeout <= 0:
             return
@@ -517,8 +553,10 @@ class MatchService:
             key = (info.match_id, seat)
             if seat not in acting or info.seats[seat] == BOT_PLAYER_ID:
                 self._deadlines.pop(key, None)
-            elif (current := self._deadlines.get(key)) is None or current.wait != wait:
+            elif (current := self._deadlines.get(key)) is None:
                 self._deadlines[key] = _Deadline(at, wait)
+            elif current.wait != wait:
+                self._deadlines[key] = _Deadline(current.at if keep_clock else at, wait)
 
     async def run_timers(self, interval: float = 1.0) -> None:
         """Move for every player whose timer ran out. One match's failure is logged and the loop

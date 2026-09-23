@@ -1,0 +1,44 @@
+# play_from_deck with cards.pick: chosen and offer (cards.md §7.3, §8; match.md §7): the player
+# picks a card from the offer (kind card, listed by card id then instance id, never in deck
+# order), then where it goes (kind place); it is played — its on_play and the on_ally_played
+# beside it fire — but it is not the turn's card. Neither choice can be cancelled: the offer
+# shows the deck (cards.md §6.3).
+cards:
+  recruit:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 2
+  scout:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - {when: on_play, do: boost, amount: 1, target: {units: this}}
+  recruiter:
+    kind: leader
+    provision_bonus: 15
+    activation: {charges: 1}
+    abilities:
+      - when: on_activate
+        do: play_from_deck
+        cards: {pick: chosen, offer: 3, where: {kind: [unit]}}
+rules:
+  draws_per_round: [0]
+seed: 1
+decks:
+  - {cards: [scout, recruit, recruit], leader: recruiter}
+  - [spare]
+steps:
+  - [0, order, leader]
+  - [0, choose, scout]
+  - [0, choose, "me:ranged:0"]
+events:
+  - {type: choice_requested, kind: card, prompt_key: choice.play-from-deck, option_count: 3, cancellable: false}
+  - {type: order_used, card: recruiter}
+  - {type: choice_requested, kind: place, prompt_key: choice.place, option_count: 2, cancellable: false}
+  - {type: card_played, seat: 0, card: scout, from: deck, row: ranged, position: 0, side: self}
+  - {type: unit_boosted, card: scout, source: scout}
+board:
+  0: {ranged: ["scout:4"]}

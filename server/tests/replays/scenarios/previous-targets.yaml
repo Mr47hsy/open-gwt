@@ -1,0 +1,35 @@
+# previous_targets (cards.md §7.1): the cards the ability before it, of the same card, acted on
+# in the same resolution.
+cards:
+  marker:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_play
+        do: add_status
+        status: locked
+        target: {units: chosen, side: opponent}
+      - {when: on_play, do: damage, amount: 2, target: {units: previous_targets}}
+seed: 1
+decks:
+  - [plain5, plain5, marker, spare]
+  - [plain5, plain8, plain5, spare]
+steps:
+  - [0, play, plain5, melee]
+  - [0, end]
+  - [1, play, plain5, melee]
+  - [1, end]
+  - [0, play, plain5, melee]
+  - [0, end]
+  - [1, play, plain8, melee]
+  - [1, end]
+  - [0, play, marker, melee]
+  - [0, choose, plain8]
+  - [0, end]
+events:
+  - {type: status_added, card: plain8, status: locked, source: marker}
+  - {type: unit_damaged, card: plain8, amount: 2, power: 6, source: marker}
+absent:
+  - {type: unit_damaged, card: plain5}

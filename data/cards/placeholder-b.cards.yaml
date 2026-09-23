@@ -165,6 +165,46 @@ cards:
         do: heal
         target: { units: this }
 
+  # strikes back at a random enemy whenever it survives damage
+  u-2016:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_damaged
+        do: damage
+        amount: 1
+        target: { units: random, side: opponent }
+
+  # leaves two tokens on the row it was on
+  u-2017:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_destroyed
+        do: place_new_card
+        card: t-2001
+        count: 2
+
+  # locks an enemy, then damages the same one
+  u-2018:
+    kind: unit
+    color: gold
+    provisions: 7
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: locked
+        target: { units: chosen, side: opponent, where: { kind: [unit, artifact] } }
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: previous_targets }
+
   t-2001:
     kind: unit
     token: true
@@ -180,7 +220,7 @@ cards:
         do: set_row_effect
         effect: damage_weakest
         amount: 2
-        row_target: { pick: all, side: opponent, rows: [melee] }
+        row_target: { pick: chosen, side: opponent }
 
   s-2002:
     kind: special
@@ -216,6 +256,24 @@ cards:
         amount: 2
         row_target: { pick: all, side: opponent, rows: [ranged] }
 
+  s-2005:
+    kind: special
+    color: gold
+    provisions: 7
+    abilities:
+      - when: on_play
+        do: create
+        pool: { kind: [unit], color: bronze }
+
+  s-2006:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: play_from_graveyard
+        cards: { pick: chosen, where: { color: bronze, kind: [unit] } }
+
   # immune; as the round ends, damages a random enemy unit by 2
   a-2001:
     kind: artifact
@@ -229,7 +287,20 @@ cards:
         amount: 2
         target: { units: random, side: opponent }
 
-  # its activated ability arrives with ADR 0009 phase C
+  # reusable every other turn
+  a-2002:
+    kind: artifact
+    color: bronze
+    provisions: 4
+    rows: [melee]
+    activation: { cooldown: 2 }
+    abilities:
+      - when: on_activate
+        do: add_status
+        status: bleeding
+        turns: 2
+        target: { units: chosen, side: opponent }
+
   l-2001:
     kind: leader
     provision_bonus: 15

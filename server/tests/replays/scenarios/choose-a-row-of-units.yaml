@@ -1,0 +1,38 @@
+# units: chosen_row (cards.md §7.1, match.md §7): the player picks one row-side among those that
+# hold a candidate (a choice of kind row); every candidate there is a target — immune and
+# guarded ones too, since no unit is chosen.
+cards:
+  sweep:
+    kind: special
+    color: bronze
+    provisions: 5
+    abilities:
+      - {when: on_play, do: damage, amount: 1, target: {units: chosen_row, side: opponent}}
+seed: 1
+decks:
+  - [spare, spare, spare, sweep, spare]
+  - [immune6, guard6, plain3, spare]
+steps:
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, play, immune6, melee]
+  - [1, end]
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, play, guard6, melee]
+  - [1, end]
+  - [0, play, spare, ranged]
+  - [0, end]
+  - [1, play, plain3, ranged]
+  - [1, end]
+  - [0, play, sweep]
+  - [0, choose, "opponent:melee"]
+  - [0, end]
+events:
+  - {type: choice_requested, seat: 0, kind: row, prompt_key: choice.damage, option_count: 2, source: sweep}
+  - {type: unit_damaged, card: immune6, amount: 1}
+  - {type: unit_damaged, card: guard6, amount: 1}
+absent:
+  - {type: unit_damaged, card: plain3}
+board:
+  1: {melee: ["immune6:5", "guard6:5"], ranged: ["plain3:3"]}

@@ -6,17 +6,13 @@ core does with them. This is the authoring contract behind
 [ADR 0009](../adr/0009-two-row-standalone-ruleset.md): the schema files next to this document are
 normative, this document explains them and fixes the semantics the rules core implements.
 
-> **Phases.** The rules core reads the whole vocabulary below. ADR 0009 phase B implements the
-> power and board words; the words of phase C — the triggers other than `on_play`,
-> `on_round_end` and `while_on_board`, activated abilities (`on_activate`, `activation`,
-> `add_charges`), the selectors `chosen_row`, `adjacent`, `trigger_unit` and
-> `previous_targets`, `row_target.pick: chosen`, `cards.pick: chosen`, `if.trigger_unit`,
-> `play_from_deck`, `play_from_graveyard` and `create` — load and do nothing until phase C
-> gives them behaviour: their triggers never fire, their abilities are skipped and no activated
-> ability is ready — except a stratagem's, which phase B implements with the compensation for
-> going first ([ADR 0011](../adr/0011-first-player-compensation.md)). `data/` uses only the
-> phase-B words, except that every leader carries its activated ability. The vocabulary was revised in phase B against public descriptions of the
-> standalone game (section 16); `opengwt.cards/1` is gone.
+> **Phases.** The rules core implements the whole vocabulary below. ADR 0009 phase B implemented
+> the power and board words and the stratagem of [ADR 0011](../adr/0011-first-player-compensation.md);
+> phase C the other triggers, activated abilities of units, artifacts and leaders, the
+> resolution queue and the generalised choices, and corrected the turn (section 11.4) against
+> the standalone game. `data/`'s placeholder decks use every word. The vocabulary was revised in
+> phase B against public descriptions of the standalone game (section 16); `opengwt.cards/1` is
+> gone.
 
 Everything here describes *mechanics*, which are not copyrightable. Names, ids and texts are
 original to this project. Vocabulary words describe behaviour and never reuse a distinctive
@@ -196,13 +192,15 @@ as its own step in the resolution queue (section 11.3).
 
 The **acting player** of an ability — the one `self` and `opponent` are relative to, and the one
 who makes its choices — is the player who played the card for `on_play`, the owner for a leader,
-and the card's controller for everything else.
+the player who used it for `on_activate`, the controller the card had when it was destroyed for
+`on_destroyed`, and the card's controller when the ability resolves for everything else — a card
+that changed sides while its ability waited in the queue acts for its new side.
 
 ### 6.1 Triggers — `when`
 
 | Value | Fires |
 | --- | --- |
-| `on_play` | when the card is played: from hand by a player, or by `play_from_deck` / `play_from_graveyard`. Not when it is summoned, placed new, moved or returned. A unit or artifact fires it after it is placed. |
+| `on_play` | when the card is played: from hand by a player, or by `play_from_deck` / `play_from_graveyard` / `create`. Not when it is summoned, placed new, moved or returned. A unit or artifact fires it after it is placed. |
 | `on_activate` | when its controller uses the card's activated ability (section 6.3). |
 | `on_destroyed` | after the card was destroyed — by `destroy`, by its power reaching zero, or by a second poison — and has reached the graveyard or been banished. Not when it is banished by `banish`, returned, or cleared at round end. |
 | `on_turn_start` | at each of its controller's turn starts while it is on the board (section 11.4). |
@@ -243,15 +241,22 @@ All `on_activate` abilities of a card form its one **activated ability**, used w
 | `ready_on_play` | `true`: usable on the turn the card enters the board. Otherwise a unit or artifact enters with a cooldown of 1. Not for leaders and stratagems, which are ready from the first turn. |
 
 The activated ability is **ready** when all of these hold: it is its controller's turn; the
-controller has not passed; no choice is pending; the card is on the board (or is the leader) and
-not locked; it has a charge left or unlimited charges; its cooldown is zero; and, if its first
-ability selects with `chosen` or `chosen_row`, there is at least one candidate.
+controller has not passed; no choice is pending; the card is on its controller's side of the
+board and not locked, or is their leader; it has a charge left or unlimited charges; its
+cooldown is zero; and, if its first ability asks a choice — `chosen`, `chosen_row`,
+`cards.pick: chosen` or `create` — there is at least one candidate. Ready abilities may be used before and after the turn's card (section
+11.4); once one is used, the turn needs its card.
 
 Using it spends a charge and starts the cooldown when its first ability starts to act — after
-that ability's choice, if it asks one. Until then the choice may be cancelled, which leaves the
-match exactly as before the `use_order`. Once its abilities have resolved, a stratagem leaves the
-board for its owner's banished zone. `add_charges` on an ability with unlimited charges does
-nothing. Until phase C only a stratagem's activated ability is ever ready.
+that ability's choice, if it asks one. The cooldown drops by one at each of its controller's turn
+starts and the ability is ready again at zero, so a cooldown of 1 allows one use a turn and 2
+skips a turn. Until its first ability that acts has done so, that ability's choice may be
+cancelled, which leaves
+the match exactly as before the `use_order` — but only when the choice showed nothing hidden and
+took no random draw: a unit, a row-side, or a card from a graveyard without an offer. A choice
+among cards of a deck or a hand, or among an offer, cannot be cancelled. Once its abilities have
+resolved, a stratagem leaves the board for its owner's banished zone. `add_charges` on an ability
+with unlimited charges does nothing.
 
 ## 7. Targets
 
@@ -289,12 +294,13 @@ guarded units alike (section 9).
 | `this` | the acting card, if it is on the board. Immunity does not matter. |
 | `adjacent` | the candidates adjacent to the acting card. |
 | `trigger_unit` | the unit that fired `on_ally_played`, if it is a candidate. |
-| `previous_targets` | the cards the previous ability of the same card acted on in the same resolution, if they are still candidates. |
+| `previous_targets` | the cards the ability before it — of the same card and the same trigger, in the same resolution — acted on with its unit selector, if they are still candidates; none if that ability was skipped or selects no units. |
 
 `side` is required for the first six and not allowed for the rest, which are placed relative to
 the acting card. `chosen` and `chosen_row` are only allowed in `on_play` and `on_activate`
 abilities — the only moments a player is asked anything — and `trigger_unit` only in
-`on_ally_played`; the schema enforces both. An action acts on several targets one at a time, in
+`on_ally_played`; the schema enforces both. `chosen_row` picks a row-side, not a unit, so it
+reaches immune units and the units a guard protects like any selector that asks nobody. An action acts on several targets one at a time, in
 board order; a target that has left the board by its turn is skipped. With no candidates an
 ability does nothing, and no choice is asked.
 
@@ -319,8 +325,10 @@ that zone matching `where`.
 | `first` | the first `count` (default 1) candidates in zone order: from the top of a deck, from the earliest arrival in a graveyard, from the oldest card in a hand. |
 | `all` | every candidate in zone order, at most `count` if given. |
 
-Options from a hidden zone are listed by card id, then instance id — never in zone order, which
-would reveal the deck ([`match.md`](match.md) §11).
+Options from a deck or a hand are listed by card id, then instance id — never in zone order,
+which would reveal the deck ([`match.md`](match.md) §11); a graveyard is public and keeps its
+order. An offer is drawn from the candidates in zone order. A choice from the opponent's deck or
+hand shows the chooser its candidates — the card reveals them by design.
 
 ### 7.4 Filters — `where`
 
@@ -359,11 +367,11 @@ All listed filters must hold.
 | `consume` | `target` | Each target is destroyed; the acting unit, if it is on the board, is boosted by the target's power at that moment. |
 | `discard` | `cards` | Each selected card leaves its owner's hand for their graveyard without any of its abilities (`pick: chosen` is kind `card`). |
 | `draw` | `side` (default `self`), `count` (default 1) | That player draws, one card at a time (section 11.5). |
-| `play_from_deck` | `cards` | Each selected card is played as if from hand: the acting player places a unit or artifact (kind `place`, when more than one placement is legal; nothing happens if none is), then it fires `on_play` and `on_ally_played`. A special resolves and goes to its owner's graveyard. A card taken from the opponent's zone stays theirs. |
+| `play_from_deck` | `cards` | Each selected card is played as if from hand, one after another, before the next ability of the queue: the acting player places a unit or artifact (kind `place`, when more than one placement is legal; nothing happens if none is), then it fires `on_play` and `on_ally_played`. A special resolves and goes to its owner's graveyard once the queue is empty. A card taken from the opponent's zone stays theirs. It is not the turn's card (section 11.4). |
 | `play_from_graveyard` | `cards` | As `play_from_deck`, from a graveyard. |
 | `summon_from_deck` | `cards`, `row` | Each selected unit or artifact moves onto the board without being played — no `on_play`, no `on_ally_played` — on the side its `side` gives. Row: `row` if given, else the acting card's row (the row it was last on, if it has left the board), else the first row the card allows; a row the card does not allow is replaced by the first one it does. Position: right of the acting card on that row-side, else the right end; several cards keep their order, each right of the one placed before it. Nothing happens for a card whose row is full. Specials are never selected. |
 | `place_new_card` | `card`, `count` (default 1), `side` (default `self`), `row` | `count` new instances of `card` — a unit or artifact, usually a token — are placed as `summon_from_deck` places, owned by the acting player. Each has `banish_on_leave`. They are not played. |
-| `create` | `pool`, `offer` (default 3) | `offer` distinct card ids are drawn with the seeded PRNG from the cards of the acting player's faction and `neutral` that match the `pool` filter — never tokens or leaders — and offered (kind `card`); a new instance of the one picked, owned by the acting player, is played as `play_from_deck` plays. |
+| `create` | `pool`, `offer` (default 3) | `offer` distinct card ids are drawn with the seeded PRNG from the cards of the acting player's faction and `neutral` that match the `pool` filter — never tokens, leaders or stratagems — and offered (kind `card`, in card id order); a new instance of the one picked, owned by the acting player, is played as `play_from_deck` plays. One that has nowhere to go never enters the match. |
 | `add_charges` | `to` (`this` or `leader`), `amount` | The acting card's, or the acting player's leader's, activated ability gains `amount` charges. |
 | `set_row_effect` | `effect`, `amount`, `count`, `row_target` | Each selected row-side gets the row effect (section 10), replacing the one it had. `count` is required for `damage_random` and `boost_random` and not allowed otherwise. |
 | `clear_row_effect` | `row_target`, `only` | Each selected row-side loses its row effect — with `only`, just a `hazard` or just a `boon` (section 10). |
@@ -412,8 +420,9 @@ A card's statuses are an ordered list, at most one entry per status, in order of
 A row-side holds at most one row effect: `{effect, amount, count?}`. `set_row_effect` replaces
 the current one; `clear_row_effect` and the end of the round remove it. Row effects do not
 target, so immune units are affected. A player who has passed has no more turn starts in the
-round, so the per-turn effects on their rows stop acting. `boost_random` is a **boon**; every
-other row effect is a **hazard** (`clear_row_effect.only`).
+round, so the per-turn effects on their rows stop acting. When both of a player's row-sides have
+a per-turn effect, the one set earlier acts first. `boost_random` is a **boon**; every other row
+effect is a **hazard** (`clear_row_effect.only`).
 
 | Effect | Acts |
 | --- | --- |
@@ -421,7 +430,7 @@ other row effect is a **hazard** (`clear_row_effect.only`).
 | `damage_weakest` | the same, on its weakest unit. |
 | `damage_random` | the same, on `count` distinct units drawn with the seeded PRNG. |
 | `boost_random` | at each turn start of the row-side's player: `count` distinct units drawn with the seeded PRNG are boosted by `amount`. |
-| `damage_on_arrival` | whenever a unit enters the row-side — played, summoned, placed new or moved — it takes `amount` damage, after its innate statuses and before its `on_play`. |
+| `damage_on_arrival` | whenever a unit enters the row-side — played, summoned, placed new, moved or taken over — it takes `amount` damage, after its innate statuses and before its `on_play`. |
 
 ## 11. Power and resolution order
 
@@ -475,11 +484,19 @@ unless it was locked at that moment, its `on_destroyed` abilities are queued.
   cards it triggers, in board order. Using an activated ability queues the card's `on_activate`
   abilities.
 - The queue runs first in, first out. Each queued ability resolves completely — its choice
-  included — before the next starts. Triggers caused while an ability resolves are appended in
-  the order they were caused. Continuous effects are never queued.
+  included, and the cards it plays (`play_from_deck`, `play_from_graveyard`, `create`), which
+  go ahead of the next ability — before the next starts. Damage, boosts and destruction act at
+  once; the abilities they trigger (`on_damaged`, `on_boosted`, `on_destroyed`, and a played
+  card's `on_play` and `on_ally_played`) are appended in the order they were caused — damage a
+  unit takes as it arrives on a row therefore queues its `on_damaged` ahead of its own
+  `on_play`. Continuous effects are never queued.
+- One resolution — everything a played card, an activated ability, a turn start, a turn end or a
+  round end sets off, across its choices — resolves at most 1000 queued steps; content that
+  keeps triggering itself stops there, the rest of the queue is dropped (a card created for it
+  never enters the match), and the match goes on.
 - A queued ability is skipped when its card is locked, when its conditions (section 6.2) fail,
-  or when it belongs to a card that must be on the board to fire and no longer is. `on_destroyed`
-  and a special's `on_play` do not need the board.
+  or when it belongs to a card that must be on the board to fire and no longer is. `on_destroyed`,
+  a special's `on_play` and a leader's abilities do not need the board.
 - A pending choice pauses the queue until the acting player chooses; nothing else happens in the
   match meanwhile.
 
@@ -487,21 +504,26 @@ unless it was locked at that moment, its `on_destroyed` abilities are queued.
 
 1. The turn starts; the cooldowns of the player's cards on the board and of their leader drop
    by one.
-2. The row effects on the player's row-sides act, in row order.
-3. The `on_turn_start` abilities of the player's cards on the board are queued in board order.
-   Destruction during steps 2–3 happens at once; the triggers they cause and step 3's abilities
-   resolve in the queue once step 3 has queued its own.
+2. The `on_turn_start` abilities of the player's cards on the board are queued in board order
+   and resolve, with everything they cause.
+3. The row effects on the player's row-sides act, the one set earlier first (section 10); the
+   triggers they cause then resolve.
 4. If the player's hand is empty and none of their activated abilities is ready, they pass
    automatically.
-5. The player uses any number of ready activated abilities, then plays one card or passes. A
+5. The player uses any number of ready activated abilities, before and after the turn's one
+   card, and plays that card — or passes instead of playing one. Once an activated ability has
+   been used the turn needs its card: a pass is refused while a card can be played. Once the
+   card is played a pass is refused too, and the turn goes on — for more activated abilities —
+   until the player ends it (`end_turn`, [`match.md`](match.md) §6); it never ends by itself. A
    pass ends the turn at once: steps 6 and 7 are skipped.
-6. Once the played card and everything it caused have resolved, the statuses of the player's
-   cards act, in board order: `bleeding` and `growing`, then every timer drops by one and
-   expired statuses are removed.
+6. When the player ends the turn, the statuses of the player's cards act, in board order:
+   `bleeding` and `growing`, then every timer drops by one and expired statuses are removed.
 7. The `on_turn_end` abilities of the player's cards on the board resolve in board order, and
    the turn ends.
 8. The opponent takes the next turn if they have not passed; otherwise the same player does; if
    both have passed the round ends.
+
+Each of steps 2, 3, 6 and 7 resolves with everything it causes before the next starts.
 
 ### 11.5 Rounds, draws and the match
 
@@ -637,5 +659,16 @@ own words (`.agent/context/04-legal.md`); never from a client, a data dump or da
   discard, create, take control, immunity against choices only: community glossaries of the
   standalone game (the unofficial glossary on the developer's forums, July 2021) and
   gamepressure's glossary.
+- The turn (section 11.4, phase C): activated abilities before and after the turn's card, and a
+  card required once one is used — the developer's forums thread *Allow [END TURN] without
+  playing a card* (October 2018, moderators' answers), a Steam community discussion (September
+  2020), the community glossaries' definition of an order usable on the turn its card is placed,
+  and BlueStacks' beginner's guide (February 2025); that the turn then waits for the player to
+  end it, from the owner.
+- Cooldowns counted in the controller's turns and an order unusable on the turn its card enters
+  unless it says otherwise; charges as uses, which cards can add: the community glossaries above.
+- The units' turn-start abilities before the row effects, and several row effects in the order
+  they were set: the community rules page of the standalone game (NamuWiki, *Gwent: The Witcher
+  Card Game/Rules*).
 
 Vocabulary ids describe behaviour and never reuse a distinctive official keyword (ADR 0009).

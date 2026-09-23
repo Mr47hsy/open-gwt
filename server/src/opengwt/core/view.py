@@ -7,7 +7,16 @@ from typing import Any
 
 from .engine import legal_intents, order_ready
 from .intents import intent_to_dict
-from .model import CardInstance, Kind, Library, MatchState, Phase, PlayerState
+from .model import (
+    CardInstance,
+    ChoiceKind,
+    Kind,
+    Library,
+    MatchState,
+    Phase,
+    Placement,
+    PlayerState,
+)
 from .power import aura_at, board, power_at, score
 
 PROTOCOL = 2
@@ -89,29 +98,55 @@ def _common(lib: Library, state: MatchState, player: PlayerState, viewer: int) -
 
 
 def _pending(state: MatchState, seat: int) -> dict[str, Any] | None:
+    """The pending choice of this player (match.md §7), options in the shape of its kind; for a
+    placement, the card being placed. ``side`` is relative to the viewer."""
     pending = state.pending
     if pending is None or pending.seat != seat:
         return None
     by_id = {loc.card.instance: loc for loc in board(state, seat)}
-    options = []
-    for iid in pending.options:
-        loc = by_id[iid]
-        options.append(
-            {
-                "side": "me" if loc.seat == seat else "opponent",
-                "row": loc.row.value,
-                "position": loc.index,
-                "instance": iid,
-                "card": loc.card.card,
-            }
-        )
-    return {
+    options: list[dict[str, Any]] = []
+    for o in pending.options:
+        if pending.kind is ChoiceKind.UNIT:
+            assert o.instance is not None
+            loc = by_id[o.instance]
+            options.append(
+                {
+                    "side": _side(loc.seat, seat),
+                    "row": loc.row.value,
+                    "position": loc.index,
+                    "instance": o.instance,
+                    "card": loc.card.card,
+                }
+            )
+        elif pending.kind is ChoiceKind.CARD:
+            options.append(
+                {"card": o.card} if o.instance is None else {"instance": o.instance, "card": o.card}
+            )
+        else:
+            assert o.seat is not None and o.row is not None
+            option: dict[str, Any] = {"side": _side(o.seat, seat), "row": o.row.value}
+            if pending.kind is ChoiceKind.PLACE:
+                option["position"] = o.position
+            options.append(option)
+    step = pending.step
+    out: dict[str, Any] = {
         "kind": pending.kind.value,
         "prompt_key": pending.prompt_key,
-        "source": {"instance": pending.invocation.instance, "card": pending.invocation.card},
+        "source": (
+            {"instance": step.source, "card": step.source_card}
+            if isinstance(step, Placement)
+            else {"instance": step.instance, "card": step.card}
+        ),
         "cancellable": pending.cancellable,
         "options": options,
     }
+    if isinstance(step, Placement):
+        out["card"] = {"instance": step.instance, "card": step.card}
+    return out
+
+
+def _side(of: int, viewer: int) -> str:
+    return "me" if of == viewer else "opponent"
 
 
 def player_view(

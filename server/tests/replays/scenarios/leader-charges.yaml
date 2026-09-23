@@ -1,0 +1,34 @@
+# The leader (cards.md §3, §5, §6.3): its activated ability is ready from the first turn, with
+# the charges its activation gives for the whole match — charges spent in one round stay spent
+# in the next — and its cooldown drops at its owner's turn starts.
+cards:
+  chief:
+    kind: leader
+    provision_bonus: 15
+    activation: {charges: 2, cooldown: 1}
+    abilities:
+      - {when: on_activate, do: draw, count: 1}
+rules:
+  draws_per_round: [3, 1, 1]
+seed: 1
+decks:
+  - {cards: [spare, spare, spare, spare, spare, spare, spare], leader: chief}
+  - [spare, spare, spare, spare, spare, spare, spare]
+steps:
+  - [0, order, leader]
+  - [0, refused, error.order.not-ready, order, leader]   # cooldown 1 until its next turn
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, pass]
+  - [0, pass]                   # round 1 won by seat 0, who starts round 2
+  - [0, order, leader]          # its second and last charge
+  - [0, play, spare, melee]
+  - [0, end]
+  - [1, pass]
+  - [0, refused, error.order.not-ready, order, leader]
+events:
+  - {type: order_used, card: chief, charges: 1, cooldown: 1}
+  - {type: card_drawn, seat: 0, card: spare}
+  - {type: round_started, round: 2}
+  - {type: order_used, card: chief, charges: 0, cooldown: 1}
+  - {type: card_drawn, seat: 0, card: spare}

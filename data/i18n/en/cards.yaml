@@ -1,8 +1,12 @@
 # Generated placeholder text; every name is a TODO for a human writer. Keys: docs/protocol/i18n.md §2.
 card.a-1001.name: Placeholder A artifact 1
 card.a-1001.text: Artifact, ranged row. While on the board, the units on its row have 1 more power.
+card.a-1002.name: Placeholder A artifact 2
+card.a-1002.text: 'Artifact, ranged row. Activated ability, one charge: damage an enemy unit by 1. At each of your turn ends, it gains 1 charge.'
 card.a-2001.name: Placeholder B artifact 1
 card.a-2001.text: Artifact, melee row. Cannot be chosen as a target. As the round ends, damage a random enemy unit by 2.
+card.a-2002.name: Placeholder B artifact 2
+card.a-2002.text: 'Artifact, melee row. Activated ability, cooldown 2 turns: an enemy unit bleeds for 2 turns.'
 card.g-0001.name: Placeholder N stratagem 1
 card.g-0001.text: 'Stratagem. If you go first, it is on your board for round one. Once: boost one of your units by 3.'
 card.g-0002.name: Placeholder N stratagem 2
@@ -27,14 +31,22 @@ card.s-1002.name: Placeholder A special 2
 card.s-1002.text: Remove poison, bleeding and locks from your units, then clear the harmful row effects from your rows.
 card.s-1003.name: Placeholder A special 3
 card.s-1003.text: Raise the base power of one of your units by 3.
+card.s-1004.name: Placeholder A special 4
+card.s-1004.text: Look at 3 random units with 4 power or less from your deck and play one of them.
+card.s-1005.name: Placeholder A special 5
+card.s-1005.text: Your leader ability gains 1 charge.
 card.s-2001.name: Placeholder B special 1
-card.s-2001.text: 'The opponent''s melee row gets an effect: at each of their turn starts, damage the weakest unit there by 2.'
+card.s-2001.text: 'One of the opponent''s rows, of your choice, gets an effect: at each of their turn starts, damage the weakest unit there by 2.'
 card.s-2002.name: Placeholder B special 2
 card.s-2002.text: 'The opponent''s ranged row gets an effect: at each of their turn starts, damage 3 random units there by 1.'
 card.s-2003.name: Placeholder B special 3
 card.s-2003.text: 'Both of the opponent''s rows get an effect: every unit that enters them takes 2 damage.'
 card.s-2004.name: Placeholder B special 4
 card.s-2004.text: 'The opponent''s ranged row gets an effect: at each of their turn starts, damage the strongest unit there by 2.'
+card.s-2005.name: Placeholder B special 5
+card.s-2005.text: Offer 3 random bronze units of your faction or neutral; create the one you pick and play it.
+card.s-2006.name: Placeholder B special 6
+card.s-2006.text: Play a bronze unit of your choice from your graveyard.
 card.t-0001.name: Placeholder N token 1
 card.t-0001.text: Token, power 2.
 card.t-2001.name: Placeholder B token 1
@@ -49,6 +61,8 @@ card.u-0004.name: Placeholder N unit 4
 card.u-0004.text: Unit, power 4. On play, return a boosted unit on either side to its base power.
 card.u-0005.name: Placeholder N unit 5
 card.u-0005.text: Unit, power 4. On play, damage by 2 every opponent's unit on your side.
+card.u-0006.name: Placeholder N unit 6
+card.u-0006.text: Unit, power 3. When destroyed, the next copy of it in your deck moves onto the row it was on.
 card.u-1001.name: Placeholder A unit 1
 card.u-1001.text: Unit, power 5.
 card.u-1002.name: Placeholder A unit 2
@@ -81,6 +95,16 @@ card.u-1015.name: Placeholder A unit 15
 card.u-1015.text: Unit, power 5. On play, if you hold 3 cards or fewer, boost this unit by 4.
 card.u-1016.name: Placeholder A unit 16
 card.u-1016.text: Unit, power 4. On play, if your starting deck had no neutral card, boost this unit by 2.
+card.u-1017.name: Placeholder A unit 17
+card.u-1017.text: Unit, power 3. At each of your turn starts, boost the units next to it by 1.
+card.u-1018.name: Placeholder A unit 18
+card.u-1018.text: 'Unit, power 4. Activated ability, cooldown 2 turns: boost one of your units by 2.'
+card.u-1019.name: Placeholder A unit 19
+card.u-1019.text: 'Unit, power 4. Activated ability, two charges, ready on the turn it is played: give every unit on one of your rows 1 armour.'
+card.u-1020.name: Placeholder A unit 20
+card.u-1020.text: Unit, power 3. Whenever you play another unit with Placeholder tag A, give that unit 1 armour.
+card.u-1021.name: Placeholder A unit 21
+card.u-1021.text: Unit, power 3. Whenever it is boosted, it gains 1 armour.
 card.u-2001.name: Placeholder B unit 1
 card.u-2001.text: Unit, power 5.
 card.u-2002.name: Placeholder B unit 2
@@ -111,6 +135,12 @@ card.u-2014.name: Placeholder B unit 14
 card.u-2014.text: Unit, power 4. On play, take control of an enemy unit with 4 or less power.
 card.u-2015.name: Placeholder B unit 15
 card.u-2015.text: Unit, power 5. As the round ends, if it is damaged, heal it.
+card.u-2016.name: Placeholder B unit 16
+card.u-2016.text: Unit, power 4. Whenever it takes damage and survives, damage a random enemy unit by 1.
+card.u-2017.name: Placeholder B unit 17
+card.u-2017.text: Unit, power 3. When destroyed, place two Placeholder B token 1 on the row it was on.
+card.u-2018.name: Placeholder B unit 18
+card.u-2018.text: Unit, power 4. On play, lock an enemy unit or artifact, then damage it by 2.
 faction.neutral.name: Neutral
 faction.placeholder-a.name: Placeholder faction A
 faction.placeholder-b.name: Placeholder faction B

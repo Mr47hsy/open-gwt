@@ -41,6 +41,11 @@ class Pass:
 
 
 @dataclass(frozen=True)
+class EndTurn:
+    """End the turn once its card has been played (cards.md §11.4)."""
+
+
+@dataclass(frozen=True)
 class Choose:
     option: int
 
@@ -50,7 +55,7 @@ class CancelChoice:
     pass
 
 
-Intent = Mulligan | EndMulligan | PlayCard | UseOrder | Pass | Choose | CancelChoice
+Intent = Mulligan | EndMulligan | PlayCard | UseOrder | Pass | EndTurn | Choose | CancelChoice
 
 _KINDS: dict[type, str] = {
     Mulligan: "mulligan",
@@ -58,6 +63,7 @@ _KINDS: dict[type, str] = {
     PlayCard: "play_card",
     UseOrder: "use_order",
     Pass: "pass",
+    EndTurn: "end_turn",
     Choose: "choose",
     CancelChoice: "cancel_choice",
 }
@@ -101,6 +107,8 @@ def intent_from_dict(d: dict[str, Any]) -> Intent:
         return UseOrder(str(d["instance"]))
     if kind == "pass":
         return Pass()
+    if kind == "end_turn":
+        return EndTurn()
     if kind == "choose":
         return Choose(int(d["option"]))
     if kind == "cancel_choice":

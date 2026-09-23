@@ -1,0 +1,31 @@
+# The resolution queue (cards.md §11.3): what an ability causes is appended to the queue and
+# resolves after the abilities already in it — here after the special's second ability.
+cards:
+  hardy:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 5
+    abilities:
+      - {when: on_damaged, do: boost, amount: 1, target: {units: this}}
+  volley:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - {when: on_play, do: damage, amount: 1, target: {units: all, side: opponent}}
+      - {when: on_play, do: damage, amount: 1, target: {units: all, side: opponent}}
+seed: 2
+decks:
+  - [hardy, plain5, spare]
+  - [volley, plain5, spare]
+steps:
+  - [0, play, hardy, melee]
+  - [0, end]
+  - [1, play, volley]
+  - [1, end]
+events:
+  - {type: unit_damaged, card: hardy, power: 4}
+  - {type: unit_damaged, card: hardy, power: 3}
+  - {type: unit_boosted, card: hardy, power: 4}
+  - {type: unit_boosted, card: hardy, power: 5}

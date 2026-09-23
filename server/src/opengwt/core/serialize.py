@@ -9,6 +9,7 @@ from typing import Any
 from .model import (
     CardInstance,
     ChoiceKind,
+    ChoiceOption,
     Deck,
     Invocation,
     MatchState,
@@ -16,6 +17,7 @@ from .model import (
     NextRoundStarter,
     PendingChoice,
     Phase,
+    Placement,
     PlayerState,
     RoundResult,
     Row,
@@ -25,6 +27,7 @@ from .model import (
     Rules,
     Status,
     StatusEntry,
+    Step,
     TieRule,
 )
 
@@ -71,16 +74,72 @@ def _invocation_to_dict(inv: Invocation) -> dict[str, Any]:
         "ability_index": inv.ability_index,
         "seat": inv.seat,
         "row": inv.row.value if inv.row is not None else None,
+        "trigger": inv.trigger,
+        "previous": list(inv.previous) if inv.previous is not None else None,
     }
 
 
 def _invocation_from_dict(d: dict[str, Any]) -> Invocation:
+    previous = d["previous"]
     return Invocation(
         str(d["instance"]),
         str(d["card"]),
         int(d["ability_index"]),
         int(d["seat"]),
         Row(d["row"]) if d["row"] is not None else None,
+        None if d["trigger"] is None else str(d["trigger"]),
+        None if previous is None else [str(i) for i in previous],
+    )
+
+
+def _step_to_dict(step: Step) -> dict[str, Any]:
+    if isinstance(step, Placement):
+        return {
+            "play": {
+                "instance": step.instance,
+                "card": step.card,
+                "seat": step.seat,
+                "zone": step.zone,
+                "zone_seat": step.zone_seat,
+                "source": step.source,
+                "source_card": step.source_card,
+            }
+        }
+    return {"ability": _invocation_to_dict(step)}
+
+
+def _step_from_dict(d: dict[str, Any]) -> Step:
+    if "play" in d:
+        p = d["play"]
+        return Placement(
+            str(p["instance"]),
+            str(p["card"]),
+            int(p["seat"]),
+            str(p["zone"]),
+            int(p["zone_seat"]),
+            str(p["source"]),
+            str(p["source_card"]),
+        )
+    return _invocation_from_dict(d["ability"])
+
+
+def _option_to_dict(o: ChoiceOption) -> dict[str, Any]:
+    return {
+        "instance": o.instance,
+        "card": o.card,
+        "seat": o.seat,
+        "row": o.row.value if o.row is not None else None,
+        "position": o.position,
+    }
+
+
+def _option_from_dict(d: dict[str, Any]) -> ChoiceOption:
+    return ChoiceOption(
+        instance=None if d["instance"] is None else str(d["instance"]),
+        card=None if d["card"] is None else str(d["card"]),
+        seat=None if d["seat"] is None else int(d["seat"]),
+        row=None if d["row"] is None else Row(d["row"]),
+        position=None if d["position"] is None else int(d["position"]),
     )
 
 
@@ -89,7 +148,12 @@ def _row_to_dict(side: RowSide) -> dict[str, Any]:
     return {
         "cards": [_instance_to_dict(u) for u in side.cards],
         "effect": (
-            {"effect": effect.effect.value, "amount": effect.amount, "count": effect.count}
+            {
+                "effect": effect.effect.value,
+                "amount": effect.amount,
+                "count": effect.count,
+                "since": effect.since,
+            }
             if effect is not None
             else None
         ),
@@ -105,6 +169,7 @@ def _row_from_dict(d: dict[str, Any]) -> RowSide:
                 RowEffectKind(e["effect"]),
                 int(e["amount"]),
                 None if e["count"] is None else int(e["count"]),
+                int(e["since"]),
             )
             if e is not None
             else None
@@ -231,14 +296,14 @@ def _pending_to_dict(p: PendingChoice) -> dict[str, Any]:
     return {
         "seat": p.seat,
         "kind": p.kind.value,
-        "invocation": _invocation_to_dict(p.invocation),
+        "step": _step_to_dict(p.step),
         "prompt_key": p.prompt_key,
-        "options": list(p.options),
-        "queue": [_invocation_to_dict(i) for i in p.queue],
+        "options": [_option_to_dict(o) for o in p.options],
+        "queue": [_step_to_dict(i) for i in p.queue],
         "cancellable": p.cancellable,
-        "ends_turn": p.ends_turn,
         "order": p.order,
         "order_started": p.order_started,
+        "resolved": p.resolved,
     }
 
 
@@ -246,14 +311,14 @@ def _pending_from_dict(d: dict[str, Any]) -> PendingChoice:
     return PendingChoice(
         seat=int(d["seat"]),
         kind=ChoiceKind(d["kind"]),
-        invocation=_invocation_from_dict(d["invocation"]),
+        step=_step_from_dict(d["step"]),
         prompt_key=str(d["prompt_key"]),
-        options=[str(o) for o in d["options"]],
-        queue=[_invocation_from_dict(i) for i in d["queue"]],
+        options=[_option_from_dict(o) for o in d["options"]],
+        queue=[_step_from_dict(i) for i in d["queue"]],
         cancellable=bool(d["cancellable"]),
-        ends_turn=bool(d["ends_turn"]),
         order=None if d["order"] is None else str(d["order"]),
         order_started=bool(d["order_started"]),
+        resolved=int(d["resolved"]),
     )
 
 
@@ -278,6 +343,8 @@ def state_to_dict(s: MatchState) -> dict[str, Any]:
             {"round": r.round, "winners": list(r.winners), "scores": list(r.scores)}
             for r in s.rounds
         ],
+        "played": s.played,
+        "ordered": s.ordered,
     }
 
 
@@ -307,6 +374,8 @@ def state_from_dict(d: dict[str, Any]) -> MatchState:
             )
             for r in d["rounds"]
         ],
+        played=bool(d["played"]),
+        ordered=bool(d["ordered"]),
     )
 
 

@@ -25,12 +25,14 @@ from opengwt.core.intents import (
     CancelChoice,
     Choose,
     EndMulligan,
+    EndTurn,
     Intent,
     Mulligan,
     Pass,
     PlayCard,
+    UseOrder,
 )
-from opengwt.core.model import MatchState, Phase
+from opengwt.core.model import Kind, MatchState, Phase, Row, Side
 from opengwt.core.replay import record_from_dict, replay
 from opengwt.core.rng import bot_stream
 from opengwt.core.serialize import state_from_dict, state_hash
@@ -140,6 +142,8 @@ class Scripted:
             return {"kind": "end_mulligan"}
         if view["phase"] == "choosing":
             return legal[0]
+        if {"kind": "end_turn"} in legal:
+            return {"kind": "end_turn"}
         plays = [i for i in legal if i["kind"] == "play_card"]
         if not plays:
             return {"kind": "pass"}
@@ -541,15 +545,17 @@ class _Room:
     """A room match between two guests, moved and timed out through ``MatchService`` directly
     so a test decides exactly which timer fires when."""
 
-    def __init__(self, client: TestClient) -> None:
+    def __init__(
+        self, client: TestClient, decks: tuple[str, str] = ("starter-a", "starter-b")
+    ) -> None:
         h0, _ = _guest(client, "a")
         h1, _ = _guest(client, "b")
-        room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"})
+        room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": decks[0]})
         self.match_id: str = room.json()["match_id"]
         joined = client.post(
             "/matches/join",
             headers=h1,
-            json={"room_code": room.json()["room_code"], "deck_id": "starter-b"},
+            json={"room_code": room.json()["room_code"], "deck_id": decks[1]},
         )
         assert joined.status_code == 200
         self.service: MatchService = client.app.state.matches  # type: ignore[attr-defined]
@@ -575,9 +581,9 @@ class _Room:
 
 
 def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> None:
-    """The opponent has passed, so the player keeps the turn after playing a card. The timer set
-    before that card must not pass on the player's next turn; only the one the card re-armed
-    may."""
+    """The opponent has passed, so the player's next turn follows their own. The timer set before
+    they played a card and ended the turn must not pass on that next turn; only the one their
+    moves re-armed may."""
     with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
         room = _Room(client)
         starter = room.state().starter
@@ -590,8 +596,9 @@ def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> Non
 
         play = next(i for i in room.legal(player) if isinstance(i, PlayCard) and i.row is not None)
         room.move(player, replace(play, position=0))
+        room.move(player, EndTurn())
         after = room.state()
-        assert after.turn == player
+        assert after.turn == player and not after.played
         fresh = room.timer(player)
         assert fresh is not None and fresh != stale
 
@@ -602,6 +609,97 @@ def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> Non
         history = room.portal.call(room.service.history, room.match_id, after.seq)
         passed = [e for p in history for e in p["events"] if e["type"] == "player_passed"]
         assert [e["seat"] for e in passed] == [player]
+
+
+def test_a_timeout_after_the_turns_card_ends_the_turn(tmp_path: Path) -> None:
+    """match.md §9: once the card is played the turn waits for end_turn, and the timer ends it."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client)
+        starter = room.state().starter
+        room.move(starter, EndMulligan())
+        room.move(1 - starter, EndMulligan())
+        play = next(i for i in room.legal(starter) if isinstance(i, PlayCard) and i.row is not None)
+        room.move(starter, replace(play, position=0))
+        assert room.state().turn == starter and room.legal(starter)[0] == EndTurn()
+
+        room.time_out(starter, room.timer(starter))
+        after = room.state()
+        assert after.turn == 1 - starter and not after.players[starter].passed
+
+
+def test_a_timeout_after_an_activated_ability_plays_a_card(tmp_path: Path) -> None:
+    """cards.md §11.4: after an activated ability the turn needs its card, so the timer cannot
+    pass; it plays the first card at the right end of its row. Both decks are starter-a, whose
+    stratagem needs no target, so whoever starts can use it on their first turn."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client, ("starter-a", "starter-a"))
+        starter = room.state().starter
+        room.move(starter, EndMulligan())
+        room.move(1 - starter, EndMulligan())
+        order = next(i for i in room.legal(starter) if isinstance(i, UseOrder))
+        room.move(starter, order)
+        state = room.state()
+        assert state.ordered and not state.played and Pass() not in room.legal(starter)
+
+        room.time_out(starter, room.timer(starter))
+        after = room.state()
+        assert after.played and after.turn == starter and not after.players[starter].passed
+
+
+def _order_waiting_on_a_cancellable_choice(room: _Room) -> int:
+    """Both decks are starter-b: the starter plays a unit, the other player passes, and the
+    starter's stratagem — boost an ally — is ready. Returns the starter's seat."""
+    lib = room.service.content.library
+    starter = room.state().starter
+    room.move(starter, EndMulligan())
+    room.move(1 - starter, EndMulligan())
+    hand = {c.instance: lib[c.card] for c in room.state().players[starter].hand}
+    play = next(
+        i
+        for i in room.legal(starter)
+        if isinstance(i, PlayCard)
+        and i.row is Row.MELEE
+        and hand[i.card].kind is Kind.UNIT
+        and hand[i.card].side is Side.SELF
+    )
+    room.move(starter, replace(play, position=0))
+    while room.state().pending is not None:
+        room.move(starter, Choose(0))
+    room.move(starter, EndTurn())
+    room.move(1 - starter, Pass())
+    return starter
+
+
+def test_using_an_order_and_cancelling_it_does_not_restart_the_clock(tmp_path: Path) -> None:
+    """match.md §9: a cancelled activated ability leaves the match as it was, so it cannot buy
+    the player a fresh turn timer."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client, ("starter-b", "starter-b"))
+        starter = _order_waiting_on_a_cancellable_choice(room)
+        clock = room.timer(starter)
+        assert clock is not None
+        for _ in range(3):
+            order = next(i for i in room.legal(starter) if isinstance(i, UseOrder))
+            room.move(starter, order)
+            pending = room.state().pending
+            assert pending is not None and pending.cancellable
+            assert room.timer(starter).at == clock.at
+            room.move(starter, CancelChoice())
+            assert room.timer(starter).at == clock.at
+
+
+def test_a_timeout_on_a_cancellable_choice_cancels_it_and_moves_on(tmp_path: Path) -> None:
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client, ("starter-b", "starter-b"))
+        starter = _order_waiting_on_a_cancellable_choice(room)
+        before = room.state().seq
+        order = next(i for i in room.legal(starter) if isinstance(i, UseOrder))
+        room.move(starter, order)
+        room.time_out(starter, room.timer(starter))
+        history = room.portal.call(room.service.history, room.match_id, before)
+        types = [e["type"] for p in history for e in p["events"]]
+        assert "choice_cancelled" in types
+        assert types.index("player_passed") > types.index("choice_cancelled")
 
 
 def test_both_players_mulligan_on_their_own_clock(tmp_path: Path) -> None:
