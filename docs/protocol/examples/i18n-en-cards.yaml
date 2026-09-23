@@ -18,7 +18,7 @@ card.u-0007.text: Return a non-immune unit from your discard pile to the board.
 card.s-0001.name: Placeholder special one
 card.s-0001.text: Every non-immune melee unit on both sides has power 1.
 card.s-0002.name: Placeholder special two
-card.s-0002.text: Clear all row effects.
+card.s-0002.text: Clear the power-to-one effect from every row.
 card.s-0003.name: Placeholder special three
 card.s-0003.text: Destroy the strongest opponent units on rows totalling 10 or more.
 card.s-0004.name: Placeholder special four

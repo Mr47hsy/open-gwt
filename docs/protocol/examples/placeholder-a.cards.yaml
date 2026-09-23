@@ -78,12 +78,13 @@ cards:
         rows: [melee]
         sides: both
 
-  # Clears all row effects everywhere.
+  # Clears the power-to-one effect everywhere, leaving doubling in place.
   s-0002:
     kind: special
     abilities:
       - when: played
         do: clear_row_effects
+        effects: [power_to_one]
 
   # Destroys the strongest opponent units, but only where a row already totals 10 or more.
   s-0003:

@@ -109,9 +109,9 @@ serialisation; it does not exist in the message.
     "deck_count": 12, "discard": [ { "instance": "c03", "card": "s-0002" } ],
     "leader": { "card": "l-0001", "used": false },
     "rows": {
-      "melee":  { "effect": null,           "units": [ { "instance": "c09", "card": "u-0001", "power": 5, "base": 5 } ] },
-      "ranged": { "effect": "power_to_one", "units": [] },
-      "siege":  { "effect": null,           "units": [] }
+      "melee":  { "effects": [],               "units": [ { "instance": "c09", "card": "u-0001", "power": 5, "base": 5 } ] },
+      "ranged": { "effects": ["power_to_one"], "units": [] },
+      "siege":  { "effects": [],               "units": [] }
     }
   },
   "opponent": { "seat": 1, "score": 12, "rounds_won": 0, "passed": false,
@@ -141,7 +141,7 @@ adding types; the fields of an existing type are only ever extended.
 | `unit_destroyed` | `{seat, instance, card, row}` | |
 | `power_changed` | `{seat, instance, from, to, reason}` | Effective power; `reason` names the action or row effect. |
 | `row_effect_applied` | `{seat, row, effect}` | |
-| `row_effect_cleared` | `{seat, row}` | |
+| `row_effect_cleared` | `{seat, row, effect}` | One event per effect removed. |
 | `choice_requested` | `{seat, prompt_key, option_count}` | The options themselves are only in that player's view. |
 | `choice_made` | `{seat, option}` | |
 | `player_passed` | `{seat}` | |
