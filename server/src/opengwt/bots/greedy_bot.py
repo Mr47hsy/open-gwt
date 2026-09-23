@@ -3,15 +3,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from opengwt.core.engine import apply, play_positions
-from opengwt.core.intents import Choose, EndMulligan, EndTurn, Intent, Pass, PlayCard
+from opengwt.core.intents import Choose, EndMulligan, EndTurn, Intent, Pass, PlayCard, UseOrder
 from opengwt.core.model import Library, MatchState, Phase
 from opengwt.core.power import score
 
 
 class GreedyBot:
     """One-ply greedy opponent: keeps its hand, plays whatever raises its lead the most (at the
-    right end of a row), passes when it leads against a passed opponent, and concedes a round it
-    cannot overtake with one card."""
+    right end of a row) — a card or an activated ability, which does not end the turn — passes
+    when it leads against a passed opponent, and concedes a round it cannot overtake with one
+    card. After its card it uses every activated ability that still raises its lead, then ends
+    the turn. It never cancels a choice."""
 
     def choose(self, lib: Library, state: MatchState, seat: int, legal: Sequence[Intent]) -> Intent:
         if state.phase is Phase.MULLIGAN:
@@ -20,7 +22,7 @@ class GreedyBot:
             options = [i for i in legal if isinstance(i, Choose)]
             return max(options, key=lambda i: self._value(lib, state, seat, i))
         if EndTurn() in legal:
-            return EndTurn()
+            return self._best_order(lib, state, seat, legal) or EndTurn()
         me, opp = state.players[seat], state.players[state.other(seat)]
         plays = [self._concrete(lib, state, seat, i) for i in legal if not isinstance(i, Pass)]
         if not plays:
@@ -39,6 +41,19 @@ class GreedyBot:
         if lead > 0 and len(me.hand) > len(opp.hand) + 1 and state.round < 3:
             return Pass()
         return best
+
+    def _best_order(
+        self, lib: Library, state: MatchState, seat: int, legal: Sequence[Intent]
+    ) -> Intent | None:
+        """The ready activated ability that raises the lead the most, if one raises it at all."""
+        orders = [i for i in legal if isinstance(i, UseOrder)]
+        if not orders:
+            return None
+        lead = self._lead(lib, state, seat)
+        gain, best = max(
+            ((self._value(lib, state, seat, i) - lead, i) for i in orders), key=lambda g: g[0]
+        )
+        return best if gain > 0 else None
 
     @staticmethod
     def _concrete(lib: Library, state: MatchState, seat: int, intent: Intent) -> Intent:
