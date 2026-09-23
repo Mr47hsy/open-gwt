@@ -132,10 +132,18 @@ and right of a card on the same row-side.
   player first — the player whose turn it is, or who took the last turn — then the other side;
   within a side, rows in `Rules.rows` order; within a row, left to right.
 
-A **card instance** is one physical card in a match, with an id such as `c17`. Ids are allocated
-from a counter in the match state: first every deck card in deck-list order, before the decks are
-shuffled, then the leaders, then created cards as they appear. An id therefore never reveals a
-position in a deck.
+A **card instance** is one physical card in a match, with an opaque id — shortened to forms such
+as `c17` in the examples. Ids come from a counter in the match state rendered through the core's
+id stream ([ADR 0010](../adr/0010-unpredictable-random-stream.md)), so an id reveals neither a
+card's place in the deck list, nor its position after the shuffle, nor when it was drawn. Clients
+treat ids as opaque strings.
+
+**Randomness.** Every random draw in this document — the shuffles, the first starter, `random`
+picks, offers, tie breaks, mulligan insertions — comes from the core's seeded engine stream,
+called *the seeded PRNG* below. From phase B that is the SHA-256 counter-mode stream of ADR 0010,
+seeded with 256 bits the server keeps secret until the match is over; instance ids and the
+server's bots draw from streams of their own, so what a player sees of one says nothing about
+another.
 
 On the board an instance carries: `base` (printed power, raised by `raise_base_power`), `boost`,
 `damage`, `armor`, an ordered list of `statuses`, each with an optional timer in turns, and, for a

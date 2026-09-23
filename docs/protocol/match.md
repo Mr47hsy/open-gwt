@@ -165,6 +165,9 @@ serialisation; it does not exist in the message.
 }
 ```
 
+Instance ids are opaque strings ([ADR 0010](../adr/0010-unpredictable-random-stream.md)); `c17`
+and the like are shortened for the examples, and a client never parses them.
+
 | Field | Meaning |
 | --- | --- |
 | `phase` | `mulligan`, `playing`, `choosing` (a choice is pending) or `match_over`. |
@@ -264,8 +267,8 @@ whose ability caused it, or `null` for a status or a row effect.
 
 ## 9. Replay record and reconnect
 
-The server stores, per match, a record of schema `opengwt.record/2`: the `seed`, the `Rules`
-values the match was played with, both decks, and the ordered list of **accepted** intents with
+The server stores, per match, a record of schema `opengwt.record/2`: the `seed` — 256 bits as 64
+lowercase hex characters (ADR 0010) — the `Rules` values the match was played with, both decks, and the ordered list of **accepted** intents with
 the seat that sent each. Replaying that record through the rules core reproduces every event and
 view. The replay endpoint returns exactly that record plus the result; a replay viewer streams it
 through the same `events`/`view` messages.
@@ -308,15 +311,18 @@ keys for playing, passing and choosing keep their meaning.
 - The opponent's hand, either deck's order and upcoming draws exist only in the rules core state
   held by the server. Views are produced by the core's `view(state, player)`; nothing else
   serialises state for a client.
-- The seed and the PRNG state never reach a client while the match runs: with them and the open
-  PRNG, a client could rebuild both decks' order. The seed is only in the replay record, which is
-  served after the match ended.
+- The seed and the random stream's state never reach a client while the match runs — not in an
+  event, a view, an error detail or a log: with them and the open-source shuffle, a client could
+  rebuild both decks' order. The seed is only in the replay record, served after the match ended.
+  It is 256 bits wide and the stream is SHA-256 in counter mode (ADR 0010), so it cannot be
+  searched for from what a player is shown either.
 - Options drawn from a hidden zone are listed by card id and instance id, never in zone order;
-  instance ids are allocated before the shuffle (`cards.md` §5), so neither reveals a position.
+  instance ids are opaque (`cards.md` §5), so neither reveals a position.
 - A `choice_requested` event for the other player reveals the kind, the number of options and
   the source card — which is public — never the options.
 - Random picks — `random` targets, offers, tie breaks, mulligan insertion — are drawn on the
-  server with the seeded PRNG; a client never supplies randomness.
+  server with the seeded PRNG; a client never supplies randomness. A server-hosted bot draws from
+  its own stream (ADR 0010), so its choices say nothing about the match's.
 - Tokens identify a player, not a match; the server checks the player is seated in the match on
   every socket message.
 - The server rate-limits intents per socket; a burst is closed, not queued.
