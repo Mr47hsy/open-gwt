@@ -13,9 +13,9 @@ rules core, with deterministic replay and server-authoritative multiplayer.
 
 ## Why this exists
 
-Official content development for Gwent has ended, but its core design — no mana curve, three rows,
-best-of-three rounds, and the tempo game built around *when to pass* — is still one of the most
-interesting designs the card-game genre has produced. open-gwt carries that design forward as open
+Official content development for Gwent has ended, but its core design — no mana curve in play,
+two rows with positional play, best-of-three rounds, and the tempo game built around *when to
+pass* — is still one of the most interesting designs the card-game genre has produced. open-gwt carries that design forward as open
 source, so anyone can play it, study it, fork it and extend it.
 
 ## Design principles

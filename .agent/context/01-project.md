@@ -1,20 +1,25 @@
 # What open-gwt is
 
-An open-source, unofficial reimplementation of the Gwent rules. Official content development for
-Gwent has ended; this project keeps the design alive as open source so it can be played, studied,
-forked and extended.
+An open-source, unofficial reimplementation of the Gwent rules — the ruleset of the standalone
+online game, decided in ADR 0009 on 2026-09-23. Official content development for Gwent has
+ended; this project keeps the design alive as open source so it can be played, studied, forked
+and extended.
 
 ## What makes the design worth reimplementing
 
-- No mana curve — every card is playable on any turn, so the decision is *which* card, not *when can
-  I afford it*.
-- Three rows, which turn positioning into a real decision.
-- Best-of-three rounds with a shared hand across rounds: cards spent now are cards you do not have
-  later.
+- No mana curve in play — every card in hand is playable on any turn; the resource decision is
+  the provision budget at deck-building time.
+- Two rows with positional play: adjacency, row effects and row limits make *where* a real choice.
+- Activated abilities within a turn: what to trigger before committing the one card that ends it.
+- Best-of-three rounds with draws and redraws each round, so card advantage is earned and spent.
 - The tempo game around **when to pass** — conceding a round to keep card advantage is the central
   skill of the game.
 
 Anything that would flatten one of these is a design regression, not a simplification.
+
+**Transition (2026-09-23):** the code on `develop` still implements the previous shape (three
+fixed rows, no draws, two lives, protocol v1) until phases A–F of ADR 0009 land. Do not add v1
+content or vocabulary; read the ADR before touching the core.
 
 ## Scope
 
