@@ -1,0 +1,6 @@
+<linker>
+  <!-- IL2CPP strips unreferenced generic instantiations; the JSON models and Newtonsoft are
+       reached through reflection, so keep them whole (ADR 0005, cross-platform notes). -->
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+  <assembly fullname="OpenGwt.Client" preserve="all" />
+</linker>

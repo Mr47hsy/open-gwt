@@ -1,0 +1,131 @@
+/* Flat placeholder look for the MVP (ADR 0005): boxes and text, no art. */
+
+.board {
+    flex-grow: 1;
+    background-color: rgb(24, 27, 33);
+    color: rgb(230, 230, 230);
+    font-size: 14px;
+}
+
+.hidden { display: none; }
+
+.match { flex-grow: 1; padding: 6px 10px; }
+
+.bar {
+    flex-direction: row;
+    align-items: center;
+    height: 36px;
+    padding: 0 8px;
+    background-color: rgb(34, 38, 46);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+.bar__name { font-size: 15px; -unity-font-style: bold; margin-right: 12px; }
+.bar__score { font-size: 22px; -unity-font-style: bold; color: rgb(255, 214, 102); min-width: 48px; }
+.bar__lives { color: rgb(240, 120, 120); margin-right: 12px; }
+.bar__info { color: rgb(170, 175, 185); margin-right: 12px; }
+.bar__passed { color: rgb(120, 200, 140); -unity-font-style: bold; }
+.bar__spacer { flex-grow: 1; }
+.bar__turn { -unity-font-style: bold; color: rgb(140, 200, 255); }
+
+.side { flex-grow: 1; }
+.side--opponent { margin-bottom: 4px; }
+.side--mine { margin-top: 4px; }
+
+.row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 96px;
+    margin: 2px 0;
+    padding: 2px 6px;
+    border-width: 1px;
+    border-color: rgb(58, 64, 76);
+    border-radius: 6px;
+    background-color: rgb(30, 34, 41);
+}
+.row--active { border-color: rgb(255, 214, 102); background-color: rgb(40, 44, 52); }
+.row__label { width: 60px; color: rgb(150, 155, 165); -unity-text-align: middle-left; }
+.row__effects { width: 90px; color: rgb(140, 200, 255); font-size: 11px; white-space: normal; }
+.row__units { flex-direction: row; flex-grow: 1; flex-wrap: wrap; }
+.row__total { width: 44px; font-size: 18px; -unity-font-style: bold; -unity-text-align: middle-right; }
+
+.middle { flex-direction: row; align-items: center; height: 30px; padding: 0 8px; }
+.middle__status { -unity-font-style: bold; color: rgb(255, 214, 102); margin-right: 16px; }
+.middle__message { color: rgb(240, 150, 150); }
+
+.hand {
+    height: 128px;
+    margin-top: 4px;
+    background-color: rgb(34, 38, 46);
+    border-radius: 6px;
+    padding: 4px;
+}
+.hand .unity-scroll-view__content-container { flex-direction: row; }
+
+.card {
+    width: 84px;
+    height: 112px;
+    margin: 3px;
+    padding: 4px;
+    border-width: 2px;
+    border-radius: 6px;
+    border-color: rgb(90, 98, 112);
+    background-color: rgb(52, 58, 70);
+    justify-content: space-between;
+}
+.card--playable { border-color: rgb(120, 200, 140); }
+.card--playable:hover { background-color: rgb(66, 74, 88); }
+.card--selected { border-color: rgb(255, 214, 102); background-color: rgb(80, 72, 50); }
+.card--immune { border-color: rgb(255, 214, 102); }
+.card--special { background-color: rgb(58, 52, 74); }
+.card--foreign { border-color: rgb(240, 120, 120); }
+.card__name { font-size: 11px; white-space: normal; height: 44px; }
+.card__meta { font-size: 10px; color: rgb(170, 175, 185); }
+.card__power { font-size: 24px; -unity-font-style: bold; -unity-text-align: middle-right; }
+.card__power--boosted { color: rgb(120, 200, 140); }
+.card__power--reduced { color: rgb(240, 120, 120); }
+
+.button {
+    height: 30px;
+    padding: 0 14px;
+    margin: 0 4px;
+    border-radius: 6px;
+    border-width: 0;
+    background-color: rgb(70, 78, 92);
+    color: rgb(230, 230, 230);
+}
+.button:hover { background-color: rgb(86, 96, 112); }
+.button:disabled { opacity: 0.35; }
+.button--primary { background-color: rgb(46, 120, 84); }
+.button--primary:hover { background-color: rgb(56, 140, 100); }
+
+.overlay {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+.dialog {
+    width: 460px;
+    padding: 20px;
+    border-radius: 10px;
+    background-color: rgb(34, 38, 46);
+}
+.dialog--wide { width: 720px; }
+.dialog__title { font-size: 22px; -unity-font-style: bold; margin-bottom: 8px; }
+.dialog__note { color: rgb(150, 155, 165); font-size: 11px; white-space: normal; margin-bottom: 12px; }
+.dialog__buttons { flex-direction: row; align-items: center; margin-top: 8px; }
+.dialog__status { margin-top: 10px; color: rgb(140, 200, 255); white-space: normal; }
+.field { margin: 4px 0; }
+.field .unity-base-field__label { min-width: 70px; color: rgb(170, 175, 185); }
+.field--code { flex-grow: 1; }
+.modal__options { flex-direction: row; flex-wrap: wrap; max-height: 300px; }
+
+.event-log {
+    margin-top: 4px;
+    height: 54px;
+    font-size: 10px;
+    color: rgb(150, 155, 165);
+    white-space: normal;
+}
