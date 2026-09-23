@@ -1,94 +1,110 @@
 # Generated placeholder text; every name is a TODO for a human writer. Keys: docs/protocol/i18n.md §2.
-card.a-l-0001.name: Placeholder A leader 1
-card.a-l-0001.text: Clears all row effects.
-card.a-s-0001.name: Placeholder A special 1
-card.a-s-0001.text: Destroys the strongest non-immune units on the opponent's side on the melee row once that row totals 10 or more.
-card.a-u-0001.name: Placeholder A unit 1
-card.a-u-0001.text: Unit, power 5, melee row.
-card.a-u-0002.name: Placeholder A unit 2
-card.a-u-0002.text: Unit, power 6, melee row.
-card.a-u-0003.name: Placeholder A unit 3
-card.a-u-0003.text: Unit, power 5, ranged row.
-card.a-u-0004.name: Placeholder A unit 4
-card.a-u-0004.text: Unit, power 6, ranged row.
-card.a-u-0005.name: Placeholder A unit 5
-card.a-u-0005.text: Unit, power 6, siege row.
-card.a-u-0006.name: Placeholder A unit 6
-card.a-u-0006.text: Unit, power 8, siege row.
-card.a-u-0007.name: Placeholder A unit 7
-card.a-u-0007.text: Unit, power 4, melee row. Summons every other copy of itself from your deck.
-card.a-u-0008.name: Placeholder A unit 8
-card.a-u-0008.text: Unit, power 4, ranged row. Summons every other copy of itself from your deck.
-card.a-u-0009.name: Placeholder A unit 9
-card.a-u-0009.text: Unit, power 4, melee row. Power is multiplied by the number of copies on this row.
-card.a-u-0010.name: Placeholder A unit 10
-card.a-u-0010.text: Unit, power 5, siege row. Power is multiplied by the number of copies on this row.
-card.a-u-0011.name: Placeholder A unit 11
-card.a-u-0011.text: Unit, power 2, ranged row. Every other unit on this row gains 1.
-card.a-u-0012.name: Placeholder A unit 12
-card.a-u-0012.text: Unit, power 10, melee row. Immune.
-card.a-u-0013.name: Placeholder A unit 13
-card.a-u-0013.text: Unit, power 10, ranged row. Immune.
-card.a-u-0014.name: Placeholder A unit 14
-card.a-u-0014.text: Unit, power 5, melee or ranged row.
-card.b-l-0001.name: Placeholder B leader 1
-card.b-l-0001.text: Doubles the power of your melee row.
-card.b-s-0001.name: Placeholder B special 1
-card.b-s-0001.text: Draw 2 cards.
-card.b-u-0001.name: Placeholder B unit 1
-card.b-u-0001.text: Unit, power 5, melee row.
-card.b-u-0002.name: Placeholder B unit 2
-card.b-u-0002.text: Unit, power 7, melee row.
-card.b-u-0003.name: Placeholder B unit 3
-card.b-u-0003.text: Unit, power 5, ranged row.
-card.b-u-0004.name: Placeholder B unit 4
-card.b-u-0004.text: Unit, power 7, ranged row.
-card.b-u-0005.name: Placeholder B unit 5
-card.b-u-0005.text: Unit, power 5, siege row.
-card.b-u-0006.name: Placeholder B unit 6
-card.b-u-0006.text: Unit, power 7, siege row.
-card.b-u-0007.name: Placeholder B unit 7
-card.b-u-0007.text: Unit, power 4, melee row. Deploys on the opponent's side. Draw 2 cards.
-card.b-u-0008.name: Placeholder B unit 8
-card.b-u-0008.text: Unit, power 3, ranged row. Deploys on the opponent's side. Draw 2 cards.
-card.b-u-0009.name: Placeholder B unit 9
-card.b-u-0009.text: Unit, power 5, melee row. Returns a non-immune unit from your discard pile to the board.
-card.b-u-0010.name: Placeholder B unit 10
-card.b-u-0010.text: Unit, power 5, ranged row. Returns a non-immune unit from your discard pile to the board.
-card.b-u-0011.name: Placeholder B unit 11
-card.b-u-0011.text: Unit, power 6, siege row. Every unit on your siege row gains 1.
-card.b-u-0012.name: Placeholder B unit 12
-card.b-u-0012.text: Unit, power 10, melee row. Immune.
-card.b-u-0013.name: Placeholder B unit 13
-card.b-u-0013.text: Unit, power 10, siege row. Immune.
-card.b-u-0014.name: Placeholder B unit 14
-card.b-u-0014.text: Unit, power 6, ranged or siege row.
-card.b-u-0015.name: Placeholder B unit 15
-card.b-u-0015.text: Unit, power 1, melee row. Destroys the strongest non-immune units on the opponent's side on the ranged row once that row totals 10 or more.
-card.n-s-0001.name: Placeholder N special 1
-card.n-s-0001.text: Every non-immune unit on the melee row of both sides has power 1.
-card.n-s-0002.name: Placeholder N special 2
-card.n-s-0002.text: Every non-immune unit on the ranged row of both sides has power 1.
-card.n-s-0003.name: Placeholder N special 3
-card.n-s-0003.text: Every non-immune unit on the siege row of both sides has power 1.
-card.n-s-0004.name: Placeholder N special 4
-card.n-s-0004.text: Clears the power-to-one effect from every row.
-card.n-s-0005.name: Placeholder N special 5
-card.n-s-0005.text: Doubles the power of your melee row.
-card.n-s-0006.name: Placeholder N special 6
-card.n-s-0006.text: Doubles the power of your ranged row.
-card.n-s-0007.name: Placeholder N special 7
-card.n-s-0007.text: Doubles the power of your siege row.
-card.n-s-0008.name: Placeholder N special 8
-card.n-s-0008.text: Takes the place of one of your non-immune units, which returns to your hand.
-card.n-s-0009.name: Placeholder N special 9
-card.n-s-0009.text: Destroys the strongest non-immune units on both sides' side.
-card.n-u-0001.name: Placeholder N unit 1
-card.n-u-0001.text: Unit, power 7, melee or ranged row.
-card.n-u-0002.name: Placeholder N unit 2
-card.n-u-0002.text: Unit, power 8, siege row.
-card.n-u-0003.name: Placeholder N unit 3
-card.n-u-0003.text: Unit, power 15, melee row. Immune.
+card.a-1001.name: Placeholder A artifact 1
+card.a-1001.text: Artifact, ranged row. While on the board, the units on its row have 1 more power.
+card.a-2001.name: Placeholder B artifact 1
+card.a-2001.text: Artifact, melee row. Cannot be chosen as a target. As the round ends, damage a random enemy unit by 2.
+card.l-1001.name: Placeholder A leader 1
+card.l-1001.text: 'Leader. Adds 15 to the provision budget. Two charges: boost one of your units by 2.'
+card.l-2001.name: Placeholder B leader 1
+card.l-2001.text: 'Leader. Adds 15 to the provision budget. One charge: damage an enemy unit by 3.'
+card.s-0001.name: Placeholder N special 1
+card.s-0001.text: Discard 2 random cards from your hand, then draw 2 cards.
+card.s-0002.name: Placeholder N special 2
+card.s-0002.text: Clear every row effect on both sides.
+card.s-0003.name: Placeholder N special 3
+card.s-0003.text: Destroy the strongest unit on the board; a tie is broken at random.
+card.s-0004.name: Placeholder N special 4
+card.s-0004.text: Banish a locked unit on either side.
+card.s-1001.name: Placeholder A special 1
+card.s-1001.text: 'Your melee row gets an effect: at each of your turn starts, boost 2 random units there by 1.'
+card.s-1002.name: Placeholder A special 2
+card.s-1002.text: Remove poison, bleeding and locks from your units, then clear the harmful row effects from your rows.
+card.s-1003.name: Placeholder A special 3
+card.s-1003.text: Raise the base power of one of your units by 3.
+card.s-2001.name: Placeholder B special 1
+card.s-2001.text: 'The opponent''s melee row gets an effect: at each of their turn starts, damage the weakest unit there by 2.'
+card.s-2002.name: Placeholder B special 2
+card.s-2002.text: 'The opponent''s ranged row gets an effect: at each of their turn starts, damage 3 random units there by 1.'
+card.s-2003.name: Placeholder B special 3
+card.s-2003.text: 'Both of the opponent''s rows get an effect: every unit that enters them takes 2 damage.'
+card.s-2004.name: Placeholder B special 4
+card.s-2004.text: 'The opponent''s ranged row gets an effect: at each of their turn starts, damage the strongest unit there by 2.'
+card.t-2001.name: Placeholder B token 1
+card.t-2001.text: Token, power 1.
+card.u-0001.name: Placeholder N unit 1
+card.u-0001.text: Unit, power 6.
+card.u-0002.name: Placeholder N unit 2
+card.u-0002.text: Unit, power 5, 1 armour. No status can be added to it.
+card.u-0003.name: Placeholder N unit 3
+card.u-0003.text: Unit, power 9. Banished whenever it leaves the board.
+card.u-0004.name: Placeholder N unit 4
+card.u-0004.text: Unit, power 4. On play, return a boosted unit on either side to its base power.
+card.u-0005.name: Placeholder N unit 5
+card.u-0005.text: Unit, power 4. On play, damage by 2 every opponent's unit on your side.
+card.u-1001.name: Placeholder A unit 1
+card.u-1001.text: Unit, power 5.
+card.u-1002.name: Placeholder A unit 2
+card.u-1002.text: Unit, power 4, 2 armour.
+card.u-1003.name: Placeholder A unit 3
+card.u-1003.text: Unit, power 3. On play, every other copy of it moves from your deck onto the board.
+card.u-1004.name: Placeholder A unit 4
+card.u-1004.text: Unit, power 4. On play, boost your other units with Placeholder tag A by 1.
+card.u-1005.name: Placeholder A unit 5
+card.u-1005.text: Unit, power 3. While on the board, the other units on its row have 1 more power.
+card.u-1006.name: Placeholder A unit 6
+card.u-1006.text: Unit, power 4. While on the board, the units next to it have 1 more power.
+card.u-1007.name: Placeholder A unit 7
+card.u-1007.text: Unit, power 5. On play on the melee row, gain 2 armour; on the ranged row, damage 2 random enemy units by 1.
+card.u-1008.name: Placeholder A unit 8
+card.u-1008.text: 'Unit, power 3. On play, it grows: boosted by 1 at each of your turn ends, for 3 turns.'
+card.u-1009.name: Placeholder A unit 9
+card.u-1009.text: Unit, power 4. On play, raise the base power of one of your units by 1.
+card.u-1010.name: Placeholder A unit 10
+card.u-1010.text: Unit, power 4. On play, heal your damaged units.
+card.u-1011.name: Placeholder A unit 11
+card.u-1011.text: Unit, power 3. Stays on the board at the end of the round. As the round ends, boost this unit by 2.
+card.u-1012.name: Placeholder A unit 12
+card.u-1012.text: Unit, power 4. On play, shield one of your units that has no shield.
+card.u-1013.name: Placeholder A unit 13
+card.u-1013.text: 'Unit, power 7, 3 armour. Guards its row: the opponent cannot choose the other units on this row.'
+card.u-1014.name: Placeholder A unit 14
+card.u-1014.text: Unit, power 5. On play, damage an enemy unit by 3 and boost this unit by the damage that got through.
+card.u-1015.name: Placeholder A unit 15
+card.u-1015.text: Unit, power 5. On play, if you hold 3 cards or fewer, boost this unit by 4.
+card.u-1016.name: Placeholder A unit 16
+card.u-1016.text: Unit, power 4. On play, if your starting deck had no neutral card, boost this unit by 2.
+card.u-2001.name: Placeholder B unit 1
+card.u-2001.text: Unit, power 5.
+card.u-2002.name: Placeholder B unit 2
+card.u-2002.text: Unit, power 4. On play, damage an enemy unit by 2.
+card.u-2003.name: Placeholder B unit 3
+card.u-2003.text: 'Unit, power 3. On play, an enemy unit bleeds for 3 turns: 1 damage at each of its controller''s turn ends.'
+card.u-2004.name: Placeholder B unit 4
+card.u-2004.text: Unit, power 4. On play, poison an enemy unit; a unit poisoned twice is destroyed.
+card.u-2005.name: Placeholder B unit 5
+card.u-2005.text: Unit, power 7. Lands on the opponent's side. On play, draw a card.
+card.u-2006.name: Placeholder B unit 6
+card.u-2006.text: Unit, power 4. On play, damage every bleeding enemy unit by 1.
+card.u-2007.name: Placeholder B unit 7
+card.u-2007.text: Unit, power 3. On play, lock an enemy unit or artifact.
+card.u-2008.name: Placeholder B unit 8
+card.u-2008.text: Unit, power 5. On play, if two or more enemy units are damaged, damage the strongest enemy unit by 3.
+card.u-2009.name: Placeholder B unit 9
+card.u-2009.text: Unit, power 3. On play, place two Placeholder B token 1 next to it.
+card.u-2010.name: Placeholder B unit 10
+card.u-2010.text: Unit, power 3. On play, destroy one of your units with Placeholder tag B and boost this unit by its power.
+card.u-2011.name: Placeholder B unit 11
+card.u-2011.text: Unit, power 4. On play, move an enemy unit to its other row.
+card.u-2012.name: Placeholder B unit 12
+card.u-2012.text: Unit, power 7. Cannot be chosen as a target. On play, destroy the strongest enemy unit with 8 or more power.
+card.u-2013.name: Placeholder B unit 13
+card.u-2013.text: 'Unit, power 6. On play, fight an enemy unit: the two damage each other by their power in turn, this one first.'
+card.u-2014.name: Placeholder B unit 14
+card.u-2014.text: Unit, power 4. On play, take control of an enemy unit with 4 or less power.
+card.u-2015.name: Placeholder B unit 15
+card.u-2015.text: Unit, power 5. As the round ends, if it is damaged, heal it.
 faction.neutral.name: Neutral
 faction.placeholder-a.name: Placeholder faction A
 faction.placeholder-b.name: Placeholder faction B
+tag.tag-a.name: Placeholder tag A
+tag.tag-b.name: Placeholder tag B

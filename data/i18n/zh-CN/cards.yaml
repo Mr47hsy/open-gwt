@@ -1,94 +1,110 @@
 # Generated placeholder text; every name is a TODO for a human writer. Keys: docs/protocol/i18n.md §2.
-card.a-l-0001.name: 占位 A 领袖 1
-card.a-l-0001.text: 清除所有行效果。
-card.a-s-0001.name: 占位 A 特殊牌 1
-card.a-s-0001.text: 消灭对方的近战行上战力最高的非免疫单位，仅当该行总战力不低于 10。
-card.a-u-0001.name: 占位 A 单位 1
-card.a-u-0001.text: 单位，战力 5，近战行。
-card.a-u-0002.name: 占位 A 单位 2
-card.a-u-0002.text: 单位，战力 6，近战行。
-card.a-u-0003.name: 占位 A 单位 3
-card.a-u-0003.text: 单位，战力 5，远程行。
-card.a-u-0004.name: 占位 A 单位 4
-card.a-u-0004.text: 单位，战力 6，远程行。
-card.a-u-0005.name: 占位 A 单位 5
-card.a-u-0005.text: 单位，战力 6，攻城行。
-card.a-u-0006.name: 占位 A 单位 6
-card.a-u-0006.text: 单位，战力 8，攻城行。
-card.a-u-0007.name: 占位 A 单位 7
-card.a-u-0007.text: 单位，战力 4，近战行。 从你的牌库中召唤所有同名牌。
-card.a-u-0008.name: 占位 A 单位 8
-card.a-u-0008.text: 单位，战力 4，远程行。 从你的牌库中召唤所有同名牌。
-card.a-u-0009.name: 占位 A 单位 9
-card.a-u-0009.text: 单位，战力 4，近战行。 战力乘以本行同名牌的数量。
-card.a-u-0010.name: 占位 A 单位 10
-card.a-u-0010.text: 单位，战力 5，攻城行。 战力乘以本行同名牌的数量。
-card.a-u-0011.name: 占位 A 单位 11
-card.a-u-0011.text: 单位，战力 2，远程行。 本行其他单位各 +1。
-card.a-u-0012.name: 占位 A 单位 12
-card.a-u-0012.text: 单位，战力 10，近战行。 免疫。
-card.a-u-0013.name: 占位 A 单位 13
-card.a-u-0013.text: 单位，战力 10，远程行。 免疫。
-card.a-u-0014.name: 占位 A 单位 14
-card.a-u-0014.text: 单位，战力 5，近战行或远程行。
-card.b-l-0001.name: 占位 B 领袖 1
-card.b-l-0001.text: 你的近战行战力翻倍。
-card.b-s-0001.name: 占位 B 特殊牌 1
-card.b-s-0001.text: 抽 2 张牌。
-card.b-u-0001.name: 占位 B 单位 1
-card.b-u-0001.text: 单位，战力 5，近战行。
-card.b-u-0002.name: 占位 B 单位 2
-card.b-u-0002.text: 单位，战力 7，近战行。
-card.b-u-0003.name: 占位 B 单位 3
-card.b-u-0003.text: 单位，战力 5，远程行。
-card.b-u-0004.name: 占位 B 单位 4
-card.b-u-0004.text: 单位，战力 7，远程行。
-card.b-u-0005.name: 占位 B 单位 5
-card.b-u-0005.text: 单位，战力 5，攻城行。
-card.b-u-0006.name: 占位 B 单位 6
-card.b-u-0006.text: 单位，战力 7，攻城行。
-card.b-u-0007.name: 占位 B 单位 7
-card.b-u-0007.text: 单位，战力 4，近战行。 部署在对方战场。 抽 2 张牌。
-card.b-u-0008.name: 占位 B 单位 8
-card.b-u-0008.text: 单位，战力 3，远程行。 部署在对方战场。 抽 2 张牌。
-card.b-u-0009.name: 占位 B 单位 9
-card.b-u-0009.text: 单位，战力 5，近战行。 从你的弃牌堆中选择一个非免疫单位放回战场。
-card.b-u-0010.name: 占位 B 单位 10
-card.b-u-0010.text: 单位，战力 5，远程行。 从你的弃牌堆中选择一个非免疫单位放回战场。
-card.b-u-0011.name: 占位 B 单位 11
-card.b-u-0011.text: 单位，战力 6，攻城行。 你的攻城行上每个单位 +1。
-card.b-u-0012.name: 占位 B 单位 12
-card.b-u-0012.text: 单位，战力 10，近战行。 免疫。
-card.b-u-0013.name: 占位 B 单位 13
-card.b-u-0013.text: 单位，战力 10，攻城行。 免疫。
-card.b-u-0014.name: 占位 B 单位 14
-card.b-u-0014.text: 单位，战力 6，远程行或攻城行。
-card.b-u-0015.name: 占位 B 单位 15
-card.b-u-0015.text: 单位，战力 1，近战行。 消灭对方的远程行上战力最高的非免疫单位，仅当该行总战力不低于 10。
-card.n-s-0001.name: 占位 N 特殊牌 1
-card.n-s-0001.text: 双方近战行上所有非免疫单位的战力变为 1。
-card.n-s-0002.name: 占位 N 特殊牌 2
-card.n-s-0002.text: 双方远程行上所有非免疫单位的战力变为 1。
-card.n-s-0003.name: 占位 N 特殊牌 3
-card.n-s-0003.text: 双方攻城行上所有非免疫单位的战力变为 1。
-card.n-s-0004.name: 占位 N 特殊牌 4
-card.n-s-0004.text: 清除所有行上的战力变 1 效果。
-card.n-s-0005.name: 占位 N 特殊牌 5
-card.n-s-0005.text: 你的近战行战力翻倍。
-card.n-s-0006.name: 占位 N 特殊牌 6
-card.n-s-0006.text: 你的远程行战力翻倍。
-card.n-s-0007.name: 占位 N 特殊牌 7
-card.n-s-0007.text: 你的攻城行战力翻倍。
-card.n-s-0008.name: 占位 N 特殊牌 8
-card.n-s-0008.text: 替换你的一个非免疫单位，该单位回到手牌。
-card.n-s-0009.name: 占位 N 特殊牌 9
-card.n-s-0009.text: 消灭双方的战场上战力最高的非免疫单位。
-card.n-u-0001.name: 占位 N 单位 1
-card.n-u-0001.text: 单位，战力 7，近战行或远程行。
-card.n-u-0002.name: 占位 N 单位 2
-card.n-u-0002.text: 单位，战力 8，攻城行。
-card.n-u-0003.name: 占位 N 单位 3
-card.n-u-0003.text: 单位，战力 15，近战行。 免疫。
+card.a-1001.name: 占位 A 器物 1
+card.a-1001.text: 器物，远程行。在场时：同一行的单位战力 +1。
+card.a-2001.name: 占位 B 器物 1
+card.a-2001.text: 器物，近战行。无法被选为目标。局结束时：对一个随机敌方单位造成 2 点伤害。
+card.l-1001.name: 占位 A 领袖 1
+card.l-1001.text: 领袖。构筑预算 +15。2 次：使一个己方单位获得 2 点增益。
+card.l-2001.name: 占位 B 领袖 1
+card.l-2001.text: 领袖。构筑预算 +15。1 次：对一个敌方单位造成 3 点伤害。
+card.s-0001.name: 占位 N 特殊牌 1
+card.s-0001.text: 随机弃掉 2 张手牌，然后抽 2 张牌。
+card.s-0002.name: 占位 N 特殊牌 2
+card.s-0002.text: 清除双方所有的行效果。
+card.s-0003.name: 占位 N 特殊牌 3
+card.s-0003.text: 消灭战场上战力最高的单位，并列时随机选择一个。
+card.s-0004.name: 占位 N 特殊牌 4
+card.s-0004.text: 放逐任意一方的一个被锁定的单位。
+card.s-1001.name: 占位 A 特殊牌 1
+card.s-1001.text: 为己方近战行添加行效果：你的每个回合开始时，随机使该行 2 个单位各获得 1 点增益。
+card.s-1002.name: 占位 A 特殊牌 2
+card.s-1002.text: 移除己方单位的中毒、流血和锁定，然后清除己方各行的有害行效果。
+card.s-1003.name: 占位 A 特殊牌 3
+card.s-1003.text: 使一个己方单位的基础战力 +3。
+card.s-2001.name: 占位 B 特殊牌 1
+card.s-2001.text: 为对手的近战行添加行效果：对手的每个回合开始时，对该行战力最低的单位造成 2 点伤害。
+card.s-2002.name: 占位 B 特殊牌 2
+card.s-2002.text: 为对手的远程行添加行效果：对手的每个回合开始时，随机对该行 3 个单位各造成 1 点伤害。
+card.s-2003.name: 占位 B 特殊牌 3
+card.s-2003.text: 为对手的两行添加行效果：进入该行的每个单位受到 2 点伤害。
+card.s-2004.name: 占位 B 特殊牌 4
+card.s-2004.text: 为对手的远程行添加行效果：对手的每个回合开始时，对该行战力最高的单位造成 2 点伤害。
+card.t-2001.name: 占位 B 衍生卡 1
+card.t-2001.text: 衍生卡，战力 1。
+card.u-0001.name: 占位 N 单位 1
+card.u-0001.text: 单位，战力 6。
+card.u-0002.name: 占位 N 单位 2
+card.u-0002.text: 单位，战力 5，护甲 1。无法获得任何状态。
+card.u-0003.name: 占位 N 单位 3
+card.u-0003.text: 单位，战力 9。离开战场时被放逐。
+card.u-0004.name: 占位 N 单位 4
+card.u-0004.text: 单位，战力 4。打出时：将任意一方一个获得过增益的单位重置为基础战力。
+card.u-0005.name: 占位 N 单位 5
+card.u-0005.text: 单位，战力 4。打出时：对己方战场上属于对手的每个单位造成 2 点伤害。
+card.u-1001.name: 占位 A 单位 1
+card.u-1001.text: 单位，战力 5。
+card.u-1002.name: 占位 A 单位 2
+card.u-1002.text: 单位，战力 4，护甲 2。
+card.u-1003.name: 占位 A 单位 3
+card.u-1003.text: 单位，战力 3。打出时：牌库中的每张同名卡都移动到战场上。
+card.u-1004.name: 占位 A 单位 4
+card.u-1004.text: 单位，战力 4。打出时：使己方其他带有占位标签 A 的单位各获得 1 点增益。
+card.u-1005.name: 占位 A 单位 5
+card.u-1005.text: 单位，战力 3。在场时：同一行的其他单位战力 +1。
+card.u-1006.name: 占位 A 单位 6
+card.u-1006.text: 单位，战力 4。在场时：相邻单位战力 +1。
+card.u-1007.name: 占位 A 单位 7
+card.u-1007.text: 单位，战力 5。打出于近战行时：获得 2 点护甲；打出于远程行时：对 2 个随机敌方单位各造成 1 点伤害。
+card.u-1008.name: 占位 A 单位 8
+card.u-1008.text: 单位，战力 3。打出时：在你之后 3 个回合结束时各获得 1 点增益。
+card.u-1009.name: 占位 A 单位 9
+card.u-1009.text: 单位，战力 4。打出时：使一个己方单位的基础战力 +1。
+card.u-1010.name: 占位 A 单位 10
+card.u-1010.text: 单位，战力 4。打出时：治疗己方所有受伤的单位。
+card.u-1011.name: 占位 A 单位 11
+card.u-1011.text: 单位，战力 3。局结束时留在战场上。局结束时：获得 2 点增益。
+card.u-1012.name: 占位 A 单位 12
+card.u-1012.text: 单位，战力 4。打出时：为一个没有护盾的己方单位添加护盾。
+card.u-1013.name: 占位 A 单位 13
+card.u-1013.text: 单位，战力 7，护甲 3。守护本行：对手无法选择本行的其他单位。
+card.u-1014.name: 占位 A 单位 14
+card.u-1014.text: 单位，战力 5。打出时：对一个敌方单位造成 3 点伤害，并获得等同于实际伤害的增益。
+card.u-1015.name: 占位 A 单位 15
+card.u-1015.text: 单位，战力 5。打出时：若你的手牌不多于 3 张，获得 4 点增益。
+card.u-1016.name: 占位 A 单位 16
+card.u-1016.text: 单位，战力 4。打出时：若你的初始牌库中没有中立卡，获得 2 点增益。
+card.u-2001.name: 占位 B 单位 1
+card.u-2001.text: 单位，战力 5。
+card.u-2002.name: 占位 B 单位 2
+card.u-2002.text: 单位，战力 4。打出时：对一个敌方单位造成 2 点伤害。
+card.u-2003.name: 占位 B 单位 3
+card.u-2003.text: 单位，战力 3。打出时：使一个敌方单位流血 3 回合：在其控制者的每个回合结束时受到 1 点伤害。
+card.u-2004.name: 占位 B 单位 4
+card.u-2004.text: 单位，战力 4。打出时：使一个敌方单位中毒；再次中毒的单位被消灭。
+card.u-2005.name: 占位 B 单位 5
+card.u-2005.text: 单位，战力 7。放置在对手的战场上。打出时：抽 1 张牌。
+card.u-2006.name: 占位 B 单位 6
+card.u-2006.text: 单位，战力 4。打出时：对每个流血的敌方单位造成 1 点伤害。
+card.u-2007.name: 占位 B 单位 7
+card.u-2007.text: 单位，战力 3。打出时：锁定一个敌方单位或器物。
+card.u-2008.name: 占位 B 单位 8
+card.u-2008.text: 单位，战力 5。打出时：若至少 2 个敌方单位受伤，对战力最高的敌方单位造成 3 点伤害。
+card.u-2009.name: 占位 B 单位 9
+card.u-2009.text: 单位，战力 3。打出时：在其旁边放置 2 张占位 B 衍生卡 1。
+card.u-2010.name: 占位 B 单位 10
+card.u-2010.text: 单位，战力 3。打出时：消灭一个带有占位标签 B 的己方单位，并获得等同于其战力的增益。
+card.u-2011.name: 占位 B 单位 11
+card.u-2011.text: 单位，战力 4。打出时：将一个敌方单位移动到其另一行。
+card.u-2012.name: 占位 B 单位 12
+card.u-2012.text: 单位，战力 7。无法被选为目标。打出时：消灭战力不低于 8 的敌方单位中战力最高的一个。
+card.u-2013.name: 占位 B 单位 13
+card.u-2013.text: 单位，战力 6。打出时：与一个敌方单位交战：双方轮流以自身战力对对方造成伤害，此单位先出手。
+card.u-2014.name: 占位 B 单位 14
+card.u-2014.text: 单位，战力 4。打出时：夺取一个战力不高于 4 的敌方单位的控制权。
+card.u-2015.name: 占位 B 单位 15
+card.u-2015.text: 单位，战力 5。局结束时：若此单位受伤，治疗它。
 faction.neutral.name: 中立
 faction.placeholder-a.name: 占位阵营 A
 faction.placeholder-b.name: 占位阵营 B
+tag.tag-a.name: 占位标签 A
+tag.tag-b.name: 占位标签 B

@@ -1,5 +1,5 @@
-"""Load ``data/`` — docs/protocol/cards.md §9. The schemas in ``schemas/`` are the copies that
-ship with the package; a test keeps them identical to ``docs/protocol/``."""
+"""Load ``data/`` — docs/protocol/cards.md §13 and §14. The schemas in ``schemas/`` are the copies
+that ship with the package; a test keeps them identical to ``docs/protocol/``."""
 
 from __future__ import annotations
 
@@ -12,7 +12,16 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from opengwt.core.model import CardDef, Deck, Library, card_def_from_mapping
+from opengwt.core.engine import check_deck
+from opengwt.core.model import (
+    DEFAULT_RULES,
+    Action,
+    CardDef,
+    Deck,
+    Library,
+    Rules,
+    card_def_from_mapping,
+)
 
 SCHEMA_DIR = Path(__file__).parent / "schemas"
 NEUTRAL = "neutral"
@@ -66,7 +75,7 @@ def load_cards_file(path: Path) -> dict[str, CardDef]:
 
 def load_cards_raw(cards_dir: Path) -> dict[str, dict[str, Any]]:
     """Validated card mappings by id, each with its ``faction`` added: what the content pack
-    ships to clients (docs/protocol/cards.md §9)."""
+    ships to clients (docs/protocol/cards.md §14)."""
     raw: dict[str, dict[str, Any]] = {}
     for path in sorted(cards_dir.glob("*.cards.yaml")):
         doc = _read_yaml(path)
@@ -113,15 +122,16 @@ def load_deck(path: Path, lib: Library) -> Deck:
         elif defn.faction not in (faction, NEUTRAL):
             problems.append(f"{path}: {cid} belongs to {defn.faction}, not {faction} or neutral")
         cards.extend([cid] * int(entry["count"]))
-    leader = doc.get("leader")
-    if leader is not None and leader not in lib:
+    leader = str(doc["leader"])
+    if leader not in lib:
         problems.append(f"{path}: unknown leader {leader}")
     if problems:
         raise DataError(problems)
     return Deck(faction=faction, cards=tuple(cards), leader=leader)
 
 
-def load_decks(decks_dir: Path, lib: Library) -> dict[str, Deck]:
+def load_decks(decks_dir: Path, lib: Library, rules: Rules = DEFAULT_RULES) -> dict[str, Deck]:
+    """Every deck file, each legal under ``rules`` (cards.md §12)."""
     decks: dict[str, Deck] = {}
     problems: list[str] = []
     for path in sorted(decks_dir.glob("*.deck.yaml")):
@@ -133,6 +143,7 @@ def load_decks(decks_dir: Path, lib: Library) -> dict[str, Deck]:
         deck_id = str(_read_yaml(path)["id"])
         if deck_id in decks:
             problems.append(f"{path}: duplicate deck id {deck_id}")
+        problems.extend(f"{path}: {p}" for p in check_deck(lib, deck, rules))
         decks[deck_id] = deck
     if problems:
         raise DataError(problems)
@@ -173,6 +184,24 @@ def plural_base(key: str) -> str:
     return key
 
 
+def check_references(lib: Library) -> list[str]:
+    """Cross-file rules on card references (cards.md §14): ``place_new_card`` names an existing
+    unit or artifact."""
+    problems: list[str] = []
+    for defn in lib.values():
+        for ability in defn.abilities:
+            if ability.do is not Action.PLACE_NEW_CARD:
+                continue
+            target = lib.get(ability.card or "")
+            if target is None:
+                problems.append(f"{defn.id}: place_new_card names unknown card {ability.card}")
+            elif not target.placed:
+                problems.append(
+                    f"{defn.id}: place_new_card names {ability.card}, not a unit or artifact"
+                )
+    return problems
+
+
 def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     """Missing keys, as ``locale: key`` strings — docs/protocol/i18n.md §2, §7 and ADR 0006.
 
@@ -186,6 +215,7 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
         return [f"missing base locale {BASE_LOCALE}"]
     required = {f"card.{cid}.{k}" for cid in lib for k in ("name", "text")}
     required |= {f"faction.{d.faction}.name" for d in lib.values()}
+    required |= {f"tag.{tag}.name" for d in lib.values() for tag in d.tags}
     problems.extend(f"{BASE_LOCALE}: {k}" for k in sorted(required - set(base)))
     base_keys = {plural_base(k) for k in base}
     for locale, table in sorted(tables.items()):
@@ -202,7 +232,7 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
 def load_data(data_dir: Path) -> DataSet:
     """Everything under ``data/``, validated. Raises ``DataError`` listing every problem found."""
     lib = load_library(data_dir / "cards")
-    problems: list[str] = []
+    problems: list[str] = check_references(lib)
     decks: dict[str, Deck] = {}
     tables: dict[str, dict[str, str]] = {}
     try:
