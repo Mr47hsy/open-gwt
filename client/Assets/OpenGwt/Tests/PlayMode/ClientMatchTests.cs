@@ -36,8 +36,11 @@ namespace OpenGwt.Tests
                     if (v.Opponent.Hand != null) leakedHands++;
                 };
 
-                yield return Await(client, client.PrepareAsync(Server, "playmode", "zh-CN"));
+                client.SetLocale("zh-CN");
+                yield return Await(client, client.PrepareAsync(Server, "playmode"));
                 Assert.AreEqual("zh-CN", client.Locale);
+                Assert.AreEqual("和机器人对战", client.Text("ui.lobby.bot"));
+                Assert.AreEqual("你：打出 占位 A 单位 1", client.Text("ui.event.card-played", MatchClient.P("who", "@ui.who.you", "card", "@card.a-u-0001.name")));
                 Assert.GreaterOrEqual(client.Cards.Count, 30);
                 Assert.AreEqual("占位 A 单位 1", client.CardName("a-u-0001"));
                 Assert.AreEqual("Placeholder A unit 1", client.I18n.Render("en", "card.a-u-0001.name"));

@@ -13,8 +13,9 @@ cd server && uv run opengwt-server            # http://127.0.0.1:8000, SQLite, m
 ```
 
 Then open `client/` from Unity Hub (Projects → Add → this directory) with 6000.6.2f1, open
-`Assets/OpenGwt/Scenes/Main.unity` and press Play. The first screen takes the server URL and a
-name; *Play against the bot* starts a match, *Create a room* shows a room code a second client
+`Assets/OpenGwt/Scenes/Main.unity` and press Play. The first screen takes the server URL, a name
+and the language (remembered across runs); *Connect* signs in and shows the lobby with the deck
+choice. *Play against the bot* starts a match, *Create a room* shows a room code a second client
 joins with *Join*.
 
 ## Headless commands
@@ -29,7 +30,9 @@ OPENGWT_TEST_SERVER=http://127.0.0.1:8765 "$UNITY" -batchmode -nographics -proje
 ```
 
 `ProjectSetup.Run` (re)creates the scene, the panel settings and the player settings; it is what
-made them, and it is idempotent. The EditMode tests include the i18n conformance suite
+made them, and it is idempotent. `FontSetup.Run` builds the SDF font assets and the fallback
+chain from the TTFs in `Assets/OpenGwt/Fonts` (see the README there; the TTFs themselves come
+from `server/scripts/fonts.py`). The EditMode tests include the i18n conformance suite
 (`data/i18n/conformance.json`, generated from the YAML by `opengwt-data conformance-json`), which
 the server's renderer runs too. The PlayMode test plays a whole match against the server-hosted
 bot through `MatchClient` and needs a server at `OPENGWT_TEST_SERVER`.
@@ -39,6 +42,8 @@ bot through `MatchClient` and needs a server at `OPENGWT_TEST_SERVER`.
 ```
 Assets/OpenGwt/
   Runtime/I18n/      MessageRenderer — opengwt.i18n/1, twin of the server's renderer
+  Resources/i18n/    ui/choice/error strings per locale, exported by `opengwt-data client-i18n`
+  Fonts/             Noto Sans / Serif (+ SC) static subsets, OFL, and their SDF assets
   Runtime/Net/       ServerApi (UnityWebRequest), MatchSocket (ClientWebSocket), message models
   Runtime/Match/     MatchClient — session, socket pump, latest view, events
   Runtime/UI/        BoardView (UI Toolkit controller), CardElement
@@ -57,7 +62,10 @@ Assets/OpenGwt/
 - `link.xml` preserves `OpenGwt.Client` and `Newtonsoft.Json` from IL2CPP stripping.
 - The panel scales with the screen (reference 1600×900, match 0.5); input is UI Toolkit pointer
   events, so mouse and touch behave the same.
-- Card names come from the server's translation tables; the default runtime theme font has no CJK
-  glyphs yet, so `zh-CN` needs a font fallback before it is presentable. Tracked for M3.
+- Text: Noto Sans for the interface and Noto Serif for card names and titles, each falling back
+  to its SC companion (dynamic SDF atlases, so only the glyphs actually shown are rasterised).
+  Interface strings ship inside the build; card texts arrive from the server. Adding a language
+  means a translation directory under `data/i18n` and, if it needs new glyphs, one more Noto font
+  in the chain.
 
 This is an unofficial fan work and is not approved/endorsed by CD PROJEKT RED.

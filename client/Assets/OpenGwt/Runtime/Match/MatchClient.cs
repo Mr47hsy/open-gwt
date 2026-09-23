@@ -2,7 +2,9 @@
 // latest view and forwards events; decides nothing (ADR 0001).
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OpenGwt.I18n;
 using OpenGwt.Net;
@@ -10,14 +12,24 @@ using UnityEngine;
 
 namespace OpenGwt.Match
 {
+    public sealed class DeckOption
+    {
+        public string Id;
+        public string Faction;
+    }
+
     public sealed class MatchClient : IDisposable
     {
+        private const string LocalePref = "opengwt.locale";
+
         public ServerApi Api { get; private set; }
         public MatchSocket Socket { get; private set; }
         public MessageRenderer I18n { get; } = new MessageRenderer();
         public string Locale { get; private set; } = MessageRenderer.BaseLocale;
         public string PackHash { get; private set; }
+        public string PlayerName { get; private set; }
         public Dictionary<string, JObject> Cards { get; } = new Dictionary<string, JObject>(StringComparer.Ordinal);
+        public List<DeckOption> Decks { get; } = new List<DeckOption>();
         public HelloMessage Hello { get; private set; }
         public MatchView View { get; private set; }
         public MatchResult Result { get; private set; }
@@ -35,24 +47,71 @@ namespace OpenGwt.Match
         private string wsUrl;
         private bool closeHandled;
 
-        /// <summary>Guest sign-in, locale negotiation, translation table and content pack.</summary>
-        public async Task PrepareAsync(string serverUrl, string displayName, string preferredLocale)
+        public MatchClient()
         {
-            Api = new ServerApi(serverUrl);
+            // The strings the first screen needs, before any server is known (ADR 0006).
+            foreach (var asset in Resources.LoadAll<TextAsset>("i18n"))
+            {
+                var table = JsonConvert.DeserializeObject<Dictionary<string, string>>(asset.text);
+                if (table != null) I18n.MergeTable(asset.name, table);
+            }
+            Locale = DefaultLocale();
+        }
+
+        private string DefaultLocale()
+        {
+            var saved = PlayerPrefs.GetString(LocalePref, "");
+            if (!string.IsNullOrEmpty(saved) && I18n.Has(saved)) return saved;
+            string system;
+            switch (Application.systemLanguage)
+            {
+                case SystemLanguage.ChineseSimplified:
+                case SystemLanguage.Chinese:
+                    system = "zh-CN";
+                    break;
+                case SystemLanguage.Russian:
+                    system = "ru";
+                    break;
+                default:
+                    system = "en";
+                    break;
+            }
+            return I18n.Has(system) ? system : MessageRenderer.BaseLocale;
+        }
+
+        /// <summary>Switch the interface language; remembered across runs.</summary>
+        public void SetLocale(string locale)
+        {
+            if (!I18n.Has(locale)) return;
+            Locale = locale;
+            PlayerPrefs.SetString(LocalePref, locale);
+            PlayerPrefs.Save();
+            if (Api != null) Api.AcceptLanguage = locale;
+        }
+
+        /// <summary>Guest sign-in, locale on the profile, translation tables and the content pack.</summary>
+        public async Task PrepareAsync(string serverUrl, string displayName)
+        {
+            Api = new ServerApi(serverUrl) { AcceptLanguage = Locale };
+            PlayerName = displayName;
             var token = await Api.GuestAsync(displayName);
             Api.Token = token.Token;
             var locales = await Api.LocalesAsync();
-            Locale = I18n.Locales.Count > 0 ? Locale : OpenGwt.I18n.Locale.Negotiate(locales.Locales, preferredLocale, null);
-            Api.AcceptLanguage = Locale;
+            if (!locales.Locales.Contains(Locale)) Locale = OpenGwt.I18n.Locale.Negotiate(locales.Locales, Locale, null);
             await Api.UpdateLocaleAsync(Locale);
-            I18n.AddTable(Locale, await Api.TableAsync(Locale));
-            if (Locale != MessageRenderer.BaseLocale) I18n.AddTable(MessageRenderer.BaseLocale, await Api.TableAsync(MessageRenderer.BaseLocale));
+            I18n.MergeTable(Locale, await Api.TableAsync(Locale));
+            if (Locale != MessageRenderer.BaseLocale)
+            {
+                I18n.MergeTable(MessageRenderer.BaseLocale, await Api.TableAsync(MessageRenderer.BaseLocale));
+            }
             var pack = await Api.PackAsync();
             PackHash = (string)pack["hash"];
             Cards.Clear();
-            foreach (var card in pack["cards"])
+            foreach (var card in pack["cards"]) Cards[(string)card["id"]] = (JObject)card;
+            Decks.Clear();
+            foreach (var deck in pack["decks"])
             {
-                Cards[(string)card["id"]] = (JObject)card;
+                Decks.Add(new DeckOption { Id = (string)deck["id"], Faction = (string)deck["faction"] });
             }
         }
 
@@ -75,6 +134,7 @@ namespace OpenGwt.Match
             wsUrl = created.WsUrl;
             View = null;
             Result = null;
+            Hello = null;
             closeHandled = false;
             Socket?.Dispose();
             Socket = new MatchSocket();
@@ -90,6 +150,18 @@ namespace OpenGwt.Match
             closeHandled = false;
             await Socket.ConnectAsync(wsUrl, Api.Token, Locale);
             await Socket.SendAsync(new { type = "resync", since_seq = since });
+        }
+
+        public async Task LeaveMatchAsync()
+        {
+            if (Socket != null) await Socket.CloseAsync();
+            Socket?.Dispose();
+            Socket = null;
+            View = null;
+            Result = null;
+            Hello = null;
+            MatchId = null;
+            RoomCode = null;
         }
 
         public Task SendIntentAsync(JObject intent) => Socket.SendAsync(new JObject
@@ -134,10 +206,7 @@ namespace OpenGwt.Match
                     ViewChanged?.Invoke(View);
                     break;
                 case "events":
-                    foreach (var evt in message["events"])
-                    {
-                        EventReceived?.Invoke((JObject)evt);
-                    }
+                    foreach (var evt in message["events"]) EventReceived?.Invoke((JObject)evt);
                     break;
                 case "error":
                     ErrorReceived?.Invoke(Json.Convert<ErrorMessage>(message));
@@ -158,8 +227,16 @@ namespace OpenGwt.Match
 
         public string CardText(string cardId) => I18n.Render(Locale, "card." + cardId + ".text");
 
-        public string Text(string key, IReadOnlyDictionary<string, object> parameters = null) =>
-            I18n.Render(Locale, key, parameters);
+        public string Text(string key) => I18n.Render(Locale, key);
+
+        public string Text(string key, IReadOnlyDictionary<string, object> parameters) => I18n.Render(Locale, key, parameters);
+
+        public static Dictionary<string, object> P(params object[] pairs)
+        {
+            var result = new Dictionary<string, object>();
+            for (var i = 0; i + 1 < pairs.Length; i += 2) result[(string)pairs[i]] = pairs[i + 1];
+            return result;
+        }
 
         /// <summary>Server-rendered fallback only when the key is unknown here (ADR 0006).</summary>
         public string ErrorText(ErrorMessage error)
@@ -169,6 +246,15 @@ namespace OpenGwt.Match
                 return I18n.Render(Locale, error.MessageKey, ToParams(error.Params));
             }
             return error.Message ?? error.Code;
+        }
+
+        public string ErrorText(ApiException error)
+        {
+            if (error.MessageKey != null && I18n.Lookup(Locale, error.MessageKey) != null)
+            {
+                return I18n.Render(Locale, error.MessageKey, ToParams(error.Params));
+            }
+            return error.Message;
         }
 
         public static Dictionary<string, object> ToParams(JObject raw)

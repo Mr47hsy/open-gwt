@@ -68,3 +68,7 @@ __pycache__/
 dist/
 *.egg-info/
 client/*.slnx
+
+# ---- local server databases ----
+server/*.db
+server/*.db-journal

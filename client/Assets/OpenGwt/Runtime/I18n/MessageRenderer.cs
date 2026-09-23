@@ -39,6 +39,17 @@ namespace OpenGwt.I18n
             tables[locale] = table.ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
         }
 
+        /// <summary>Adds or overrides keys of a locale, keeping what is already there.</summary>
+        public void MergeTable(string locale, IReadOnlyDictionary<string, string> table)
+        {
+            if (!tables.TryGetValue(locale, out var existing))
+            {
+                existing = new Dictionary<string, string>(StringComparer.Ordinal);
+                tables[locale] = existing;
+            }
+            foreach (var pair in table) existing[pair.Key] = pair.Value;
+        }
+
         public IReadOnlyList<string> Locales => tables.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
 
         public bool Has(string locale) => tables.ContainsKey(locale);

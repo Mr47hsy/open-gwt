@@ -48,8 +48,9 @@ on Python 3.10 and 3.14.
 `client/` is the Unity 6.6 project of milestone M3: `Assets/OpenGwt/` with the C# twin of the
 i18n renderer, `ServerApi` and `MatchSocket`, `MatchClient`, the UI Toolkit `BoardView`, editor
 setup and build scripts, EditMode tests (conformance suite, message models) and a PlayMode test
-that plays a match against a running server. M3's human acceptance (ten complete matches on
-macOS) and the iOS / Android smoke builds are still open. The Redis backends (M2b) do **not exist
+that plays a match against a running server. M3 now also has a Noto font fallback chain (Sans / Serif with SC companions), a language
+selector and a deck choice. M3's human acceptance (ten complete matches on macOS) is still open;
+the owner deferred the iOS / Android smoke builds until the application is complete. The Redis backends (M2b) do **not exist
 yet**. Do not tell a user a module exists because it is mentioned here — check the filesystem.
 
 ## Legal position in one line

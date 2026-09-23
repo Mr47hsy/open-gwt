@@ -1,13 +1,71 @@
-# Client strings and prompts shared with the server's choice events.
+# Client strings (docs/protocol/i18n.md §2). Shipped inside the client build as well, exported by
+# `opengwt-data client-i18n`, so the first screen can speak before a server is known.
+ui.language.name: English
+ui.title: open-gwt
+ui.disclaimer: Unofficial fan work, not approved or endorsed by CD PROJEKT RED.
+ui.connect.server: Server
+ui.connect.name: Name
+ui.connect.language: Language
+ui.connect.connect: Connect
+ui.connect.connecting: Connecting to {server} …
+ui.connect.signed-in: Signed in as {name}
+ui.lobby.deck: Deck
+ui.lobby.bot: Play against the bot
+ui.lobby.create-room: Create a room
+ui.lobby.room-code: Room code
+ui.lobby.join: Join
+ui.lobby.back: Back
+ui.who.you: you
+ui.who.opponent: opponent
+ui.board.me: You
+ui.board.opponent: Opponent
+ui.board.pass: Pass
+ui.board.passed: PASSED
+ui.board.deck: deck {count}
+ui.board.opponent-hand: hand {hand} · deck {deck}
+ui.board.leader: "Leader: {name}"
+ui.board.leader-used: Leader used
+ui.board.leader-none: No leader
+ui.board.round: round {round}
+ui.board.rounds: "rounds {mine} : {theirs}"
+ui.board.room-waiting: Room {code} — waiting for the other player
+ui.turn.yours: YOUR TURN
+ui.turn.opponent: opponent's turn
+ui.turn.your-mulligan: your mulligan
+ui.turn.opponent-mulligan: opponent's mulligan
+ui.turn.your-choice: your choice
+ui.turn.opponent-choice: opponent chooses
+ui.turn.over: match over
+ui.result.won: You won the match
+ui.result.lost: You lost the match
+ui.result.draw: The match is a draw
+ui.modal.choose-row: Choose a row
+ui.modal.mulligan.one: "Mulligan: pick up to {count} card to redraw"
+ui.modal.mulligan.other: "Mulligan: pick up to {count} cards to redraw"
+ui.modal.confirm: Confirm
+ui.modal.cancel: Cancel
+ui.modal.back: Back to menu
+ui.net.lost: Connection lost ({reason}), reconnecting …
+ui.effect.power-to-one: power → 1
+ui.effect.double-power: ×2
+ui.row.melee: Melee
+ui.row.ranged: Ranged
+ui.row.siege: Siege
+ui.hand.count.one: "{count} card in hand"
+ui.hand.count.other: "{count} cards in hand"
+ui.event.card-played: "{who}: played {card}"
+ui.event.unit-summoned: "{who}: {card} entered the board"
+ui.event.unit-destroyed: "{card} was destroyed"
+ui.event.unit-returned: "{who}: {card} returned to hand"
+ui.event.leader-used: "{who}: used the leader"
+ui.event.player-passed: "{who}: passed"
+ui.event.round-ended: "round {round} ended {mine} : {theirs}"
+ui.event.row-effect-applied: "{effect} on {who}'s {row} row"
+ui.event.row-effect-cleared: "{effect} cleared from {who}'s {row} row"
+ui.event.card-drawn.one: "{who}: drew {count} card"
+ui.event.card-drawn.other: "{who}: drew {count} cards"
 choice.destroy: Choose a unit to destroy
 choice.boost: Choose a unit to boost
 choice.set-power: Choose a unit
 choice.return-from-discard: Choose a unit to return from your discard pile
 choice.swap-with-board-unit: Choose one of your units to return to your hand
-ui.row.melee: Melee
-ui.row.ranged: Ranged
-ui.row.siege: Siege
-ui.board.pass: Pass
-ui.board.leader: Leader
-ui.hand.count.one: "{count} card in hand"
-ui.hand.count.other: "{count} cards in hand"
