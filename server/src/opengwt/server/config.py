@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     token_ttl_seconds: int = 60 * 60 * 24 * 30
 
     bot: str = "greedy"
-    turn_timeout_seconds: int = 0
+    turn_timeout_seconds: float = 0
     room_code_length: int = 6
     event_history: int = 2000
 
