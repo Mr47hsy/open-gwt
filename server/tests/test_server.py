@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import os
+import secrets
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,7 @@ from opengwt.server.app import create_app
 from opengwt.server.config import ConfigError, Settings
 
 REPO = Path(__file__).resolve().parents[2]
+PINNED_SEED = 1_234_567_890
 
 
 @pytest.fixture
@@ -50,9 +53,12 @@ class Scripted:
         self.result: dict[str, Any] | None = None
         self.sent = 0
         self.events: list[dict[str, Any]] = []
+        self.messages: list[dict[str, Any]] = []
 
     def receive(self) -> dict[str, Any]:
         message: dict[str, Any] = self.ws.receive_json()
+        self.messages.append(message)
+        assert '"seed"' not in json.dumps(message)
         kind = message["type"]
         if kind == "view":
             self.view = message["view"]
@@ -197,6 +203,38 @@ def test_full_match_against_the_bot_and_its_replay(client: TestClient) -> None:
     assert any(seat_ != seat for seat_, _ in record.intents), "the bot's intents are in the record"
     stranger, _ = _guest(client, "stranger")
     assert client.get(f"/matches/{match_id}/replay", headers=stranger).status_code == 403
+
+
+def test_the_seed_reaches_no_client_before_the_match_ends(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With the seed and the open-source shuffle a client rebuilds both decks' order, so no
+    message may carry it while the match runs, resync from the first event included (match.md
+    §11). The replay record, served only after the end, is where it belongs."""
+    monkeypatch.setattr(secrets, "randbits", lambda bits: PINNED_SEED)
+    headers, token = _guest(client)
+    created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})
+    match_id = created.json()["match_id"]
+
+    with client.websocket_connect(f"/ws/matches/{match_id}?token={token}") as ws:
+        seat, first = _handshake(ws)
+        me = Scripted(ws, seat)
+        me.view, me.seq = first["view"], first["seq"]
+        ws.send_json({"type": "resync", "since_seq": 0})
+        while me.receive()["type"] != "view":
+            pass
+        assert me.events[0]["seq"] == 1 and me.events[0]["type"] == "match_started"
+        for _ in range(400):
+            if me.result is not None:
+                break
+            me.step()
+        assert me.result is not None, "the match did not finish"
+
+    for message in [created.json(), first, *me.messages]:
+        text = json.dumps(message)
+        assert '"seed"' not in text and str(PINNED_SEED) not in text, message
+    record = client.get(f"/matches/{match_id}/replay", headers=headers).json()["record"]
+    assert record["seed"] == PINNED_SEED
 
 
 def test_two_clients_play_through_a_room_and_one_reconnects(client: TestClient) -> None:

@@ -130,7 +130,8 @@ def new_match(
             )
         )
     state.starter = ctx.rng.below(2)
-    ctx.emit("match_started", starter=state.starter, seed=seed)
+    # no seed: events reach clients, and the seed with the open-source shuffle rebuilds both decks
+    ctx.emit("match_started", starter=state.starter)
     for seat in (state.starter, state.other(state.starter)):
         ctx.draw(seat, rules.hand_size)
     state.mulligan_seat = state.starter
