@@ -19,8 +19,8 @@ Mechanics are not copyrightable; a specific expression of them is.
 ## Project shape
 
 Unofficial open-source reimplementation of the Gwent rules — targeting the **two-row standalone
-ruleset** (ADR 0009); the core on `develop` still implements the earlier three-row shape until the
-ADR's phases land, so check the ADR's phase table before rules work. Engine-agnostic **rules
+ruleset** (ADR 0009), built in phases: phase B has landed (power and board, protocol 2 on the
+server), C–F follow in order, so check the ADR's phase table before rules work. Engine-agnostic **rules
 core** (a zero-dependency Python package) → **authoritative server** (Python, FastAPI) →
 **Unity client** (C#) that renders and decides nothing — it runs no rules and needs a server even
 for a bot match.

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+# Events that carry a card's identity for its owner only (docs/protocol/match.md §8).
+PRIVATE_IDENTITY = frozenset({"card_drawn", "card_redrawn"})
+
 
 @dataclass(frozen=True)
 class Event:
@@ -23,8 +26,8 @@ def event_from_dict(d: dict[str, Any]) -> Event:
 
 
 def event_for_seat(event: Event, seat: int) -> Event:
-    """The event as ``seat`` may see it: another player's draws lose their card identity."""
-    if event.type == "card_drawn" and event.data.get("seat") != seat:
+    """The event as ``seat`` may see it: another player's draws and redraws lose their card."""
+    if event.type in PRIVATE_IDENTITY and event.data.get("seat") != seat:
         data = {k: v for k, v in event.data.items() if k not in ("instance", "card")}
         return Event(event.seq, event.type, data)
     return event

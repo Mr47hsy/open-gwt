@@ -2,35 +2,79 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import os
-import secrets
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
+from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
+import yaml
+from alembic import command
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from starlette.testclient import WebSocketTestSession
 
+from opengwt.bots import RandomBot
+from opengwt.core.engine import apply, legal_intents, new_match
+from opengwt.core.intents import (
+    CancelChoice,
+    Choose,
+    EndMulligan,
+    Intent,
+    Mulligan,
+    Pass,
+    PlayCard,
+)
+from opengwt.core.model import MatchState, Phase
 from opengwt.core.replay import record_from_dict, replay
-from opengwt.core.serialize import state_hash
+from opengwt.core.rng import bot_stream
+from opengwt.core.serialize import state_from_dict, state_hash
 from opengwt.data import load_data
 from opengwt.server.app import create_app
+from opengwt.server.backends import (
+    InlineTaskRunner,
+    MemoryEventBus,
+    MemoryMatchStore,
+    VersionConflict,
+)
 from opengwt.server.config import ConfigError, Settings
+from opengwt.server.db.session import alembic_config, make_engine
+from opengwt.server.routers import ws as ws_router
+from opengwt.server.services import matches as match_service
+from opengwt.server.services.auth import create_token
+from opengwt.server.services.matches import MatchService
 
 REPO = Path(__file__).resolve().parents[2]
-PINNED_SEED = 1_234_567_890
+PINNED_SEED = "0123456789abcdef" * 4
+
+
+SECRET = "test-secret-long-enough-for-hmac-sha256-keys"
+
+
+def _settings(tmp_path: Path, **overrides: Any) -> Settings:
+    return Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
+        data_dir=REPO / "data",
+        auth_secret=SECRET,
+        **overrides,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _scripts_play_faster_than_people(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A scripted client plays a whole match within a second, redraws included; the rate limit
+    is for people and would close its socket (4429)."""
+    monkeypatch.setattr(ws_router, "INTENTS_PER_SECOND", 10_000)
 
 
 @pytest.fixture
 def client(tmp_path: Path) -> Iterator[TestClient]:
-    settings = Settings(
-        database_url=f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
-        data_dir=REPO / "data",
-        auth_secret="test-secret-long-enough-for-hmac-sha256-keys",
-    )
-    with TestClient(create_app(settings)) as test_client:
+    with TestClient(create_app(_settings(tmp_path))) as test_client:
         yield test_client
 
 
@@ -42,8 +86,9 @@ def _guest(client: TestClient, name: str = "guest") -> tuple[dict[str, str], str
 
 
 class Scripted:
-    """A scripted client: plays the first legal card, otherwise passes; never sees more than
-    its view, and asserts on every message that hidden information stayed hidden."""
+    """A scripted client: redraws once in each mulligan, then plays the first legal card at the
+    left end of its row, otherwise passes; never sees more than its view, and asserts on every
+    message that hidden information stayed hidden."""
 
     def __init__(self, ws: WebSocketTestSession, seat: int) -> None:
         self.ws = ws
@@ -54,6 +99,7 @@ class Scripted:
         self.sent = 0
         self.events: list[dict[str, Any]] = []
         self.messages: list[dict[str, Any]] = []
+        self.redrew_in_round = 0
 
     def receive(self) -> dict[str, Any]:
         message: dict[str, Any] = self.ws.receive_json()
@@ -68,7 +114,8 @@ class Scripted:
         elif kind == "events":
             for event in message["events"]:
                 self.events.append(event)
-                if event["type"] == "card_drawn" and event["seat"] != self.seat:
+                private = event["type"] in ("card_drawn", "card_redrawn")
+                if private and event["seat"] != self.seat:
                     assert "card" not in event and "instance" not in event
                 if event["type"] == "choice_requested" and event["seat"] != self.seat:
                     assert "options" not in event
@@ -86,11 +133,20 @@ class Scripted:
         if not legal:
             return None
         if view["phase"] == "mulligan":
-            return {"kind": "mulligan", "cards": [c["instance"] for c in view["me"]["hand"][:1]]}
+            redraws = [i for i in legal if i["kind"] == "mulligan"]
+            if redraws and self.redrew_in_round != view["round"]:
+                self.redrew_in_round = view["round"]
+                return redraws[0]
+            return {"kind": "end_mulligan"}
         if view["phase"] == "choosing":
             return legal[0]
         plays = [i for i in legal if i["kind"] == "play_card"]
-        return plays[0] if plays else {"kind": "pass"}
+        if not plays:
+            return {"kind": "pass"}
+        play = dict(plays[0])
+        if "row" in play:
+            play["position"] = 0
+        return play
 
     def step(self) -> None:
         """Act on the current view if it is this seat's move, then wait for the next view."""
@@ -111,7 +167,7 @@ class Scripted:
 
 def _handshake(ws: WebSocketTestSession, expect_view: bool = True) -> tuple[int, dict[str, Any]]:
     hello = ws.receive_json()
-    assert hello["type"] == "hello" and hello["protocol"] == 1
+    assert hello["type"] == "hello" and hello["protocol"] == 2
     if not expect_view:
         return hello["seat"], hello
     view = ws.receive_json()
@@ -122,13 +178,14 @@ def _handshake(ws: WebSocketTestSession, expect_view: bool = True) -> tuple[int,
 def test_health_pack_and_i18n(client: TestClient) -> None:
     assert client.get("/health").json() == {"status": "ok"}
     pack = client.get("/content/pack")
-    assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/1"
+    assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/2"
+    assert pack.json()["rules"]["row_capacity"] == 9
     etag = pack.headers["etag"]
     assert client.get("/content/pack", headers={"If-None-Match": etag}).status_code == 304
     locales = client.get("/content/i18n").json()
     assert locales["locales"] == ["en", "ru", "zh-CN"] and locales["pack_hash"] == etag.strip('"')
     table = client.get("/content/i18n/zh-CN").json()
-    assert table["card.a-u-0001.name"] == "占位 A 单位 1"
+    assert table["card.u-1001.name"] == "占位 A 单位 1"
     missing = client.get("/content/i18n/fr")
     assert missing.status_code == 404
     error = missing.json()["error"]
@@ -154,18 +211,33 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
     bad = client.put(
         "/decks/mine",
         headers=headers,
-        json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "a-u-0001", "count": 3}]},
+        json={
+            "name": "x",
+            "faction": "placeholder-a",
+            "leader": "l-1001",
+            "stratagem": "g-0002",
+            "cards": [{"id": "u-1001", "count": 3}, {"id": "u-2001", "count": 1}],
+        },
     )
     assert bad.status_code == 422
-    assert "error.deck.too-few-units" in bad.json()["error"]["details"]["problems"]
+    problems = bad.json()["error"]["details"]["problems"]
+    assert problems == ["error.deck.wrong-faction:u-2001", "error.deck.too-few-cards"]
+    no_leader = client.put(
+        "/decks/mine",
+        headers=headers,
+        json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "u-1001", "count": 25}]},
+    )
+    assert no_leader.status_code == 422  # a deck names its leader and its stratagem
+    starter = yaml.safe_load((REPO / "data" / "decks" / "starter-a.deck.yaml").read_text())
     good = client.put(
         "/decks/mine",
         headers=headers,
         json={
             "name": "mine",
             "faction": "placeholder-a",
-            "leader": "a-l-0001",
-            "cards": [{"id": "a-u-0001", "count": 22}, {"id": "n-s-0009", "count": 1}],
+            "leader": starter["leader"],
+            "stratagem": starter["stratagem"],
+            "cards": starter["cards"],
         },
     )
     assert good.status_code == 200 and good.json()["deck_id"] == "mine"
@@ -211,7 +283,7 @@ def test_the_seed_reaches_no_client_before_the_match_ends(
     """With the seed and the open-source shuffle a client rebuilds both decks' order, so no
     message may carry it while the match runs, resync from the first event included (match.md
     §11). The replay record, served only after the end, is where it belongs."""
-    monkeypatch.setattr(secrets, "randbits", lambda bits: PINNED_SEED)
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
     headers, token = _guest(client)
     created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})
     match_id = created.json()["match_id"]
@@ -232,9 +304,113 @@ def test_the_seed_reaches_no_client_before_the_match_ends(
 
     for message in [created.json(), first, *me.messages]:
         text = json.dumps(message)
-        assert '"seed"' not in text and str(PINNED_SEED) not in text, message
+        assert '"seed"' not in text and PINNED_SEED not in text, message
     record = client.get(f"/matches/{match_id}/replay", headers=headers).json()["record"]
     assert record["seed"] == PINNED_SEED
+
+
+def _play_bot_match(client: TestClient) -> tuple[dict[str, str], str, Scripted]:
+    headers, token = _guest(client)
+    created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})
+    match_id = created.json()["match_id"]
+    with client.websocket_connect(f"/ws/matches/{match_id}?token={token}") as ws:
+        seat, first = _handshake(ws)
+        me = Scripted(ws, seat)
+        me.view, me.seq = first["view"], first["seq"]
+        for _ in range(400):
+            if me.result is not None:
+                break
+            me.step()
+        assert me.result is not None, "the match did not finish"
+    return headers, match_id, me
+
+
+def test_the_bot_draws_from_its_own_stream_for_each_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 0010: decision ``i`` of the intent log is made by a fresh bot on the stream labelled
+    ``i``, so the bot keeps no state between calls and its choices are not the match's stream."""
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
+    with TestClient(create_app(_settings(tmp_path, bot="random"))) as client:
+        headers, match_id, me = _play_bot_match(client)
+        body = client.get(f"/matches/{match_id}/replay", headers=headers).json()
+    record = record_from_dict(body["record"])
+    library = load_data(REPO / "data").library
+    state, _ = new_match(library, record.decks, record.seed, record.rules)
+    bot_decisions = 0
+    for index, (seat, intent) in enumerate(record.intents):
+        if seat != me.seat:
+            bot = RandomBot(bot_stream(PINNED_SEED, index))
+            assert intent == bot.choose(library, state, seat, legal_intents(library, state, seat))
+            bot_decisions += 1
+        state, _ = apply(library, state, seat, intent)
+    assert bot_decisions > 5 and state_hash(state) == body["result"]["final_hash"]
+
+
+def test_matches_from_before_phase_b_stay_as_history(tmp_path: Path) -> None:
+    """Migration 0002 turns ``matches.seed`` into text; a v1 match keeps its decimal seed and is
+    served as its ``opengwt.record/1`` data."""
+    url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
+    v1_deck = {"faction": "placeholder-a", "leader": "a-l-0001", "cards": ["a-u-0001"]}
+
+    async def old_database() -> str:
+        engine = make_engine(url)
+        config = alembic_config()
+
+        def upgrade(revision: str) -> Any:
+            def run(connection: Any) -> None:
+                config.attributes["connection"] = connection
+                command.upgrade(config, revision)
+
+            return run
+
+        async with engine.begin() as connection:
+            await connection.run_sync(upgrade("0001"))
+            await connection.execute(
+                text(
+                    "INSERT INTO players (id, display_name, locale, created_at) "
+                    "VALUES ('p1', 'old', NULL, '2026-09-01 00:00:00')"
+                )
+            )
+            await connection.execute(
+                text(
+                    "INSERT INTO matches (id, mode, status, room_code, seed, seat0_player_id, "
+                    "seat1_player_id, decks, rules, result, created_at, finished_at) VALUES "
+                    "('m1', 'bot', 'finished', NULL, 1234567, 'p1', 'bot', :decks, :rules, "
+                    ":result, '2026-09-01 00:00:00', '2026-09-01 00:10:00')"
+                ),
+                {
+                    "decks": json.dumps([v1_deck, v1_deck]),
+                    "rules": json.dumps({"hand_size": 10, "lives": 2}),
+                    "result": json.dumps({"winner": 0}),
+                },
+            )
+            await connection.execute(
+                text(
+                    'INSERT INTO match_intents (match_id, "index", seat, intent) '
+                    "VALUES ('m1', 0, 0, :intent)"
+                ),
+                {"intent": json.dumps({"kind": "pass"})},
+            )
+        async with engine.begin() as connection:
+            await connection.run_sync(upgrade("head"))
+            seed = (await connection.execute(text("SELECT seed FROM matches"))).scalar_one()
+        await engine.dispose()
+        return str(seed)
+
+    assert asyncio.run(old_database()) == "1234567"
+    token = create_token("p1", SECRET, 600)
+    headers = {"Authorization": f"Bearer {token}"}
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        assert client.get("/matches/m1", headers=headers).json()["status"] == "finished"
+        body = client.get("/matches/m1/replay", headers=headers).json()
+    assert body["record"] == {
+        "schema": "opengwt.record/1",
+        "seed": 1234567,
+        "rules": {"hand_size": 10, "lives": 2},
+        "decks": [v1_deck, v1_deck],
+        "intents": [{"seat": 0, "intent": {"kind": "pass"}}],
+    }
 
 
 def test_two_clients_play_through_a_room_and_one_reconnects(client: TestClient) -> None:
@@ -335,6 +511,204 @@ def test_socket_rejects_strangers(client: TestClient) -> None:
         client.websocket_connect(f"/ws/matches/{match_id}?token=garbage") as ws,
     ):
         ws.receive_json()
+
+
+def test_the_turn_timer_plays_for_a_player_who_never_moves(tmp_path: Path) -> None:
+    """match.md §9: a player who does not move within the turn timeout has their mulligan ended
+    and their turns passed by the server, so a match against the bot still runs to its end."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=0.05))) as client:
+        headers, _ = _guest(client)
+        created = client.post(
+            "/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"}
+        )
+        match_id = created.json()["match_id"]
+        give_up = time.monotonic() + 30
+        while (status := client.get(f"/matches/{match_id}", headers=headers).json())[
+            "status"
+        ] != "finished":
+            assert time.monotonic() < give_up, "the turn timer did not finish the match"
+            time.sleep(0.05)
+        body = client.get(f"/matches/{match_id}/replay", headers=headers).json()
+    record = record_from_dict(body["record"])
+    mine = [intent for seat, intent in record.intents if seat == status["seat"]]
+    assert EndMulligan() in mine and Pass() in mine
+    assert all(i in (EndMulligan(), CancelChoice(), Choose(0), Pass()) for i in mine), mine
+    final, _ = replay(load_data(REPO / "data").library, record)
+    assert state_hash(final) == body["result"]["final_hash"]
+
+
+class _Room:
+    """A room match between two guests, moved and timed out through ``MatchService`` directly
+    so a test decides exactly which timer fires when."""
+
+    def __init__(self, client: TestClient) -> None:
+        h0, _ = _guest(client, "a")
+        h1, _ = _guest(client, "b")
+        room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"})
+        self.match_id: str = room.json()["match_id"]
+        joined = client.post(
+            "/matches/join",
+            headers=h1,
+            json={"room_code": room.json()["room_code"], "deck_id": "starter-b"},
+        )
+        assert joined.status_code == 200
+        self.service: MatchService = client.app.state.matches  # type: ignore[attr-defined]
+        assert client.portal is not None
+        self.portal = client.portal
+
+    def state(self) -> MatchState:
+        loaded = self.portal.call(self.service.store.load, self.match_id)
+        assert loaded is not None
+        return state_from_dict(loaded[0]["state"])
+
+    def legal(self, seat: int) -> list[Intent]:
+        return legal_intents(self.service.content.library, self.state(), seat)
+
+    def move(self, seat: int, intent: Intent) -> None:
+        self.portal.call(self.service.apply, self.match_id, seat, intent)
+
+    def timer(self, seat: int) -> Any:
+        return self.service._deadlines.get((self.match_id, seat))
+
+    def time_out(self, seat: int, timer: Any) -> None:
+        self.portal.call(self.service.timeout_move, self.match_id, seat, timer.wait)
+
+
+def test_a_timer_set_before_the_players_move_does_nothing(tmp_path: Path) -> None:
+    """The opponent has passed, so the player keeps the turn after playing a card. The timer set
+    before that card must not pass on the player's next turn; only the one the card re-armed
+    may."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client)
+        starter = room.state().starter
+        player = 1 - starter
+        room.move(starter, EndMulligan())
+        room.move(player, EndMulligan())
+        room.move(starter, Pass())
+        stale = room.timer(player)
+        assert stale is not None and room.timer(starter) is None
+
+        play = next(i for i in room.legal(player) if isinstance(i, PlayCard) and i.row is not None)
+        room.move(player, replace(play, position=0))
+        after = room.state()
+        assert after.turn == player
+        fresh = room.timer(player)
+        assert fresh is not None and fresh != stale
+
+        room.time_out(player, stale)
+        assert room.state().seq == after.seq and not room.state().players[player].passed
+
+        room.time_out(player, fresh)
+        history = room.portal.call(room.service.history, room.match_id, after.seq)
+        passed = [e for p in history for e in p["events"] if e["type"] == "player_passed"]
+        assert [e["seat"] for e in passed] == [player]
+
+
+def test_both_players_mulligan_on_their_own_clock(tmp_path: Path) -> None:
+    """Both players mulligan at once (match.md §6), so each has a timer from the start of the
+    mulligan: the other player's redraws neither restart it nor cancel it, and ending one
+    mulligan stops only that player's timer."""
+    with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
+        room = _Room(client)
+        starter = room.state().starter
+        other = 1 - starter
+        clocks = {seat: room.timer(seat) for seat in (0, 1)}
+        assert clocks[0] is not None and clocks[0] == clocks[1]
+
+        redraw = next(i for i in room.legal(other) if isinstance(i, Mulligan))
+        room.move(other, redraw)
+        assert {seat: room.timer(seat) for seat in (0, 1)} == clocks
+
+        room.time_out(starter, clocks[starter])
+        players = room.state().players
+        assert players[starter].mulligan is not None and players[starter].mulligan.done
+        assert players[other].mulligan is not None and not players[other].mulligan.done
+        assert room.timer(starter) is None and room.timer(other) == clocks[other]
+
+        room.time_out(other, clocks[other])
+        state = room.state()
+        assert state.phase is Phase.PLAYING and state.turn == starter
+        assert room.timer(starter) is not None and room.timer(other) is None
+
+
+def _timer_service(monkeypatch: pytest.MonkeyPatch, timeout_move: Any) -> MatchService:
+    """A ``MatchService`` for driving ``run_timers`` alone, with its move replaced."""
+    service = MatchService(
+        content=cast(Any, None),
+        store=MemoryMatchStore(),
+        bus=MemoryEventBus(),
+        sessions=cast(Any, None),
+        tasks=InlineTaskRunner(),
+        settings=Settings(),
+    )
+    monkeypatch.setattr(service, "timeout_move", timeout_move)
+    return service
+
+
+def _due(seq: int) -> Any:
+    return match_service._Deadline(0.0, ("seq", seq))
+
+
+async def _until(condition: Callable[[], bool], within: float = 5.0) -> None:
+    give_up = asyncio.get_running_loop().time() + within
+    while not condition():
+        assert asyncio.get_running_loop().time() < give_up, "timed out"
+        await asyncio.sleep(0.001)
+
+
+async def test_the_timer_loop_outlives_a_failing_match(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """One loop serves every match on the worker: a store conflict or a bot that never yields in
+    one match is logged, and the others still time out."""
+    failures = {"conflict": VersionConflict("stale"), "runaway": RuntimeError("no yield")}
+    moved: list[str] = []
+
+    async def timeout_move(match_id: str, seat: int, wait: Any) -> None:
+        moved.append(match_id)
+        if match_id in failures:
+            raise failures[match_id]
+
+    service = _timer_service(monkeypatch, timeout_move)
+    for match_id in ("conflict", "runaway", "fine"):
+        service._deadlines[(match_id, 0)] = _due(1)
+    loop = asyncio.create_task(service.run_timers(0.001))
+    try:
+        await _until(lambda: "fine" in moved)
+        service._deadlines[("later", 0)] = _due(1)
+        await _until(lambda: "later" in moved)
+        assert not loop.done()
+    finally:
+        loop.cancel()
+    assert moved == ["conflict", "runaway", "fine", "later"]
+    errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+    assert errors == ["timer for conflict failed", "timer for runaway failed"]
+
+
+async def test_a_timer_re_armed_while_the_loop_runs_is_kept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """While the loop moves for one match, a player's move on another re-arms that match's
+    timer. The loop listed the old timer before; it must skip it and keep the new one."""
+    moved: list[tuple[str, Any]] = []
+    fresh = match_service._Deadline(asyncio.get_running_loop().time() + 3600, ("seq", 7))
+
+    async def timeout_move(match_id: str, seat: int, wait: Any) -> None:
+        moved.append((match_id, wait))
+        if match_id == "first":
+            service._deadlines[("second", 1)] = fresh
+
+    service = _timer_service(monkeypatch, timeout_move)
+    service._deadlines[("first", 0)] = _due(1)
+    service._deadlines[("second", 1)] = _due(3)
+    loop = asyncio.create_task(service.run_timers(0.001))
+    try:
+        await _until(lambda: bool(moved))
+        await asyncio.sleep(0.02)
+    finally:
+        loop.cancel()
+    assert moved == [("first", ("seq", 1))]
+    assert service._deadlines == {("second", 1): fresh}
 
 
 def test_settings_layers_and_deployment_checks(

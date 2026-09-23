@@ -23,6 +23,7 @@ def _out(row: DeckRow) -> DeckOut:
         name=row.name,
         faction=row.faction,
         leader=row.leader,
+        stratagem=row.stratagem,
         cards=[DeckCardEntry(**c) for c in row.cards],
     )
 
@@ -30,15 +31,22 @@ def _out(row: DeckRow) -> DeckOut:
 async def resolve_deck(
     request: Request, session: AsyncSession, player_id: str, deck_id: str
 ) -> Deck:
-    """A player's own deck by id, or one of the starter decks shipped with the content."""
+    """A player's own deck by id, or one of the starter decks shipped with the content. A saved
+    deck the current content makes illegal — one saved before ADR 0009 phase B, say — is refused
+    with its problems."""
+    content: Content = request.app.state.content
     row = await session.get(DeckRow, deck_id)
     if row is not None and row.player_id == player_id:
-        return Deck(
+        deck = Deck(
             faction=row.faction,
             cards=tuple(c["id"] for c in row.cards for _ in range(int(c["count"]))),
-            leader=row.leader,
+            leader=row.leader or "",
+            stratagem=row.stratagem or "",
         )
-    content: Content = request.app.state.content
+        problems = check_deck(content.library, deck, Rules())
+        if problems:
+            raise AppError("deck_illegal", 422, details={"problems": problems})
+        return deck
     starter = content.starter_decks.get(deck_id)
     if starter is not None:
         return starter
@@ -66,6 +74,7 @@ async def put_deck(
         faction=body.faction,
         cards=tuple(c.id for c in body.cards for _ in range(c.count)),
         leader=body.leader,
+        stratagem=body.stratagem,
     )
     problems = check_deck(library, deck, Rules())
     if problems:
@@ -79,6 +88,7 @@ async def put_deck(
     row.name = body.name
     row.faction = body.faction
     row.leader = body.leader
+    row.stratagem = body.stratagem
     row.cards = [c.model_dump() for c in body.cards]
     row.updated_at = datetime.now(timezone.utc)
     await session.flush()

@@ -36,9 +36,9 @@ def test_conformance_suite_matches_the_protocol_example() -> None:
 def test_real_tables_render_card_names(dataset) -> None:  # type: ignore[no-untyped-def]
     renderer = Renderer(dataset.i18n)
     assert renderer.locales == ("en", "ru", "zh-CN")
-    assert renderer.render("zh-CN", "card.a-u-0001.name") == "占位 A 单位 1"
-    assert renderer.render("ru", "card.a-u-0001.name").startswith("Заглушка A")
-    assert renderer.render("fr", "card.a-u-0001.name") == "Placeholder A unit 1"
+    assert renderer.render("zh-CN", "card.u-1001.name") == "占位 A 单位 1"
+    assert renderer.render("ru", "card.u-1001.name").startswith("Заглушка A")
+    assert renderer.render("fr", "card.u-1001.name") == "Placeholder A unit 1"
 
 
 @pytest.mark.parametrize(

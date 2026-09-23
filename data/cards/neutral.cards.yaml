@@ -1,54 +1,122 @@
-# Placeholder content for the MVP. Ids are opaque and never shown; every name is a TODO for a
-# human writer (data/i18n/<locale>/cards.yaml). Mechanics only — see docs/protocol/cards.md.
-schema: opengwt.cards/1
+# Placeholder content for ADR 0009 phase B. Ids are opaque and never shown; every name is a TODO
+# for a human writer (data/i18n/<locale>/cards.yaml). Mechanics only — see docs/protocol/cards.md.
+# data/ uses only the words the phase-B engine acts on; leaders' activated abilities wait for C.
+schema: opengwt.cards/2
 faction: neutral
 
 cards:
-  n-u-0001: { kind: unit, rows: [melee, ranged], power: 7 }
-  n-u-0002: { kind: unit, rows: [siege], power: 8 }
-  n-u-0003: { kind: unit, rows: [melee], power: 15, traits: [immune] }
+  u-0001:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 6
 
-  # row effects, both sides
-  n-s-0001:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [melee], sides: both }
-  n-s-0002:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [ranged], sides: both }
-  n-s-0003:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: power_to_one, rows: [siege], sides: both }
-  # clears the power-to-one effect everywhere; doubling stays
-  n-s-0004:
-    kind: special
-    abilities:
-      - { when: played, do: clear_row_effects, effects: [power_to_one] }
+  # nothing can be added to it
+  u-0002:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 5
+    armor: 1
+    statuses: [status_proof]
 
-  # row doubling, own side
-  n-s-0005:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: double_power, rows: [melee], sides: self }
-  n-s-0006:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: double_power, rows: [ranged], sides: self }
-  n-s-0007:
-    kind: special
-    abilities:
-      - { when: played, do: apply_row_effect, effect: double_power, rows: [siege], sides: self }
+  # strong, and gone for good when it leaves the board
+  u-0003:
+    kind: unit
+    color: gold
+    provisions: 7
+    power: 9
+    statuses: [banish_on_leave]
 
-  # takes the place of one of your units, which returns to hand
-  n-s-0008:
-    kind: special
+  u-0004:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
     abilities:
-      - { when: played, do: swap_with_board_unit, where: { traits_none: [immune] }, choose: player }
+      - when: on_play
+        do: reset_power
+        target: { units: chosen, side: both, where: { boosted: true } }
 
-  # destroys the strongest non-immune units on the whole board
-  n-s-0009:
-    kind: special
+  # punishes the opponent's units that landed on this side
+  u-0005:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
     abilities:
-      - { when: played, do: destroy, target: { side: both, units: strongest } }
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: all, side: self, where: { statuses_any: [on_enemy_side] } }
+
+  # a token some stratagems place
+  t-0001:
+    kind: unit
+    token: true
+    power: 2
+
+  # stratagems (ADR 0011): the player who goes first starts with theirs on the board, taking a
+  # place on its row; each is used once and then banished
+  g-0001:
+    kind: stratagem
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 3
+        target: { units: chosen, side: self }
+
+  g-0002:
+    kind: stratagem
+    rows: [ranged]
+    abilities:
+      - when: on_activate
+        do: place_new_card
+        card: t-0001
+        count: 2
+
+  g-0003:
+    kind: stratagem
+    abilities:
+      - when: on_activate
+        do: draw
+        count: 1
+
+  s-0001:
+    kind: special
+    color: gold
+    provisions: 6
+    abilities:
+      - when: on_play
+        do: discard
+        cards: { pick: random, count: 2 }
+      - when: on_play
+        do: draw
+        count: 2
+
+  s-0002:
+    kind: special
+    color: bronze
+    provisions: 4
+    abilities:
+      - when: on_play
+        do: clear_row_effect
+        row_target: { pick: all, side: both }
+
+  s-0003:
+    kind: special
+    color: gold
+    provisions: 9
+    abilities:
+      - when: on_play
+        do: destroy
+        target: { units: strongest, side: both }
+
+  s-0004:
+    kind: special
+    color: bronze
+    provisions: 5
+    abilities:
+      - when: on_play
+        do: banish
+        target: { units: chosen, side: both, where: { statuses_any: [locked] } }

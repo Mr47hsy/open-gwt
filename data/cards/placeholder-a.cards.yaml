@@ -1,57 +1,240 @@
-# Placeholder faction A: copies that pull each other from the deck and grow together.
-schema: opengwt.cards/1
+# Placeholder faction A: copies that pull each other from the deck, boosts, armour and auras.
+# Ids are opaque and never shown; every name is a TODO for a human writer.
+schema: opengwt.cards/2
 faction: placeholder-a
 
 cards:
-  a-u-0001: { kind: unit, rows: [melee], power: 5 }
-  a-u-0002: { kind: unit, rows: [melee], power: 6 }
-  a-u-0003: { kind: unit, rows: [ranged], power: 5 }
-  a-u-0004: { kind: unit, rows: [ranged], power: 6 }
-  a-u-0005: { kind: unit, rows: [siege], power: 6 }
-  a-u-0006: { kind: unit, rows: [siege], power: 8 }
-  a-u-0007:
+  u-1001:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 4
+    power: 5
+    tags: [tag-a]
+
+  u-1002:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    armor: 2
+
+  # every other copy moves from the deck onto the board
+  u-1003:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    tags: [tag-a]
+    abilities:
+      - when: on_play
+        do: summon_from_deck
+        cards: { pick: all, where: { same_id_as_this: true } }
+
+  u-1004:
+    kind: unit
+    color: bronze
+    provisions: 5
     power: 4
     abilities:
-      - { when: played, do: summon_from_deck, same_id: true }
-  a-u-0008:
+      - when: on_play
+        do: boost
+        amount: 1
+        target: { units: all, side: self, where: { tags_any: [tag-a] } }
+
+  u-1005:
     kind: unit
-    rows: [ranged]
+    color: bronze
+    provisions: 6
+    power: 3
+    abilities:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: row
+
+  u-1006:
+    kind: unit
+    color: bronze
+    provisions: 6
     power: 4
     abilities:
-      - { when: played, do: summon_from_deck, same_id: true }
-  a-u-0009:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: adjacent
+
+  # armour on the melee row, random damage from the ranged row
+  u-1007:
     kind: unit
-    rows: [melee]
-    power: 4
-    abilities:
-      - { when: always, do: multiply_power_by_copies }
-  a-u-0010:
-    kind: unit
-    rows: [siege]
+    color: bronze
+    provisions: 5
     power: 5
     abilities:
-      - { when: always, do: multiply_power_by_copies }
-  a-u-0011:
+      - when: on_play
+        if: { on_row: melee }
+        do: add_armor
+        amount: 2
+        target: { units: this }
+      - when: on_play
+        if: { on_row: ranged }
+        do: damage
+        amount: 1
+        target: { units: random, side: opponent, count: 2 }
+
+  u-1008:
     kind: unit
-    rows: [ranged]
-    power: 2
+    color: bronze
+    provisions: 5
+    power: 3
     abilities:
-      - { when: always, do: boost_row_others, amount: 1 }
-  a-u-0012: { kind: unit, rows: [melee], power: 10, traits: [immune] }
-  a-u-0013: { kind: unit, rows: [ranged], power: 10, traits: [immune] }
-  a-u-0014: { kind: unit, rows: [melee, ranged], power: 5 }
+      - when: on_play
+        do: add_status
+        status: growing
+        turns: 3
+        target: { units: this }
 
-  # destroys the strongest opponent melee units once that row totals 10 or more
-  a-s-0001:
+  u-1009:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: raise_base_power
+        amount: 1
+        target: { units: chosen, side: self }
+
+  u-1010:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: heal
+        target: { units: all, side: self, where: { damaged: true } }
+
+  # stays for the next round, and grows as the round ends
+  u-1011:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    statuses: [kept_at_round_end]
+    abilities:
+      - when: on_round_end
+        do: boost
+        amount: 2
+        target: { units: this }
+
+  u-1012:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: shielded
+        target: { units: chosen, side: self, where: { statuses_none: [shielded] } }
+
+  u-1013:
+    kind: unit
+    color: gold
+    provisions: 9
+    power: 7
+    armor: 3
+    statuses: [guarding]
+
+  u-1014:
+    kind: unit
+    color: gold
+    provisions: 9
+    power: 5
+    abilities:
+      - when: on_play
+        do: drain
+        amount: 3
+        target: { units: chosen, side: opponent }
+
+  u-1015:
+    kind: unit
+    color: gold
+    provisions: 8
+    power: 5
+    abilities:
+      - when: on_play
+        if: { hand_at_most: 3 }
+        do: boost
+        amount: 4
+        target: { units: this }
+
+  u-1016:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        if: { starting_deck_without_neutral: true }
+        do: boost
+        amount: 2
+        target: { units: this }
+
+  s-1001:
     kind: special
+    color: bronze
+    provisions: 5
     abilities:
-      - when: played
-        do: destroy
-        target: { side: opponent, rows: [melee], units: strongest, where: { row_total_at_least: 10 } }
+      - when: on_play
+        do: set_row_effect
+        effect: boost_random
+        amount: 1
+        count: 2
+        row_target: { pick: all, side: self, rows: [melee] }
 
-  a-l-0001:
-    kind: leader
+  s-1002:
+    kind: special
+    color: bronze
+    provisions: 4
     abilities:
-      - { when: activated, do: clear_row_effects }
+      - when: on_play
+        do: remove_statuses
+        statuses: [poisoned, bleeding, locked]
+        target: { units: all, side: self }
+      - when: on_play
+        do: clear_row_effect
+        only: hazard
+        row_target: { pick: all, side: self }
+
+  s-1003:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: raise_base_power
+        amount: 3
+        target: { units: chosen, side: self }
+
+  a-1001:
+    kind: artifact
+    color: bronze
+    provisions: 6
+    rows: [ranged]
+    abilities:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: row
+
+  # its activated ability arrives with ADR 0009 phase C
+  l-1001:
+    kind: leader
+    provision_bonus: 15
+    activation: { charges: 2 }
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 2
+        target: { units: chosen, side: self }

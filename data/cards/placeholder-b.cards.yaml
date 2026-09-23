@@ -1,64 +1,241 @@
-# Placeholder faction B: units that deploy on the other side, bring units back, and strike rows.
-schema: opengwt.cards/1
+# Placeholder faction B: damage, statuses, hazards, units that change sides and tokens.
+# Ids are opaque and never shown; every name is a TODO for a human writer.
+schema: opengwt.cards/2
 faction: placeholder-b
 
 cards:
-  b-u-0001: { kind: unit, rows: [melee], power: 5 }
-  b-u-0002: { kind: unit, rows: [melee], power: 7 }
-  b-u-0003: { kind: unit, rows: [ranged], power: 5 }
-  b-u-0004: { kind: unit, rows: [ranged], power: 7 }
-  b-u-0005: { kind: unit, rows: [siege], power: 5 }
-  b-u-0006: { kind: unit, rows: [siege], power: 7 }
-  b-u-0007:
+  u-2001:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 4
+    power: 5
+    tags: [tag-b]
+
+  u-2002:
+    kind: unit
+    color: bronze
+    provisions: 5
     power: 4
-    deploy: opponent
     abilities:
-      - { when: played, do: draw, count: 2 }
-  b-u-0008:
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: chosen, side: opponent }
+
+  u-2003:
     kind: unit
-    rows: [ranged]
+    color: bronze
+    provisions: 5
     power: 3
-    deploy: opponent
     abilities:
-      - { when: played, do: draw, count: 2 }
-  b-u-0009:
+      - when: on_play
+        do: add_status
+        status: bleeding
+        turns: 3
+        target: { units: chosen, side: opponent }
+
+  u-2004:
     kind: unit
-    rows: [melee]
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: add_status
+        status: poisoned
+        target: { units: chosen, side: opponent }
+
+  # lands on the opponent's side; the player who played it draws a card
+  u-2005:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 7
+    side: opponent
+    abilities:
+      - when: on_play
+        do: draw
+        count: 1
+
+  u-2006:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 4
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 1
+        target: { units: all, side: opponent, where: { statuses_any: [bleeding] } }
+
+  u-2007:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    abilities:
+      - when: on_play
+        do: add_status
+        status: locked
+        target: { units: chosen, side: opponent, where: { kind: [unit, artifact] } }
+
+  u-2008:
+    kind: unit
+    color: bronze
+    provisions: 5
     power: 5
     abilities:
-      - { when: played, do: return_from_discard, where: { traits_none: [immune] }, choose: player }
-  b-u-0010:
+      - when: on_play
+        if: { units_at_least: { count: 2, side: opponent, where: { damaged: true } } }
+        do: damage
+        amount: 3
+        target: { units: strongest, side: opponent }
+
+  u-2009:
     kind: unit
-    rows: [ranged]
-    power: 5
+    color: bronze
+    provisions: 5
+    power: 3
     abilities:
-      - { when: played, do: return_from_discard, where: { traits_none: [immune] }, choose: player }
-  b-u-0011:
+      - when: on_play
+        do: place_new_card
+        card: t-2001
+        count: 2
+
+  u-2010:
     kind: unit
-    rows: [siege]
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - when: on_play
+        do: consume
+        target: { units: chosen, side: self, where: { tags_any: [tag-b] } }
+
+  u-2011:
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    abilities:
+      - when: on_play
+        do: move_to_other_row
+        target: { units: chosen, side: opponent }
+
+  u-2012:
+    kind: unit
+    color: gold
+    provisions: 10
+    power: 7
+    statuses: [immune]
+    abilities:
+      - when: on_play
+        do: destroy
+        target: { units: strongest, side: opponent, where: { power_at_least: 8 } }
+
+  u-2013:
+    kind: unit
+    color: gold
+    provisions: 9
     power: 6
     abilities:
-      - { when: played, do: boost, target: { side: self, rows: [siege] }, amount: 1 }
-  b-u-0012: { kind: unit, rows: [melee], power: 10, traits: [immune] }
-  b-u-0013: { kind: unit, rows: [siege], power: 10, traits: [immune] }
-  b-u-0014: { kind: unit, rows: [ranged, siege], power: 6 }
-  b-u-0015:
+      - when: on_play
+        do: duel
+        target: { units: chosen, side: opponent }
+
+  u-2014:
     kind: unit
-    rows: [melee]
+    color: gold
+    provisions: 10
+    power: 4
+    abilities:
+      - when: on_play
+        do: take_control
+        target: { units: chosen, side: opponent, where: { power_at_most: 4 } }
+
+  # heals itself as the round ends, before the scores are compared
+  u-2015:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 5
+    abilities:
+      - when: on_round_end
+        if: { this: { damaged: true } }
+        do: heal
+        target: { units: this }
+
+  t-2001:
+    kind: unit
+    token: true
     power: 1
-    abilities:
-      - when: played
-        do: destroy
-        target: { side: opponent, rows: [ranged], units: strongest, where: { row_total_at_least: 10 } }
+    tags: [tag-b]
 
-  b-s-0001:
+  s-2001:
     kind: special
+    color: bronze
+    provisions: 5
     abilities:
-      - { when: played, do: draw, count: 2 }
+      - when: on_play
+        do: set_row_effect
+        effect: damage_weakest
+        amount: 2
+        row_target: { pick: all, side: opponent, rows: [melee] }
 
-  b-l-0001:
-    kind: leader
+  s-2002:
+    kind: special
+    color: bronze
+    provisions: 5
     abilities:
-      - { when: activated, do: apply_row_effect, effect: double_power, rows: [melee], sides: self }
+      - when: on_play
+        do: set_row_effect
+        effect: damage_random
+        amount: 1
+        count: 3
+        row_target: { pick: all, side: opponent, rows: [ranged] }
+
+  s-2003:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: set_row_effect
+        effect: damage_on_arrival
+        amount: 2
+        row_target: { pick: all, side: opponent }
+
+  s-2004:
+    kind: special
+    color: gold
+    provisions: 8
+    abilities:
+      - when: on_play
+        do: set_row_effect
+        effect: damage_strongest
+        amount: 2
+        row_target: { pick: all, side: opponent, rows: [ranged] }
+
+  # immune; as the round ends, damages a random enemy unit by 2
+  a-2001:
+    kind: artifact
+    color: bronze
+    provisions: 6
+    rows: [melee]
+    statuses: [immune]
+    abilities:
+      - when: on_round_end
+        do: damage
+        amount: 2
+        target: { units: random, side: opponent }
+
+  # its activated ability arrives with ADR 0009 phase C
+  l-2001:
+    kind: leader
+    provision_bonus: 15
+    activation: { charges: 1 }
+    abilities:
+      - when: on_activate
+        do: damage
+        amount: 3
+        target: { units: chosen, side: opponent }

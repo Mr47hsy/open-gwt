@@ -1,26 +1,28 @@
-schema: opengwt.deck/1
+# Legal under the default Rules (cards.md §12): 25 cards, 21 units, bronze at most twice, gold
+# once, 135 provisions of a 150 + 15 budget, and no neutral card among its cards.
+schema: opengwt.deck/2
 id: starter-a
 faction: placeholder-a
-leader: a-l-0001
+leader: l-1001
+stratagem: g-0002
 cards:
-  - { id: a-u-0001, count: 2 }
-  - { id: a-u-0002, count: 2 }
-  - { id: a-u-0003, count: 2 }
-  - { id: a-u-0004, count: 2 }
-  - { id: a-u-0005, count: 2 }
-  - { id: a-u-0006, count: 1 }
-  - { id: a-u-0007, count: 3 }
-  - { id: a-u-0008, count: 3 }
-  - { id: a-u-0009, count: 3 }
-  - { id: a-u-0010, count: 2 }
-  - { id: a-u-0011, count: 2 }
-  - { id: a-u-0012, count: 1 }
-  - { id: a-u-0013, count: 1 }
-  - { id: a-u-0014, count: 1 }
-  - { id: n-u-0001, count: 1 }
-  - { id: a-s-0001, count: 1 }
-  - { id: n-s-0001, count: 1 }
-  - { id: n-s-0004, count: 1 }
-  - { id: n-s-0005, count: 1 }
-  - { id: n-s-0008, count: 1 }
-  - { id: n-s-0009, count: 1 }
+  - { id: u-1001, count: 2 }
+  - { id: u-1002, count: 2 }
+  - { id: u-1003, count: 2 }
+  - { id: u-1004, count: 2 }
+  - { id: u-1005, count: 1 }
+  - { id: u-1006, count: 1 }
+  - { id: u-1007, count: 2 }
+  - { id: u-1008, count: 1 }
+  - { id: u-1009, count: 1 }
+  - { id: u-1010, count: 1 }
+  - { id: u-1011, count: 1 }
+  - { id: u-1012, count: 1 }
+  - { id: u-1013, count: 1 }
+  - { id: u-1014, count: 1 }
+  - { id: u-1015, count: 1 }
+  - { id: u-1016, count: 1 }
+  - { id: s-1001, count: 1 }
+  - { id: s-1002, count: 1 }
+  - { id: s-1003, count: 1 }
+  - { id: a-1001, count: 1 }
