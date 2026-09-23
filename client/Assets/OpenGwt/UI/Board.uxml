@@ -4,72 +4,84 @@
 
         <ui:VisualElement name="match" class="match hidden">
             <ui:VisualElement name="top-bar" class="bar">
-                <ui:Label name="opp-name" text="Opponent" class="bar__name" />
+                <ui:Label name="opp-name" class="bar__name" />
                 <ui:Label name="opp-score" text="0" class="bar__score" />
-                <ui:Label name="opp-lives" text="" class="bar__lives" />
-                <ui:Label name="opp-hand" text="" class="bar__info" />
-                <ui:Label name="opp-passed" text="" class="bar__passed" />
+                <ui:Label name="opp-lives" class="bar__lives" />
+                <ui:Label name="opp-hand" class="bar__info" />
+                <ui:Label name="opp-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
-                <ui:Label name="round-label" text="" class="bar__info" />
-                <ui:Label name="turn-label" text="" class="bar__turn" />
+                <ui:Label name="round-label" class="bar__info" />
+                <ui:Label name="turn-label" class="bar__turn" />
             </ui:VisualElement>
 
             <ui:VisualElement name="opp-board" class="side side--opponent">
-                <ui:VisualElement name="opp-row-siege" class="row"><ui:Label class="row__label" text="siege" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
-                <ui:VisualElement name="opp-row-ranged" class="row"><ui:Label class="row__label" text="ranged" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
-                <ui:VisualElement name="opp-row-melee" class="row"><ui:Label class="row__label" text="melee" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="opp-row-siege" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="opp-row-ranged" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="opp-row-melee" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="middle" class="middle">
-                <ui:Label name="status-label" text="" class="middle__status" />
-                <ui:Label name="message-label" text="" class="middle__message" />
+                <ui:Label name="status-label" class="middle__status" />
+                <ui:Label name="message-label" class="middle__message" />
             </ui:VisualElement>
 
             <ui:VisualElement name="my-board" class="side side--mine">
-                <ui:VisualElement name="my-row-melee" class="row"><ui:Label class="row__label" text="melee" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
-                <ui:VisualElement name="my-row-ranged" class="row"><ui:Label class="row__label" text="ranged" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
-                <ui:VisualElement name="my-row-siege" class="row"><ui:Label class="row__label" text="siege" /><ui:Label class="row__effects" /><ui:VisualElement class="row__units" /><ui:Label class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="my-row-melee" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="my-row-ranged" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
+                <ui:VisualElement name="my-row-siege" class="row"><ui:Label name="label" class="row__label" /><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
 
             <ui:VisualElement name="bottom-bar" class="bar">
-                <ui:Label name="my-name" text="Me" class="bar__name" />
+                <ui:Label name="my-name" class="bar__name" />
                 <ui:Label name="my-score" text="0" class="bar__score" />
-                <ui:Label name="my-lives" text="" class="bar__lives" />
-                <ui:Label name="deck-count" text="" class="bar__info" />
+                <ui:Label name="my-lives" class="bar__lives" />
+                <ui:Label name="deck-count" class="bar__info" />
                 <ui:VisualElement class="bar__spacer" />
-                <ui:Button name="btn-leader" text="Leader" class="button" />
-                <ui:Button name="btn-pass" text="Pass" class="button button--primary" />
+                <ui:Button name="btn-leader" class="button" />
+                <ui:Button name="btn-pass" class="button button--primary" />
             </ui:VisualElement>
 
             <ui:ScrollView name="hand" mode="Horizontal" class="hand" />
-            <ui:Label name="event-log" text="" class="event-log" />
+            <ui:Label name="event-log" class="event-log" />
         </ui:VisualElement>
 
         <ui:VisualElement name="connect-panel" class="overlay">
             <ui:VisualElement class="dialog">
-                <ui:Label text="open-gwt" class="dialog__title" />
-                <ui:Label text="Unofficial fan work, not approved or endorsed by CD PROJEKT RED." class="dialog__note" />
-                <ui:TextField name="server-url" label="Server" value="http://127.0.0.1:8000" class="field" />
-                <ui:TextField name="display-name" label="Name" value="Player" class="field" />
-                <ui:VisualElement class="dialog__buttons">
-                    <ui:Button name="btn-bot" text="Play against the bot" class="button button--primary" />
-                    <ui:Button name="btn-create-room" text="Create a room" class="button" />
+                <ui:Label name="title" text="open-gwt" class="dialog__title" />
+                <ui:Label name="disclaimer" class="dialog__note" />
+                <ui:VisualElement name="connect-step">
+                    <ui:TextField name="server-url" value="http://127.0.0.1:8000" class="field" />
+                    <ui:TextField name="display-name" value="Player" class="field" />
+                    <ui:DropdownField name="language" class="field" />
+                    <ui:VisualElement class="dialog__buttons">
+                        <ui:Button name="btn-connect" class="button button--primary" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:VisualElement class="dialog__buttons">
-                    <ui:TextField name="room-code-input" label="Room code" class="field field--code" />
-                    <ui:Button name="btn-join-room" text="Join" class="button" />
+                <ui:VisualElement name="lobby-step" class="hidden">
+                    <ui:DropdownField name="deck" class="field" />
+                    <ui:VisualElement class="dialog__buttons">
+                        <ui:Button name="btn-bot" class="button button--primary" />
+                        <ui:Button name="btn-create-room" class="button" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dialog__buttons">
+                        <ui:TextField name="room-code-input" class="field field--code" />
+                        <ui:Button name="btn-join-room" class="button" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dialog__buttons">
+                        <ui:Button name="btn-back" class="button" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:Label name="connect-status" text="" class="dialog__status" />
+                <ui:Label name="connect-status" class="dialog__status" />
             </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement name="modal" class="overlay hidden">
             <ui:VisualElement class="dialog dialog--wide">
-                <ui:Label name="modal-title" text="" class="dialog__title" />
+                <ui:Label name="modal-title" class="dialog__title" />
                 <ui:VisualElement name="modal-options" class="modal__options" />
                 <ui:VisualElement class="dialog__buttons">
-                    <ui:Button name="modal-confirm" text="Confirm" class="button button--primary" />
-                    <ui:Button name="modal-cancel" text="Cancel" class="button" />
+                    <ui:Button name="modal-confirm" class="button button--primary" />
+                    <ui:Button name="modal-cancel" class="button" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

@@ -1,5 +1,6 @@
-// The UI Toolkit controller: renders the latest view, offers exactly the server's legal intents,
-// and sends what the player picks. No rule lives here (ADR 0001, 0005).
+// The UI Toolkit controller: three screens (connect, lobby, match). It renders the latest view,
+// offers exactly the server's legal intents, sends what the player picks, and shows every string
+// through the message renderer. No rule lives here (ADR 0001, 0005, 0006).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,8 @@ namespace OpenGwt.UI
         private readonly MatchClient client;
         private readonly VisualElement match;
         private readonly VisualElement connectPanel;
+        private readonly VisualElement connectStep;
+        private readonly VisualElement lobbyStep;
         private readonly VisualElement modal;
         private readonly Label modalTitle;
         private readonly VisualElement modalOptions;
@@ -32,9 +35,16 @@ namespace OpenGwt.UI
         private readonly Label messageLabel;
         private readonly Label eventLog;
         private readonly Label connectStatus;
+        private readonly DropdownField language;
+        private readonly DropdownField deck;
         private readonly List<string> log = new List<string>();
         private readonly HashSet<string> mulliganSelection = new HashSet<string>();
+        private readonly HashSet<string> flash = new HashSet<string>();
+        private readonly HashSet<string> gone = new HashSet<string>();
+        private readonly Dictionary<string, string> languageByLabel = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> deckByLabel = new Dictionary<string, string>();
         private bool modalForPhase;
+        private string roomWaitingCode;
 
         public BoardView(VisualElement root, MatchClient client, string defaultServerUrl)
         {
@@ -42,6 +52,8 @@ namespace OpenGwt.UI
             this.client = client;
             match = root.Q<VisualElement>("match");
             connectPanel = root.Q<VisualElement>("connect-panel");
+            connectStep = root.Q<VisualElement>("connect-step");
+            lobbyStep = root.Q<VisualElement>("lobby-step");
             modal = root.Q<VisualElement>("modal");
             modalTitle = root.Q<Label>("modal-title");
             modalOptions = root.Q<VisualElement>("modal-options");
@@ -54,70 +66,140 @@ namespace OpenGwt.UI
             messageLabel = root.Q<Label>("message-label");
             eventLog = root.Q<Label>("event-log");
             connectStatus = root.Q<Label>("connect-status");
+            language = root.Q<DropdownField>("language");
+            deck = root.Q<DropdownField>("deck");
             root.Q<TextField>("server-url").value = defaultServerUrl;
 
+            root.Q<Button>("btn-connect").clicked += () => Run(ConnectAsync);
             root.Q<Button>("btn-bot").clicked += () => Run(StartBotAsync);
             root.Q<Button>("btn-create-room").clicked += () => Run(CreateRoomAsync);
             root.Q<Button>("btn-join-room").clicked += () => Run(JoinRoomAsync);
+            root.Q<Button>("btn-back").clicked += ShowConnectStep;
             passButton.clicked += () => Run(() => client.SendIntentAsync(Intent("pass")));
             leaderButton.clicked += () => Run(() => client.SendIntentAsync(Intent("use_leader")));
             modalCancel.clicked += HideModal;
+
+            FillLanguages();
+            language.RegisterValueChangedCallback(evt =>
+            {
+                if (languageByLabel.TryGetValue(evt.newValue, out var locale)) client.SetLocale(locale);
+                ApplyStaticTexts();
+                if (client.View != null) Render(client.View);
+            });
 
             client.ViewChanged += Render;
             client.EventReceived += OnEvent;
             client.ErrorReceived += OnError;
             client.MatchOver += OnMatchOver;
             client.SocketClosed += OnSocketClosed;
+            ApplyStaticTexts();
         }
 
-        // --- connection ---------------------------------------------------------------------
+        // --- static texts -------------------------------------------------------------------
 
-        private async Task PrepareAsync()
-        {
-            if (client.Prepared) return;
-            var server = root.Q<TextField>("server-url").value;
-            var name = root.Q<TextField>("display-name").value;
-            connectStatus.text = "Connecting to " + server + " …";
-            await client.PrepareAsync(server, name, PreferredLocale());
-            connectStatus.text = "Signed in; locale " + client.Locale;
-        }
+        private string T(string key) => client.Text(key);
 
-        private static string PreferredLocale()
+        private string T(string key, params object[] pairs) => client.Text(key, MatchClient.P(pairs));
+
+        private void FillLanguages()
         {
-            var saved = PlayerPrefs.GetString("locale", "");
-            if (!string.IsNullOrEmpty(saved)) return saved;
-            switch (Application.systemLanguage)
+            languageByLabel.Clear();
+            var labels = new List<string>();
+            foreach (var locale in client.I18n.Locales)
             {
-                case SystemLanguage.ChineseSimplified:
-                case SystemLanguage.Chinese:
-                    return "zh-CN";
-                case SystemLanguage.Russian:
-                    return "ru";
-                default:
-                    return "en";
+                var label = client.I18n.Render(locale, "ui.language.name");
+                if (label == "ui.language.name") label = locale;
+                languageByLabel[label] = locale;
+                labels.Add(label);
             }
+            language.choices = labels;
+            language.SetValueWithoutNotify(languageByLabel.FirstOrDefault(p => p.Value == client.Locale).Key ?? labels.FirstOrDefault());
+        }
+
+        private void ApplyStaticTexts()
+        {
+            root.Q<Label>("title").text = T("ui.title");
+            root.Q<Label>("disclaimer").text = T("ui.disclaimer");
+            root.Q<TextField>("server-url").label = T("ui.connect.server");
+            root.Q<TextField>("display-name").label = T("ui.connect.name");
+            language.label = T("ui.connect.language");
+            root.Q<Button>("btn-connect").text = T("ui.connect.connect");
+            deck.label = T("ui.lobby.deck");
+            root.Q<Button>("btn-bot").text = T("ui.lobby.bot");
+            root.Q<Button>("btn-create-room").text = T("ui.lobby.create-room");
+            root.Q<TextField>("room-code-input").label = T("ui.lobby.room-code");
+            root.Q<Button>("btn-join-room").text = T("ui.lobby.join");
+            root.Q<Button>("btn-back").text = T("ui.lobby.back");
+            root.Q<Label>("my-name").text = T("ui.board.me");
+            root.Q<Label>("opp-name").text = T("ui.board.opponent");
+            passButton.text = T("ui.board.pass");
+            modalConfirm.text = T("ui.modal.confirm");
+            modalCancel.text = T("ui.modal.cancel");
+            foreach (var row in RowNames)
+            {
+                root.Q<VisualElement>("my-row-" + row).Q<Label>("label").text = T("ui.row." + row);
+                root.Q<VisualElement>("opp-row-" + row).Q<Label>("label").text = T("ui.row." + row);
+            }
+            FillDecks();
+        }
+
+        private void FillDecks()
+        {
+            deckByLabel.Clear();
+            var labels = new List<string>();
+            foreach (var option in client.Decks)
+            {
+                var label = client.Text("faction." + option.Faction + ".name") + " · " + option.Id;
+                deckByLabel[label] = option.Id;
+                labels.Add(label);
+            }
+            deck.choices = labels;
+            if (labels.Count > 0 && !labels.Contains(deck.value)) deck.SetValueWithoutNotify(labels[0]);
+        }
+
+        private string SelectedDeck() => deckByLabel.TryGetValue(deck.value ?? "", out var id) ? id : client.Decks.FirstOrDefault()?.Id;
+
+        // --- connection and lobby -----------------------------------------------------------
+
+        private async Task ConnectAsync()
+        {
+            var server = root.Q<TextField>("server-url").value.Trim();
+            var name = root.Q<TextField>("display-name").value.Trim();
+            if (string.IsNullOrEmpty(name)) name = "Player";
+            connectStatus.text = T("ui.connect.connecting", "server", server);
+            await client.PrepareAsync(server, name);
+            FillLanguages();
+            ApplyStaticTexts();
+            connectStatus.text = T("ui.connect.signed-in", "name", name);
+            connectStep.AddToClassList("hidden");
+            lobbyStep.RemoveFromClassList("hidden");
+        }
+
+        private void ShowConnectStep()
+        {
+            lobbyStep.AddToClassList("hidden");
+            connectStep.RemoveFromClassList("hidden");
+            connectStatus.text = "";
         }
 
         private async Task StartBotAsync()
         {
-            await PrepareAsync();
-            await client.PlayBotAsync("starter-a");
+            await client.PlayBotAsync(SelectedDeck());
             EnterMatch();
         }
 
         private async Task CreateRoomAsync()
         {
-            await PrepareAsync();
-            var code = await client.CreateRoomAsync("starter-a");
+            var code = await client.CreateRoomAsync(SelectedDeck());
             EnterMatch();
-            statusLabel.text = "Room code: " + code + " — waiting for the other player";
+            roomWaitingCode = code;
+            statusLabel.text = T("ui.board.room-waiting", "code", code);
         }
 
         private async Task JoinRoomAsync()
         {
-            await PrepareAsync();
             var code = root.Q<TextField>("room-code-input").value;
-            await client.JoinRoomAsync(code, "starter-b");
+            await client.JoinRoomAsync(code, SelectedDeck());
             EnterMatch();
         }
 
@@ -128,6 +210,23 @@ namespace OpenGwt.UI
             log.Clear();
             eventLog.text = "";
             messageLabel.text = "";
+            statusLabel.text = "";
+            roomWaitingCode = null;
+            hand.Clear();
+            foreach (var row in RowNames)
+            {
+                root.Q<VisualElement>("my-row-" + row).Q<VisualElement>("units").Clear();
+                root.Q<VisualElement>("opp-row-" + row).Q<VisualElement>("units").Clear();
+            }
+        }
+
+        private void LeaveMatch()
+        {
+            HideModal();
+            Run(client.LeaveMatchAsync);
+            match.AddToClassList("hidden");
+            connectPanel.RemoveFromClassList("hidden");
+            connectStatus.text = "";
         }
 
         private void Run(Func<Task> action)
@@ -143,8 +242,9 @@ namespace OpenGwt.UI
             }
             catch (ApiException e)
             {
-                ShowMessage(e.Message);
-                connectStatus.text = e.Message;
+                var text = client.ErrorText(e);
+                ShowMessage(text);
+                connectStatus.text = text;
             }
             catch (Exception e)
             {
@@ -164,15 +264,16 @@ namespace OpenGwt.UI
             var me = view.Me;
             var opp = view.Opponent;
             var seat = client.Seat;
+            roomWaitingCode = null;
 
             root.Q<Label>("my-score").text = me.Score.ToString();
             root.Q<Label>("opp-score").text = opp.Score.ToString();
             root.Q<Label>("my-lives").text = Lives(me.Lives);
             root.Q<Label>("opp-lives").text = Lives(opp.Lives);
-            root.Q<Label>("deck-count").text = "deck " + me.DeckCount;
-            root.Q<Label>("opp-hand").text = "hand " + (opp.HandCount ?? 0) + " · deck " + opp.DeckCount;
-            root.Q<Label>("opp-passed").text = opp.Passed ? "PASSED" : "";
-            root.Q<Label>("round-label").text = "round " + view.Round;
+            root.Q<Label>("deck-count").text = T("ui.board.deck", "count", me.DeckCount);
+            root.Q<Label>("opp-hand").text = T("ui.board.opponent-hand", "hand", opp.HandCount ?? 0, "deck", opp.DeckCount);
+            root.Q<Label>("opp-passed").text = opp.Passed ? T("ui.board.passed") : "";
+            root.Q<Label>("round-label").text = T("ui.board.round", "round", view.Round);
             root.Q<Label>("turn-label").text = TurnText(view);
             statusLabel.text = StatusText(view);
 
@@ -181,11 +282,15 @@ namespace OpenGwt.UI
                 RenderRow(root.Q<VisualElement>("my-row-" + row), me.Rows[row], seat, view, row, true);
                 RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, view, row, false);
             }
-
             RenderHand(view);
+            flash.Clear();
+            gone.Clear();
+
             passButton.SetEnabled(HasIntent(view, "pass"));
             leaderButton.SetEnabled(HasIntent(view, "use_leader"));
-            leaderButton.text = me.Leader == null ? "No leader" : (me.Leader.Used ? "Leader used" : "Leader: " + client.CardName(me.Leader.Card));
+            leaderButton.text = me.Leader == null
+                ? T("ui.board.leader-none")
+                : me.Leader.Used ? T("ui.board.leader-used") : T("ui.board.leader", "name", client.CardName(me.Leader.Card));
 
             if (view.Phase == "mulligan" && view.Mulligan != null && view.Mulligan.Seat == seat) ShowMulligan(view);
             else if (view.Phase == "choosing" && view.PendingChoice != null) ShowChoice(view);
@@ -198,10 +303,14 @@ namespace OpenGwt.UI
         {
             switch (view.Phase)
             {
-                case "mulligan": return view.Mulligan != null && view.Mulligan.Seat == client.Seat ? "your mulligan" : "opponent's mulligan";
-                case "choosing": return view.PendingChoice != null ? "your choice" : "opponent chooses";
-                case "match_over": return "match over";
-                default: return view.Turn == "me" ? "YOUR TURN" : "opponent's turn";
+                case "mulligan":
+                    return T(view.Mulligan != null && view.Mulligan.Seat == client.Seat ? "ui.turn.your-mulligan" : "ui.turn.opponent-mulligan");
+                case "choosing":
+                    return T(view.PendingChoice != null ? "ui.turn.your-choice" : "ui.turn.opponent-choice");
+                case "match_over":
+                    return T("ui.turn.over");
+                default:
+                    return T(view.Turn == "me" ? "ui.turn.yours" : "ui.turn.opponent");
             }
         }
 
@@ -211,37 +320,42 @@ namespace OpenGwt.UI
             {
                 switch (view.Winner)
                 {
-                    case "me": return "You won the match";
-                    case "opponent": return "You lost the match";
-                    default: return "The match is a draw";
+                    case "me": return T("ui.result.won");
+                    case "opponent": return T("ui.result.lost");
+                    default: return T("ui.result.draw");
                 }
             }
-            var mine = view.Me.RoundsWon;
-            var theirs = view.Opponent.RoundsWon;
-            return "rounds " + mine + " : " + theirs;
+            return T("ui.board.rounds", "mine", view.Me.RoundsWon, "theirs", view.Opponent.RoundsWon);
         }
 
         private void RenderRow(VisualElement rowElement, RowView row, int seat, MatchView view, string rowName, bool mine)
         {
-            var units = rowElement.Q<VisualElement>(className: "row__units");
+            var units = rowElement.Q<VisualElement>("units");
             units.Clear();
             var total = 0;
             foreach (var unit in row.Units)
             {
                 total += unit.Power;
                 var classes = new List<string>();
-                if (unit.Owner != seat && mine || unit.Owner == seat && !mine) classes.Add("card--foreign");
+                if ((unit.Owner != seat) == mine) classes.Add("card--foreign");
                 var def = Def(unit.Card);
                 if (IsImmune(def)) classes.Add("card--immune");
                 if ((string)def?["kind"] == "special") classes.Add("card--special");
-                units.Add(new CardElement(unit.Instance, unit.Card, client.CardName(unit.Card), Meta(def), unit.Power, unit.Base, classes));
+                var element = new CardElement(unit.Instance, unit.Card, client.CardName(unit.Card), Meta(def), unit.Power, unit.Base, classes);
+                element.tooltip = client.CardText(unit.Card);
+                if (flash.Contains(unit.Instance)) Flash(element);
+                units.Add(element);
             }
-            rowElement.Q<Label>(className: "row__total").text = total.ToString();
-            rowElement.Q<Label>(className: "row__effects").text = string.Join("\n", row.Effects.Select(EffectTag));
+            rowElement.Q<Label>("total").text = total.ToString();
+            rowElement.Q<Label>("effects").text = string.Join("\n", row.Effects.Select(e => T("ui.effect." + e.Replace('_', '-'))));
             rowElement.EnableInClassList("row--active", mine && view.Turn == "me" && LegalRows(view).Contains(rowName));
         }
 
-        private static string EffectTag(string effect) => effect == "power_to_one" ? "power → 1" : effect == "double_power" ? "×2" : effect;
+        private static void Flash(VisualElement element)
+        {
+            element.AddToClassList("card--flash");
+            element.schedule.Execute(() => element.RemoveFromClassList("card--flash")).StartingIn(60);
+        }
 
         private void RenderHand(MatchView view)
         {
@@ -257,6 +371,7 @@ namespace OpenGwt.UI
                 if (IsImmune(def)) classes.Add("card--immune");
                 var element = new CardElement(card.Instance, card.Card, client.CardName(card.Card), Meta(def), (int?)def?["power"], null, classes);
                 element.tooltip = client.CardText(card.Card);
+                if (flash.Contains(card.Instance)) Flash(element);
                 if (rows.Count > 0)
                 {
                     var instance = card.Instance;
@@ -277,12 +392,12 @@ namespace OpenGwt.UI
                 Run(() => client.SendIntentAsync(intent));
                 return;
             }
-            var options = distinct.Select(row => (client.Text("ui.row." + row), (Action)(() =>
+            var options = distinct.Select(row => (T("ui.row." + row), (Action)(() =>
             {
                 HideModal();
                 Run(() => client.SendIntentAsync(new JObject { ["kind"] = "play_card", ["card"] = instance, ["row"] = row }));
             }))).ToList();
-            ShowModal("Choose a row", options, null, false);
+            ShowModal(T("ui.modal.choose-row"), options, false);
         }
 
         private HashSet<string> LegalRows(MatchView view) =>
@@ -300,7 +415,7 @@ namespace OpenGwt.UI
             var kind = (string)def["kind"];
             if (kind != "unit") return kind;
             var rows = def["rows"] as JArray;
-            return rows == null ? "" : string.Join("/", rows.Select(r => client.Text("ui.row." + (string)r)));
+            return rows == null ? "" : string.Join("/", rows.Select(r => T("ui.row." + (string)r)));
         }
 
         // --- modals -------------------------------------------------------------------------
@@ -309,15 +424,15 @@ namespace OpenGwt.UI
         {
             mulliganSelection.Clear();
             var max = view.Mulligan.Max;
-            var options = new List<(string, Action)>();
             modalForPhase = true;
             modal.RemoveFromClassList("hidden");
-            modalTitle.text = "Mulligan: pick up to " + max + " cards to redraw";
+            modalTitle.text = T("ui.modal.mulligan", "count", max);
             modalOptions.Clear();
             foreach (var card in view.Me.Hand)
             {
                 var def = Def(card.Card);
                 var element = new CardElement(card.Instance, card.Card, client.CardName(card.Card), Meta(def), (int?)def?["power"], null, new[] { "card--playable" });
+                element.tooltip = client.CardText(card.Card);
                 var instance = card.Instance;
                 element.RegisterCallback<ClickEvent>(_ =>
                 {
@@ -328,7 +443,6 @@ namespace OpenGwt.UI
                 modalOptions.Add(element);
             }
             modalConfirm.style.display = DisplayStyle.Flex;
-            modalConfirm.text = "Confirm";
             modalCancel.style.display = DisplayStyle.None;
             modalConfirm.clickable = new Clickable(() =>
             {
@@ -352,11 +466,11 @@ namespace OpenGwt.UI
                     Run(() => client.SendIntentAsync(new JObject { ["kind"] = "choose", ["option"] = index }));
                 }));
             }
-            ShowModal(client.Text(choice.PromptKey), options, null, true);
+            ShowModal(T(choice.PromptKey), options, true);
             modalCancel.style.display = DisplayStyle.None;
         }
 
-        private void ShowModal(string title, List<(string label, Action onClick)> options, Action onConfirm, bool forPhase)
+        private void ShowModal(string title, List<(string label, Action onClick)> options, bool forPhase)
         {
             modalForPhase = forPhase;
             modal.RemoveFromClassList("hidden");
@@ -368,9 +482,9 @@ namespace OpenGwt.UI
                 button.AddToClassList("button");
                 modalOptions.Add(button);
             }
-            modalConfirm.style.display = onConfirm == null ? DisplayStyle.None : DisplayStyle.Flex;
+            modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = DisplayStyle.Flex;
-            if (onConfirm != null) modalConfirm.clickable = new Clickable(onConfirm);
+            modalCancel.text = T("ui.modal.cancel");
         }
 
         private void HideModal()
@@ -381,15 +495,54 @@ namespace OpenGwt.UI
 
         // --- events, errors, end ------------------------------------------------------------
 
+        private string Who(JObject evt) => (int?)evt["seat"] == client.Seat ? "@ui.who.you" : "@ui.who.opponent";
+
         private void OnEvent(JObject evt)
         {
             var type = (string)evt["type"];
             var card = (string)evt["card"];
-            var line = type;
-            if (card != null) line += " " + client.CardName(card);
-            if (evt["seat"] != null) line = ((int)evt["seat"] == client.Seat ? "you: " : "opp: ") + line;
-            if (type == "power_changed") line += " " + evt["from"] + "→" + evt["to"];
-            if (type == "round_ended") line += " " + string.Join(":", ((JArray)evt["scores"]).Select(s => s.ToString())) + " winner " + evt["winner"];
+            var instance = (string)evt["instance"];
+            string line = null;
+            switch (type)
+            {
+                case "card_played":
+                case "unit_summoned":
+                case "card_placed":
+                    if (instance != null) flash.Add(instance);
+                    line = T(type == "card_played" ? "ui.event.card-played" : "ui.event.unit-summoned", "who", Who(evt), "card", "@card." + card + ".name");
+                    break;
+                case "unit_destroyed":
+                    line = T("ui.event.unit-destroyed", "card", "@card." + card + ".name");
+                    break;
+                case "unit_returned":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event.unit-returned", "who", Who(evt), "card", "@card." + card + ".name");
+                    break;
+                case "leader_used":
+                    line = T("ui.event.leader-used", "who", Who(evt));
+                    break;
+                case "player_passed":
+                    line = T("ui.event.player-passed", "who", Who(evt));
+                    break;
+                case "card_drawn":
+                    line = T("ui.event.card-drawn", "who", Who(evt), "count", 1);
+                    break;
+                case "round_ended":
+                    var scores = (JArray)evt["scores"];
+                    var mine = client.Seat == 0 ? scores[0] : scores[1];
+                    var theirs = client.Seat == 0 ? scores[1] : scores[0];
+                    line = T("ui.event.round-ended", "round", (long)evt["round"], "mine", (long)mine, "theirs", (long)theirs);
+                    break;
+                case "row_effect_applied":
+                case "row_effect_cleared":
+                    line = T(type == "row_effect_applied" ? "ui.event.row-effect-applied" : "ui.event.row-effect-cleared",
+                        "who", Who(evt), "row", "@ui.row." + (string)evt["row"], "effect", "@ui.effect." + ((string)evt["effect"]).Replace('_', '-'));
+                    break;
+                case "power_changed":
+                    if (instance != null) flash.Add(instance);
+                    break;
+            }
+            if (line == null) return;
             log.Add(line);
             while (log.Count > 4) log.RemoveAt(0);
             eventLog.text = string.Join("\n", log);
@@ -397,30 +550,19 @@ namespace OpenGwt.UI
 
         private void OnError(ErrorMessage error) => ShowMessage(client.ErrorText(error));
 
-        private void ShowMessage(string text)
-        {
-            messageLabel.text = text;
-        }
+        private void ShowMessage(string text) => messageLabel.text = text;
 
         private void OnMatchOver(MatchResult result)
         {
-            var title = result.Winner == null ? "Draw" : result.Winner == client.Seat ? "You won" : "You lost";
-            ShowModal(title, new List<(string, Action)>
-            {
-                ("Back to menu", () =>
-                {
-                    HideModal();
-                    match.AddToClassList("hidden");
-                    connectPanel.RemoveFromClassList("hidden");
-                }),
-            }, null, false);
+            var title = result.Winner == null ? T("ui.result.draw") : result.Winner == client.Seat ? T("ui.result.won") : T("ui.result.lost");
+            ShowModal(title, new List<(string, Action)> { (T("ui.modal.back"), LeaveMatch) }, false);
             modalCancel.style.display = DisplayStyle.None;
         }
 
         private void OnSocketClosed(string reason)
         {
-            if (client.Result != null) return;
-            ShowMessage("Connection lost (" + reason + "), reconnecting …");
+            if (client.Result != null || client.Socket == null) return;
+            ShowMessage(T("ui.net.lost", "reason", reason));
             Run(async () =>
             {
                 await Task.Delay(1000);
