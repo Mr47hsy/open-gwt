@@ -41,8 +41,8 @@ behaviour, not words.
 **Server**
 - M2b: Redis `MatchStore` and `EventBus`, the timer loop over a shared sorted set, and the
   multi-worker acceptance of ADR 0008. The factories in `backends/factory.py` refuse non-memory
-  URLs today.
-- Turn timeout is implemented but off by default and has no automated test.
+  URLs today. A shared timer keeps the `seq` it was set for, as the memory one does, so a timer
+  that a move overtook stays a no-op on whichever worker serves it.
 - Accounts beyond guest tokens are out of scope by decision; a display-name change exists.
 
 **Content and rules** (after phase F)
