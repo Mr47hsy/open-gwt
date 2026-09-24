@@ -84,3 +84,7 @@ def _redeal(lib: Library, world: MatchState, player: PlayerState, rng: Stream) -
     rng.shuffle(remaining)
     for inst, cid in zip(hidden, remaining, strict=False):
         inst.card = cid
+    # whether their starting deck held a neutral card is hidden too (cards.md §6.2): judge it
+    # by this world's cards — the ones shown and the ones just dealt
+    shown = [c for c in seen.elements() if lib[c].faction == NEUTRAL]
+    player.deck_had_neutral = bool(shown) or any(lib[c.card].faction == NEUTRAL for c in hidden)

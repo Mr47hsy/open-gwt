@@ -108,14 +108,16 @@ def test_a_sampled_world_keeps_what_the_player_sees(
 def test_a_sampled_world_ignores_what_the_player_cannot_see(
     library: Library, starter_decks: tuple[Deck, Deck]
 ) -> None:
-    """Two matches that differ only in the opponent's hidden cards, the player's deck order and
-    the seed give the same world: nothing hidden leaks into the search."""
+    """Two matches that differ only in the opponent's hidden cards and whether their starting
+    deck held a neutral card, the player's deck order and the seed give the same world: nothing
+    hidden leaks into the search."""
     state = _mid_match(library, starter_decks)
     other = state.clone()
     opponent = other.players[1]
     for card, replacement in zip(opponent.hand, reversed(opponent.deck), strict=False):
         card.card = replacement.card
     other.players[0].deck.reverse()
+    other.players[1].deck_had_neutral = not other.players[1].deck_had_neutral
     other.seed = seed_from_int(99)
     assert state_hash(sample_world(library, state, 0, _stream(5))) == state_hash(
         sample_world(library, other, 0, _stream(5))
