@@ -83,3 +83,37 @@ choice.boost: Выберите отряд для усиления
 choice.set-power: Выберите отряд
 choice.return-from-discard: Выберите отряд, который вернётся из сброса
 choice.swap-with-board-unit: Выберите свой отряд, который вернётся в руку
+
+# Действия хода, мулиган и зоны (фаза E).
+ui.board.zone: "{zone} {count}"
+ui.zone.graveyard: Кладбище
+ui.zone.banished: Изгнано
+ui.zone.empty: Здесь пока пусто
+
+# Подробности карты: сила, броня, активируемая способность, статусы (cards.md §5, §6.3, §9).
+ui.card.use: Использовать
+ui.card.armor: "Броня {count}"
+ui.card.boosted: "Усилена на {amount}"
+ui.card.damaged: "Ранена на {amount}"
+ui.card.aura: "+{amount} от соседних карт"
+ui.card.ready: Готова к использованию
+ui.card.charges.one: "Остался {count} заряд"
+ui.card.charges.few: "Осталось {count} заряда"
+ui.card.charges.many: "Осталось {count} зарядов"
+ui.card.charges.other: "Осталось {count} зарядов"
+ui.card.charges-unlimited: Заряды не ограничены
+ui.card.cooldown.one: "Снова готова через {count} ход"
+ui.card.cooldown.few: "Снова готова через {count} хода"
+ui.card.cooldown.many: "Снова готова через {count} ходов"
+ui.card.cooldown.other: "Снова готова через {count} ходов"
+ui.card.turns.one: "Остался {count} ход"
+ui.card.turns.few: "Осталось {count} хода"
+ui.card.turns.many: "Осталось {count} ходов"
+ui.card.turns.other: "Осталось {count} ходов"
+ui.card.provisions: "Стоимость {count}"
+ui.card.color.bronze: Бронзовая
+ui.card.color.gold: Золотая
+ui.card.token: Токен
+
+# Действия хода, мулиган и зоны (фаза E).
+ui.modal.close: Закрыть

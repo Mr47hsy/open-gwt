@@ -74,3 +74,28 @@ choice.boost: 选择一个要增强的单位
 choice.set-power: 选择一个单位
 choice.return-from-discard: 从你的弃牌堆中选择一个单位放回战场
 choice.swap-with-board-unit: 选择你的一个单位收回手牌
+
+# 回合操作、换牌与区域（阶段 E）。
+ui.board.zone: "{zone} {count}"
+ui.zone.graveyard: 墓地
+ui.zone.banished: 放逐区
+ui.zone.empty: 这里还没有牌
+
+# 卡牌详情：战力、护甲、主动能力、状态（cards.md §5、§6.3、§9）。
+ui.card.use: 使用
+ui.card.armor: "护甲 {count}"
+ui.card.boosted: "已增益 {amount}"
+ui.card.damaged: "受伤 {amount}"
+ui.card.aura: "来自相邻卡牌 +{amount}"
+ui.card.ready: 可以使用
+ui.card.charges.other: "剩余 {count} 次"
+ui.card.charges-unlimited: 次数不限
+ui.card.cooldown.other: "{count} 回合后就绪"
+ui.card.turns.other: "剩余 {count} 回合"
+ui.card.provisions: "构筑费用 {count}"
+ui.card.color.bronze: 铜卡
+ui.card.color.gold: 金卡
+ui.card.token: 衍生卡
+
+# 回合操作、换牌与区域（阶段 E）。
+ui.modal.close: 关闭

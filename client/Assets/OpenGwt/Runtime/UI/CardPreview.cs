@@ -5,14 +5,16 @@ using UnityEngine.UIElements;
 namespace OpenGwt.UI
 {
     /// <summary>The large card beside the board: shown while the mouse rests on a card, or while a
-    /// finger holds one. It never takes the pointer, so it cannot steal the hover it depends on.</summary>
+    /// finger holds one — or, for a row effect, its name and what it does. It never takes the
+    /// pointer, so it cannot steal the hover it depends on.</summary>
     public sealed class CardPreview
     {
         private readonly VisualElement container;
         private readonly VisualElement cardSlot;
         private readonly Label name;
         private readonly VisualElement tags;
-        private readonly Label powerNote;
+        private readonly VisualElement notes;
+        private readonly VisualElement statuses;
         private readonly Label text;
         private bool heldByTouch;
 
@@ -33,9 +35,10 @@ namespace OpenGwt.UI
             details.Add(name);
             tags = CardElement.Part("preview__line");
             details.Add(tags);
-            powerNote = new Label { pickingMode = PickingMode.Ignore };
-            powerNote.AddToClassList("preview__chip");
-            details.Add(powerNote);
+            notes = CardElement.Part("preview__notes");
+            details.Add(notes);
+            statuses = CardElement.Part("preview__statuses");
+            details.Add(statuses);
             text = new Label { pickingMode = PickingMode.Ignore };
             text.AddToClassList("preview__text");
             details.Add(text);
@@ -49,23 +52,47 @@ namespace OpenGwt.UI
 
         public void Show(VisualElement owner, string key, CardFace face, bool byTouch = false)
         {
+            Begin(owner, key, byTouch);
+            cardSlot.Add(new CardElement(null, face, new[] { "card--large" }) { pickingMode = PickingMode.Ignore });
+            name.text = face.Name;
+            AddTag(face.KindLabel, CardElement.KindIcon(face.Kind));
+            for (var i = 0; i < face.Rows.Count; i++) AddTag(i < face.RowLabels.Count ? face.RowLabels[i] : face.Rows[i], "icon--" + face.Rows[i]);
+            foreach (var note in face.Notes) AddNote(note);
+            for (var i = 0; i < face.Statuses.Count; i++)
+            {
+                var label = i < face.StatusLabels.Count ? face.StatusLabels[i] : "";
+                var timer = i < face.StatusTimers.Count ? face.StatusTimers[i] : "";
+                var about = i < face.StatusTexts.Count ? face.StatusTexts[i] : "";
+                AddStatus(CardElement.StatusIcon(face.Statuses[i].Status), label, timer, about);
+            }
+            text.text = face.Text;
+            Place(owner);
+        }
+
+        /// <summary>A note instead of a card: a row effect's name and what it does.</summary>
+        public void ShowNote(VisualElement owner, string key, string title, string about, bool byTouch = false)
+        {
+            Begin(owner, key, byTouch);
+            name.text = title;
+            text.text = about;
+            Place(owner);
+        }
+
+        private void Begin(VisualElement owner, string key, bool byTouch)
+        {
             Owner = owner;
             OwnerKey = key;
             heldByTouch = byTouch;
             cardSlot.Clear();
-            cardSlot.Add(new CardElement(null, face, new[] { "card--large" }) { pickingMode = PickingMode.Ignore });
-            name.text = face.Name;
             tags.Clear();
-            AddTag(face.KindLabel, face.Kind == "special" ? "icon--special" : null);
-            for (var i = 0; i < face.Rows.Count; i++) AddTag(i < face.RowLabels.Count ? face.RowLabels[i] : face.Rows[i], "icon--" + face.Rows[i]);
-            for (var i = 0; i < face.Statuses.Count; i++)
-            {
-                AddTag(i < face.StatusLabels.Count ? face.StatusLabels[i] : "", CardElement.StatusIcon(face.Statuses[i]));
-            }
-            powerNote.text = face.PowerNote;
-            powerNote.EnableInClassList("hidden", string.IsNullOrEmpty(face.PowerNote));
-            text.text = face.Text;
+            notes.Clear();
+            statuses.Clear();
+            name.text = "";
+            text.text = "";
+        }
 
+        private void Place(VisualElement owner)
+        {
             // Keep clear of the card being inspected: open on the side of the board it is not on.
             // An element a re-render just built has no layout yet; it stands where its
             // predecessor stood, so the side stays.
@@ -104,6 +131,33 @@ namespace OpenGwt.UI
             }
             tags.Add(tag);
         }
+
+        private void AddNote(string note)
+        {
+            if (string.IsNullOrEmpty(note)) return;
+            var label = new Label(note) { pickingMode = PickingMode.Ignore };
+            label.AddToClassList("preview__note");
+            notes.Add(label);
+        }
+
+        /// <summary>A status line: its icon, its name with the timer, and what it does underneath.</summary>
+        private void AddStatus(string icon, string label, string timer, string about)
+        {
+            var line = CardElement.Part("preview__status");
+            line.Add(CardElement.Part("preview__icon", icon));
+            var column = CardElement.Part("preview__status-body");
+            var title = new Label(string.IsNullOrEmpty(timer) ? label : label + " · " + timer) { pickingMode = PickingMode.Ignore };
+            title.AddToClassList("preview__status-name");
+            column.Add(title);
+            if (!string.IsNullOrEmpty(about))
+            {
+                var body = new Label(about) { pickingMode = PickingMode.Ignore };
+                body.AddToClassList("preview__status-text");
+                column.Add(body);
+            }
+            line.Add(column);
+            statuses.Add(line);
+        }
     }
 
     /// <summary>Opens the preview for one element: on mouse hover, or after a finger holds it for
@@ -117,6 +171,7 @@ namespace OpenGwt.UI
         private readonly CardPreview preview;
         private readonly string key;
         private readonly Func<CardFace> face;
+        private readonly Action<bool> show;
         private IVisualElementScheduledItem hold;
         private Vector2 pressedAt;
         private bool swallowClick;
@@ -126,6 +181,15 @@ namespace OpenGwt.UI
             this.preview = preview;
             this.key = key;
             this.face = face;
+        }
+
+        /// <summary>A manipulator that shows something other than a card face; the callback
+        /// receives whether a finger, rather than the mouse, opened it.</summary>
+        public CardPreviewManipulator(CardPreview preview, string key, Action<bool> show)
+        {
+            this.preview = preview;
+            this.key = key;
+            this.show = show;
         }
 
         protected override void RegisterCallbacksOnTarget()
@@ -150,11 +214,24 @@ namespace OpenGwt.UI
             target.UnregisterCallback<DetachFromPanelEvent>(OnDetach);
         }
 
+        /// <summary>Open the preview for the target; false when there is nothing to show.</summary>
+        private bool Open(bool byTouch)
+        {
+            if (show != null)
+            {
+                show(byTouch);
+                return true;
+            }
+            var shown = face();
+            if (shown == null) return false;
+            preview.Show(target, key, shown, byTouch);
+            return true;
+        }
+
         private void OnEnter(PointerEnterEvent evt)
         {
             if (evt.pointerType != UnityEngine.UIElements.PointerType.mouse) return;
-            var shown = face();
-            if (shown != null) preview.Show(target, key, shown);
+            Open(false);
         }
 
         private void OnLeave(PointerLeaveEvent evt)
@@ -172,10 +249,7 @@ namespace OpenGwt.UI
             hold = target.schedule.Execute(() =>
             {
                 hold = null;
-                var shown = face();
-                if (shown == null) return;
-                swallowClick = true;
-                preview.Show(target, key, shown, true);
+                if (Open(true)) swallowClick = true;
             }).StartingIn(HoldMs);
         }
 

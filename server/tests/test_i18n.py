@@ -145,4 +145,4 @@ def test_client_i18n_export_is_fresh() -> None:
         )
         assert target.read_text(encoding="utf-8") == text, f"{target} is stale"
     assert '"ui.language.name": "简体中文"' in exported["zh-CN"]
-    assert "card." not in exported["en"]
+    assert '"card.' not in exported["en"], "card texts come from the server, not the build"

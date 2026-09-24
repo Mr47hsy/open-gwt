@@ -1,7 +1,8 @@
 // Moves cards between two renders of the board. The view decides what changed — a card that was
-// in the hand and now stands on a row moved, a card that was on a row and is gone left — and the
-// events only choose the style: destroyed or simply gone, played by the opponent or summoned.
-// Presentation only (ADR 0001): nothing here feeds back into what the board shows.
+// in the hand and now stands on a row moved, one that changed row or side moved too, a card that
+// was on a row and is gone left — and the events only choose the style: destroyed, banished or
+// simply gone, played by the opponent or summoned. Presentation only (ADR 0001): nothing here
+// feeds back into what the board shows.
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,12 +34,16 @@ namespace OpenGwt.UI
             public readonly CardElement Element;
             public readonly Rect Rect;
             public readonly Zone Zone;
+            /// <summary>Where exactly: the row element's name on the board, so that a card that
+            /// changed row or side travels too.</summary>
+            public readonly string Place;
 
-            public Seen(CardElement element, Rect rect, Zone zone)
+            public Seen(CardElement element, Rect rect, Zone zone, string place)
             {
                 Element = element;
                 Rect = rect;
                 Zone = zone;
+                Place = place;
             }
         }
 
@@ -47,6 +52,7 @@ namespace OpenGwt.UI
         private readonly Dictionary<string, string> playedByOpponent = new Dictionary<string, string>();
         private readonly HashSet<string> played = new HashSet<string>();
         private readonly HashSet<string> destroyed = new HashSet<string>();
+        private readonly HashSet<string> banished = new HashSet<string>();
         private bool primed;
 
         /// <summary>True when the last <see cref="Animate"/> started something worth waiting for.</summary>
@@ -71,6 +77,11 @@ namespace OpenGwt.UI
             if (instance != null) destroyed.Add(instance);
         }
 
+        public void NoteBanished(string instance)
+        {
+            if (instance != null) banished.Add(instance);
+        }
+
         /// <summary>Forget everything and drop every ghost: a new match, or a jump over many views.</summary>
         public void Reset()
         {
@@ -78,6 +89,7 @@ namespace OpenGwt.UI
             played.Clear();
             playedByOpponent.Clear();
             destroyed.Clear();
+            banished.Clear();
             fx.Clear();
             primed = false;
             Busy = false;
@@ -93,6 +105,7 @@ namespace OpenGwt.UI
             played.Clear();
             playedByOpponent.Clear();
             destroyed.Clear();
+            banished.Clear();
             primed = true;
             Busy = false;
         }
@@ -112,9 +125,13 @@ namespace OpenGwt.UI
                 var rect = card.worldBound;
                 // Built by a render whose layout never ran: there is nowhere to start from.
                 if (card.Instance == null || !Valid(rect)) continue;
-                seen[card.Instance] = new Seen(card, rect, zone);
+                seen[card.Instance] = new Seen(card, rect, zone, PlaceOf(card, zone));
             }
         }
+
+        /// <summary>The hand, or the name of the row element a board card stands in.</summary>
+        private static string PlaceOf(VisualElement card, Zone zone) =>
+            zone == Zone.Hand ? "hand" : card.parent?.parent?.name ?? "board";
 
         /// <summary>Start the motion from the captured cards to the rebuilt ones. The first call
         /// after <see cref="Reset"/> only primes: a board shown for the first time does not move.</summary>
@@ -142,6 +159,7 @@ namespace OpenGwt.UI
             played.Clear();
             playedByOpponent.Clear();
             destroyed.Clear();
+            banished.Clear();
         }
 
         private void Enter(IReadOnlyDictionary<string, CardElement> now, Zone zone, Rect opponentOrigin, Func<string, CardElement> build)
@@ -150,7 +168,7 @@ namespace OpenGwt.UI
             {
                 if (seen.TryGetValue(pair.Key, out var before))
                 {
-                    if (before.Zone != zone) Travel(Ghost(before.Element, before.Rect), pair.Value, false);
+                    if (before.Place != PlaceOf(pair.Value, zone)) Travel(Ghost(before.Element, before.Rect), pair.Value, false);
                     continue;
                 }
                 var card = zone == Zone.Board && playedByOpponent.TryGetValue(pair.Key, out var id) && Valid(opponentOrigin) ? build(id) : null;
@@ -172,7 +190,9 @@ namespace OpenGwt.UI
                 var before = pair.Value;
                 var ghost = Ghost(before.Element, before.Rect);
                 if (before.Zone == Zone.Hand && played.Contains(pair.Key)) Cast(ghost, centre, false);
-                else Exit(ghost, destroyed.Contains(pair.Key) ? "card--destroyed" : "card--leaving");
+                else if (destroyed.Contains(pair.Key)) Exit(ghost, "card--destroyed");
+                else if (banished.Contains(pair.Key)) Exit(ghost, "card--banished");
+                else Exit(ghost, "card--leaving");
             }
             // The opponent's specials were never on screen: they start at the opponent's hand.
             foreach (var pair in playedByOpponent)
@@ -235,7 +255,7 @@ namespace OpenGwt.UI
             });
         }
 
-        /// <summary>A card leaves: burned red when destroyed, faded otherwise.</summary>
+        /// <summary>A card leaves: burned red when destroyed, drifting up when banished, faded otherwise.</summary>
         private void Exit(VisualElement ghost, string style)
         {
             Busy = true;

@@ -77,3 +77,31 @@ choice.boost: Choose a unit to boost
 choice.set-power: Choose a unit
 choice.return-from-discard: Choose a unit to return from your discard pile
 choice.swap-with-board-unit: Choose one of your units to return to your hand
+
+# Turn actions, redraws and zones (phase E).
+ui.board.zone: "{zone} {count}"
+ui.zone.graveyard: Graveyard
+ui.zone.banished: Banished
+ui.zone.empty: Nothing here yet
+
+# Card details: power, armour, activated ability, statuses (cards.md §5, §6.3, §9).
+ui.card.use: Use
+ui.card.armor: "Armour {count}"
+ui.card.boosted: "Boosted by {amount}"
+ui.card.damaged: "Damaged by {amount}"
+ui.card.aura: "+{amount} from nearby cards"
+ui.card.ready: Ready to use
+ui.card.charges.one: "{count} charge left"
+ui.card.charges.other: "{count} charges left"
+ui.card.charges-unlimited: Unlimited charges
+ui.card.cooldown.one: "Ready again in {count} turn"
+ui.card.cooldown.other: "Ready again in {count} turns"
+ui.card.turns.one: "{count} turn left"
+ui.card.turns.other: "{count} turns left"
+ui.card.provisions: "Provisions {count}"
+ui.card.color.bronze: Bronze
+ui.card.color.gold: Gold
+ui.card.token: Token
+
+# Turn actions, redraws and zones (phase E).
+ui.modal.close: Close

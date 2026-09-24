@@ -27,6 +27,9 @@ namespace OpenGwt.Tests
         private const string Unit = "t-u-0001";
         private const string Guard = "t-u-0002";
         private const string Special = "t-s-0001";
+        private const string Artifact = "t-a-0001";
+        private const string Leader = "t-l-0001";
+        private const string Stratagem = "t-g-0001";
 
         private GameObject host;
         private RenderTexture target;
@@ -56,9 +59,13 @@ namespace OpenGwt.Tests
             yield return null;
 
             client = new MatchClient();
+            client.SetLocale("en");
             client.Cards[Unit] = JObject.Parse("{\"id\":\"t-u-0001\",\"kind\":\"unit\",\"rows\":[\"melee\"],\"power\":5}");
             client.Cards[Guard] = JObject.Parse("{\"id\":\"t-u-0002\",\"kind\":\"unit\",\"rows\":[\"melee\",\"ranged\"],\"power\":7,\"statuses\":[\"immune\",\"banish_on_leave\"]}");
-            client.Cards[Special] = JObject.Parse("{\"id\":\"t-s-0001\",\"kind\":\"special\"}");
+            client.Cards[Special] = JObject.Parse("{\"id\":\"t-s-0001\",\"kind\":\"special\",\"color\":\"gold\",\"provisions\":9}");
+            client.Cards[Artifact] = JObject.Parse("{\"id\":\"t-a-0001\",\"kind\":\"artifact\",\"activation\":{\"charges\":2}}");
+            client.Cards[Leader] = JObject.Parse("{\"id\":\"t-l-0001\",\"kind\":\"leader\",\"provision_bonus\":15,\"activation\":{\"charges\":2}}");
+            client.Cards[Stratagem] = JObject.Parse("{\"id\":\"t-g-0001\",\"kind\":\"stratagem\",\"rows\":[\"melee\"]}");
             client.I18n.MergeTable("en", new System.Collections.Generic.Dictionary<string, string>
             {
                 ["card.t-u-0001.name"] = "Test unit",
@@ -67,8 +74,19 @@ namespace OpenGwt.Tests
                 ["card.t-u-0002.text"] = "A unit that cannot be targeted.",
                 ["card.t-s-0001.name"] = "Test special",
                 ["card.t-s-0001.text"] = "Does something once.",
-                // Status names arrive with phase E's interface texts; until then only those in the tables show.
+                ["card.t-a-0001.name"] = "Test relic",
+                ["card.t-a-0001.text"] = "An artifact with an ability.",
+                ["card.t-l-0001.name"] = "Test leader",
+                ["card.t-l-0001.text"] = "Leads.",
+                ["card.t-g-0001.name"] = "Test stratagem",
+                ["card.t-g-0001.text"] = "Used once.",
+                // The tables the tests need of the phase E interface texts (the real ones are in data/i18n).
                 ["status.immune.name"] = "Test immune",
+                ["status.bleeding.name"] = "Test bleeding",
+                ["status.bleeding.text"] = "Loses 1 each turn end.",
+                ["status.shielded.name"] = "Test shielded",
+                ["row-effect.damage-weakest.name"] = "Test frost",
+                ["row-effect.damage-weakest.text"] = "The weakest unit takes {amount} damage.",
             });
             root = document.rootVisualElement;
             board = new BoardView(root, client, "http://127.0.0.1:1");
@@ -201,7 +219,10 @@ namespace OpenGwt.Tests
         [UnityTest]
         public IEnumerator PreviewShowsTheCardInFull()
         {
-            Show(View(mine: new[] { ("b1", Guard, 9, 7) }));
+            // On the board a card's statuses come from the view, innate ones included (cards.md §9).
+            var view = View(mine: new[] { ("b1", Guard, 9, 7) });
+            view["me"]["rows"]["melee"]["cards"][0]["statuses"] = new JArray(new JObject { ["status"] = "immune" }, new JObject { ["status"] = "banish_on_leave" });
+            Show(view);
             yield return Frames(3);
 
             var card = RowCard("my-row-melee", "b1");
@@ -226,10 +247,149 @@ namespace OpenGwt.Tests
             yield return Screenshot("05-preview");
 
             // A new view keeps the preview on the same card, with its new power.
-            Show(View(mine: new[] { ("b1", Guard, 11, 7) }));
+            view = View(mine: new[] { ("b1", Guard, 11, 7) });
+            view["me"]["rows"]["melee"]["cards"][0]["statuses"] = new JArray(new JObject { ["status"] = "immune" }, new JObject { ["status"] = "banish_on_leave" });
+            Show(view);
             yield return Frames(3);
             Assert.IsTrue(preview.ClassListContains("preview--visible"));
             Assert.AreEqual("11", preview.Q<CardElement>().Q<Label>(className: "card__power").text);
+        }
+
+        [UnityTest]
+        public IEnumerator CardsShowArmourStatusesAndAbilities()
+        {
+            // A boosted unit with armour and two statuses, an artifact with a ready ability, the
+            // opponent's artifact with one on cooldown, and the leader in the bottom bar.
+            var view = View(mine: new[] { ("b1", Unit, 6, 4) }, theirs: new[] { ("o1", Guard, 7, 7) });
+            var mine = (JObject)view["me"]["rows"]["melee"]["cards"][0];
+            mine["aura"] = 1;
+            mine["armor"] = 2;
+            mine["statuses"] = new JArray(new JObject { ["status"] = "bleeding", ["turns"] = 2 }, new JObject { ["status"] = "shielded" });
+            ((JArray)view["me"]["rows"]["melee"]["cards"]).Add(BoardCard("b2", Artifact, 0, ready: true, charges: 2, cooldown: 0));
+            ((JArray)view["opponent"]["rows"]["ranged"]["cards"]).Add(BoardCard("o2", Artifact, 1, ready: false, charges: 1, cooldown: 2));
+            view["me"]["leader"] = new JObject
+            {
+                ["instance"] = "l1", ["card"] = Leader,
+                ["order"] = new JObject { ["ready"] = true, ["charges"] = 2, ["cooldown"] = 0 },
+            };
+            ((JArray)view["legal_intents"]).Add(new JObject { ["kind"] = "use_order", ["instance"] = "b2" });
+            ((JArray)view["legal_intents"]).Add(new JObject { ["kind"] = "use_order", ["instance"] = "l1" });
+            Show(view);
+            yield return Frames(3);
+
+            var unit = RowCard("my-row-melee", "b1");
+            Assert.AreEqual("6", unit.Q<Label>(className: "card__power").text, "power includes the aura");
+            Assert.IsTrue(unit.Q(className: "card__power").ClassListContains("card__power--boosted"), "5 own power over a base of 4");
+            Assert.AreEqual("2", unit.Q<Label>(className: "card__armor").text);
+            Assert.IsNotNull(unit.Q(className: "icon--bleeding"));
+            Assert.IsNotNull(unit.Q(className: "icon--shielded"));
+            Assert.AreEqual("2", unit.Q<Label>(className: "card__icon-timer").text, "the timed status shows its turns");
+            Assert.IsNull(unit.OrderButton, "a card without an ability has no button");
+            Assert.IsNotNull(unit.resolvedStyle.backgroundImage.vectorImage);
+
+            var artifact = RowCard("my-row-melee", "b2");
+            Assert.IsNull(artifact.Q<Label>(className: "card__armor"), "no armour badge without armour");
+            Assert.IsTrue(artifact.Q(className: "card__power").ClassListContains("card__power--none"), "an artifact has no power");
+            Assert.IsNotNull(artifact.OrderButton);
+            Assert.IsTrue(artifact.OrderButton.enabledSelf, "use_order for it is legal");
+            Assert.IsTrue(artifact.OrderButton.ClassListContains("card__order--ready"));
+            Assert.AreEqual("2", artifact.OrderButton.Q<Label>(className: "card__order-charges").text);
+            Assert.IsNull(artifact.OrderButton.Q<Label>(className: "card__order-cooldown"));
+            Assert.IsNotNull(artifact.Q(className: "icon--artifact"), "the kind's icon");
+
+            var theirs = RowCard("opp-row-ranged", "o2");
+            Assert.IsFalse(theirs.OrderButton.enabledSelf, "not offered by legal_intents");
+            Assert.AreEqual("·2", theirs.OrderButton.Q<Label>(className: "card__order-cooldown").text);
+
+            var leader = root.Q("leader-slot").Q<CardElement>();
+            Assert.IsNotNull(leader, "the leader is a small card in the bar");
+            Assert.IsTrue(leader.ClassListContains("card--mini"));
+            Assert.IsTrue(leader.OrderButton.enabledSelf);
+            Assert.IsNotNull(leader.Q(className: "icon--leader"));
+            yield return Seconds(0.3f);
+            yield return Screenshot("06-card-details");
+
+            // The preview explains the numbers and the statuses.
+            Hover(unit);
+            yield return Frames(3);
+            var texts = root.Q("card-preview").Query<Label>().ToList().Select(l => l.text).ToList();
+            CollectionAssert.Contains(texts, client.Text("ui.card.boosted", MatchClient.P("amount", 1)));
+            CollectionAssert.Contains(texts, client.Text("ui.preview.base-power", MatchClient.P("power", 4)));
+            CollectionAssert.Contains(texts, client.Text("ui.card.aura", MatchClient.P("amount", 1)));
+            CollectionAssert.Contains(texts, client.Text("ui.card.armor", MatchClient.P("count", 2)));
+            CollectionAssert.Contains(texts, "Test bleeding · " + client.Text("ui.card.turns", MatchClient.P("count", 2)));
+            CollectionAssert.Contains(texts, "Loses 1 each turn end.");
+            CollectionAssert.Contains(texts, "Test shielded");
+            yield return Seconds(0.2f);
+            yield return Screenshot("07-preview-statuses");
+        }
+
+        [UnityTest]
+        public IEnumerator RowEffectsAndTheStratagemShow()
+        {
+            var view = View(mine: new[] { ("b1", Unit, 5, 5) });
+            view["me"]["rows"]["ranged"]["effect"] = new JObject { ["effect"] = "damage_weakest", ["amount"] = 2 };
+            view["opponent"]["rows"]["melee"]["effect"] = new JObject { ["effect"] = "boost_random", ["amount"] = 1, ["count"] = 2 };
+            ((JArray)view["me"]["rows"]["melee"]["cards"]).Insert(0, BoardCard("g1", Stratagem, 0, ready: true, charges: 1, cooldown: 0));
+            ((JArray)view["legal_intents"]).Add(new JObject { ["kind"] = "use_order", ["instance"] = "g1" });
+            view["me"]["graveyard"] = new JArray(new JObject { ["instance"] = "d1", ["card"] = Special });
+            Show(view);
+            yield return Frames(3);
+
+            var effect = root.Q("my-row-ranged").Q<Label>("effects");
+            Assert.AreEqual("Test frost 2", effect.text);
+            Assert.IsTrue(effect.ClassListContains("row__effects--damage-weakest"));
+            var boon = root.Q("opp-row-melee").Q<Label>("effects");
+            Assert.AreEqual("1×2", boon.text, "an effect without a name yet shows its numbers");
+            Assert.IsTrue(boon.ClassListContains("row__effects--boost-random"));
+            Assert.AreEqual("", root.Q("my-row-melee").Q<Label>("effects").text);
+
+            var stratagem = RowCard("my-row-melee", "g1");
+            Assert.IsTrue(stratagem.ClassListContains("card--stratagem"));
+            Assert.IsTrue(stratagem.OrderButton.enabledSelf);
+            Assert.IsNotNull(stratagem.Q(className: "icon--stratagem"));
+
+            Hover(effect);
+            yield return Frames(3);
+            var texts = root.Q("card-preview").Query<Label>().ToList().Select(l => l.text).ToList();
+            CollectionAssert.Contains(texts, "Test frost 2");
+            CollectionAssert.Contains(texts, "The weakest unit takes 2 damage.");
+            yield return Seconds(0.3f);
+            yield return Screenshot("08-row-effect");
+
+            // The graveyard count opens the zone.
+            var count = root.Q<Label>("my-graveyard");
+            Assert.AreEqual(client.Text("ui.board.zone", MatchClient.P("zone", "@ui.zone.graveyard", "count", 1)), count.text);
+            using (var click = ClickEvent.GetPooled()) { click.target = count; count.SendEvent(click); }
+            yield return Frames(2);
+            Assert.IsFalse(root.Q("modal").ClassListContains("hidden"));
+            Assert.AreEqual(Special, root.Q("modal-options").Q<CardElement>().Card);
+            yield return Screenshot("09-graveyard");
+        }
+
+        [UnityTest]
+        public IEnumerator MovedCardTravelsAndBanishedCardDrifts()
+        {
+            Show(View(mine: new[] { ("b1", Unit, 5, 5) }));
+            yield return Frames(3);
+
+            // Moved to the other row: the same instance stands elsewhere, so it travels.
+            var moved = View();
+            ((JArray)moved["me"]["rows"]["ranged"]["cards"]).Add(BoardCard("b1", Unit, 0, power: 5, basePower: 5));
+            Show(moved, Event("card_moved", 0, "b1", Unit, ("from_row", "melee"), ("to_row", "ranged")));
+            yield return Frames(2);
+            Assert.IsNotNull(RowCard("my-row-ranged", "b1"));
+            Assert.IsTrue(Ghosts().Single().ClassListContains("card--travel"));
+            yield return Seconds(1.2f);
+            Assert.IsEmpty(Ghosts());
+
+            // Banished: gone from the row, its ghost drifts away.
+            Show(View(), Event("card_banished", 0, "b1", Unit));
+            yield return Frames(3);
+            Assert.IsNull(RowCard("my-row-ranged", "b1"));
+            Assert.IsTrue(Ghosts().Single().ClassListContains("card--banished"));
+            yield return Seconds(1.5f);
+            Assert.IsEmpty(Ghosts());
         }
 
         // --- server messages ------------------------------------------------------------------
@@ -250,6 +410,33 @@ namespace OpenGwt.Tests
             var evt = new JObject { ["type"] = type, ["seat"] = seat, ["instance"] = instance, ["card"] = card };
             foreach (var (key, value) in extra) evt[key] = value;
             return evt;
+        }
+
+        /// <summary>A card on a row-side in the shape of match.md §7.</summary>
+        private static JObject BoardCard(string instance, string card, int owner, int? power = null, int? basePower = null,
+            bool? ready = null, int? charges = null, int cooldown = 0)
+        {
+            var entry = new JObject { ["instance"] = instance, ["card"] = card, ["owner"] = owner, ["statuses"] = new JArray() };
+            if (power.HasValue)
+            {
+                entry["power"] = power.Value;
+                entry["base"] = basePower ?? power.Value;
+                entry["aura"] = 0;
+                entry["armor"] = 0;
+            }
+            entry["order"] = ready.HasValue
+                ? new JObject { ["ready"] = ready.Value, ["charges"] = charges, ["cooldown"] = cooldown }
+                : null;
+            return entry;
+        }
+
+        private void Hover(VisualElement element)
+        {
+            using (var enter = PointerEnterEvent.GetPooled(new Event { type = EventType.MouseMove, mousePosition = element.worldBound.center }))
+            {
+                enter.target = element;
+                element.SendEvent(enter);
+            }
         }
 
         private static JObject Destroyed(int seat, string instance, string card)

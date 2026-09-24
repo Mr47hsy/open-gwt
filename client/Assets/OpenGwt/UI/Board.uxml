@@ -6,8 +6,10 @@
             <ui:VisualElement name="top-bar" class="bar">
                 <ui:Label name="opp-name" class="bar__name" />
                 <ui:Label name="opp-score" text="0" class="bar__score" />
-                <ui:Label name="opp-lives" class="bar__lives" />
+                <ui:Label name="opp-rounds" class="bar__rounds" />
                 <ui:Label name="opp-hand" class="bar__info" />
+                <ui:Label name="opp-graveyard" class="bar__zone" />
+                <ui:Label name="opp-banished" class="bar__zone" />
                 <ui:Label name="opp-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
                 <ui:Label name="round-label" class="bar__info" />
@@ -29,13 +31,16 @@
                 <ui:VisualElement name="my-row-ranged" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--ranged" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="bottom-bar" class="bar">
+            <ui:VisualElement name="bottom-bar" class="bar bar--tall">
                 <ui:Label name="my-name" class="bar__name" />
                 <ui:Label name="my-score" text="0" class="bar__score" />
-                <ui:Label name="my-lives" class="bar__lives" />
+                <ui:Label name="my-rounds" class="bar__rounds" />
                 <ui:Label name="deck-count" class="bar__info" />
+                <ui:Label name="my-graveyard" class="bar__zone" />
+                <ui:Label name="my-banished" class="bar__zone" />
+                <ui:Label name="my-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
-                <ui:Button name="btn-leader" class="button" />
+                <ui:VisualElement name="leader-slot" class="bar__leader" />
                 <ui:Button name="btn-end-turn" class="button button--primary" />
                 <ui:Button name="btn-pass" class="button" />
             </ui:VisualElement>

@@ -31,10 +31,15 @@
     border-radius: var(--radius-md);
     margin-bottom: var(--space-2);
 }
+.bar--tall { height: auto; min-height: var(--size-bar); padding-top: var(--space-1); padding-bottom: var(--space-1); }
 .bar__name { font-size: var(--font-size-lg); -unity-font-style: bold; margin-right: var(--space-5); }
 .bar__score { font-size: var(--font-size-2xl); -unity-font-style: bold; color: var(--color-accent); min-width: 48px; }
-.bar__lives { color: var(--color-negative); margin-right: var(--space-5); }
+.bar__rounds { color: var(--color-accent); margin-right: var(--space-5); letter-spacing: 2px; }
 .bar__info { color: var(--color-text-muted); margin-right: var(--space-5); }
+/* Graveyard and banished counts open the zone's cards. */
+.bar__zone { color: var(--color-text-muted); margin-right: var(--space-5); transition-property: color; transition-duration: var(--duration-fast); }
+.bar__zone:hover { color: var(--color-text); }
+.bar__leader { flex-direction: row; align-items: center; margin-right: var(--space-4); }
 .bar__passed { color: var(--color-positive); -unity-font-style: bold; }
 .bar__spacer { flex-grow: 1; }
 .bar__turn { -unity-font-style: bold; color: var(--color-info); }
@@ -73,7 +78,10 @@
 }
 .row--active .row__icon { -unity-background-image-tint-color: var(--color-accent); }
 .row__label { color: var(--color-text-subtle); font-size: var(--font-size-xs); -unity-text-align: middle-center; }
+/* The row-side's effect: its name and numbers, coloured by what it does (a class per effect id). */
 .row__effects { width: 90px; color: var(--color-info); font-size: var(--font-size-xs); white-space: normal; }
+.row__effects--damage-strongest, .row__effects--damage-weakest, .row__effects--damage-random, .row__effects--damage-on-arrival { color: var(--color-effect-hazard); }
+.row__effects--boost-random { color: var(--color-effect-boon); }
 .row__units { flex-direction: row; flex-grow: 1; flex-wrap: wrap; align-items: center; }
 .row__total {
     width: 40px;
@@ -90,7 +98,22 @@
 .icon--melee { background-image: url("/Assets/OpenGwt/UI/Art/row-melee.svg"); }
 .icon--ranged { background-image: url("/Assets/OpenGwt/UI/Art/row-ranged.svg"); }
 .icon--special { background-image: url("/Assets/OpenGwt/UI/Art/kind-special.svg"); }
+.icon--artifact { background-image: url("/Assets/OpenGwt/UI/Art/kind-artifact.svg"); }
+.icon--leader { background-image: url("/Assets/OpenGwt/UI/Art/kind-leader.svg"); }
+.icon--stratagem { background-image: url("/Assets/OpenGwt/UI/Art/kind-stratagem.svg"); }
+.icon--order { background-image: url("/Assets/OpenGwt/UI/Art/order.svg"); }
+/* One icon per status (cards.md §9). */
+.icon--locked { background-image: url("/Assets/OpenGwt/UI/Art/status-locked.svg"); }
+.icon--shielded { background-image: url("/Assets/OpenGwt/UI/Art/status-shielded.svg"); }
 .icon--immune { background-image: url("/Assets/OpenGwt/UI/Art/status-immune.svg"); }
+.icon--poisoned { background-image: url("/Assets/OpenGwt/UI/Art/status-poisoned.svg"); }
+.icon--bleeding { background-image: url("/Assets/OpenGwt/UI/Art/status-bleeding.svg"); }
+.icon--growing { background-image: url("/Assets/OpenGwt/UI/Art/status-growing.svg"); }
+.icon--banish-on-leave { background-image: url("/Assets/OpenGwt/UI/Art/status-banish-on-leave.svg"); }
+.icon--kept-at-round-end { background-image: url("/Assets/OpenGwt/UI/Art/status-kept-at-round-end.svg"); }
+.icon--status-proof { background-image: url("/Assets/OpenGwt/UI/Art/status-status-proof.svg"); }
+.icon--guarding { background-image: url("/Assets/OpenGwt/UI/Art/status-guarding.svg"); }
+.icon--on-enemy-side { background-image: url("/Assets/OpenGwt/UI/Art/status-on-enemy-side.svg"); }
 
 .middle { flex-direction: row; align-items: center; height: 28px; flex-shrink: 0; padding: 0 var(--space-4); }
 .middle__status { -unity-font-style: bold; color: var(--color-accent); margin-right: var(--space-6); }
@@ -154,14 +177,69 @@
 .card__power--none { display: none; }
 .card__power--boosted { color: var(--color-positive); -unity-background-image-tint-color: var(--color-badge-boosted); }
 .card__power--reduced { color: var(--color-negative); -unity-background-image-tint-color: var(--color-badge-reduced); }
-.card__icons { position: absolute; right: 5%; top: 5%; flex-direction: row; }
+/* Armour under the power badge, only while the unit has some. */
+.card__armor {
+    position: absolute;
+    left: 5%;
+    top: 36%;
+    width: 26%;
+    aspect-ratio: 1;
+    font-size: var(--font-size-xs);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: var(--color-text-on-accent);
+    background-image: url("/Assets/OpenGwt/UI/Art/badge-armor.svg");
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--color-badge-armor);
+}
+.card__icons { position: absolute; right: 5%; top: 5%; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
 .card__icon {
     width: var(--size-icon-sm);
     height: var(--size-icon-sm);
     margin-left: 1px;
+    margin-bottom: 1px;
     -unity-background-scale-mode: scale-to-fit;
     -unity-background-image-tint-color: var(--color-icon-strong);
 }
+/* A timed status shows its turns left beside its icon. */
+.card__icon-timer {
+    font-size: var(--size-icon-timer);
+    -unity-font-style: bold;
+    color: var(--color-accent);
+    margin-left: -1px;
+    margin-right: 1px;
+    -unity-text-align: lower-left;
+}
+/* The activated ability: charges (∞ when unlimited) and cooldown; lit and clickable when
+   `use_order` for this card is among the legal intents. */
+.card__order {
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: 3%;
+    height: 15%;
+    margin: 0;
+    padding: 0 2px;
+    border-width: 0;
+    border-radius: var(--radius-sm);
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-2xs);
+    color: var(--color-text);
+    background-color: var(--color-order);
+    transition-property: background-color, scale;
+    transition-duration: var(--duration-fast);
+}
+.card__order:disabled { opacity: 0.75; }
+.card__order--ready { background-color: var(--color-order-ready); color: var(--color-text-on-accent); }
+.card__order--ready:hover { scale: 1.06 1.06; }
+.card__order-icon { width: 9px; height: 9px; margin-right: 2px; -unity-background-scale-mode: scale-to-fit; -unity-background-image-tint-color: var(--color-icon-strong); }
+.card__order--ready .card__order-icon { -unity-background-image-tint-color: var(--color-text-on-accent); }
+.card__order-cooldown { margin-left: 3px; color: var(--color-info); }
+.card__order--ready .card__order-cooldown { color: var(--color-text-on-accent); }
+/* With an ability button below it, the name starts a little higher so two lines still fit. */
+.card--ordered .card__name { top: 63%; bottom: 20%; }
 .card__art {
     position: absolute;
     left: 8.3%;
@@ -197,8 +275,19 @@
     border-color: var(--color-border-strong);
 }
 .card--large .card__power { font-size: var(--font-size-4xl); }
+.card--large .card__armor { font-size: var(--font-size-xl); }
 .card--large .card__name { font-size: var(--font-size-xl); }
 .card--large .card__icon { width: var(--size-icon-lg); height: var(--size-icon-lg); margin-left: var(--space-1); }
+.card--large .card__icon-timer { font-size: var(--font-size-md); }
+.card--large .card__order { font-size: var(--font-size-md); }
+.card--large .card__order-icon { width: 16px; height: 16px; }
+
+/* The leader in the bottom bar: a small card with its ability. */
+.card--mini { width: var(--size-card-mini-width); height: var(--size-card-mini-height); margin: 0 var(--space-3); }
+.card--mini .card__name { font-size: var(--size-icon-timer); }
+.card--mini .card__icon { width: 8px; height: 8px; }
+.card--mini .card__order { height: 22%; font-size: var(--size-icon-timer); }
+.card--mini .card__order-icon { width: 7px; height: 7px; }
 
 /* --- motion (BoardMotion adds and removes these; durations are tokens) --------------------- */
 
@@ -246,6 +335,8 @@
 }
 /* Gone for any other reason: the round ended, it went back to the deck. */
 .card--leaving { opacity: 0; scale: 0.9 0.9; }
+/* Banished: drifts up and fades to nothing. */
+.card--banished { opacity: 0; scale: 0.8 0.8; translate: 0 -40px; }
 
 /* --- card preview -------------------------------------------------------------------------- */
 
@@ -284,7 +375,11 @@
     -unity-background-image-tint-color: var(--color-icon-strong);
 }
 .preview__chip { color: var(--color-text-muted); font-size: var(--font-size-sm); margin-right: var(--space-4); }
-.preview__text { font-size: var(--font-size-sm); white-space: normal; color: var(--color-text); }
+.preview__note { color: var(--color-info); font-size: var(--font-size-sm); white-space: normal; margin-bottom: var(--space-1); }
+.preview__status { flex-direction: row; align-items: flex-start; margin-bottom: var(--space-2); }
+.preview__status-name { -unity-font-style: bold; font-size: var(--font-size-sm); color: var(--color-text); white-space: normal; }
+.preview__status-text { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: normal; }
+.preview__text { font-size: var(--font-size-sm); white-space: normal; color: var(--color-text); margin-top: var(--space-2); }
 
 /* --- controls and dialogs ------------------------------------------------------------------ */
 

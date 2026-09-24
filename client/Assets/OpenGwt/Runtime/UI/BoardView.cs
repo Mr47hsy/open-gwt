@@ -53,7 +53,7 @@ namespace OpenGwt.UI
         private readonly ScrollView hand;
         private readonly Button passButton;
         private readonly Button endTurnButton;
-        private readonly Button leaderButton;
+        private readonly VisualElement leaderSlot;
         private readonly Label statusLabel;
         private readonly Label messageLabel;
         private readonly Label eventLog;
@@ -89,7 +89,7 @@ namespace OpenGwt.UI
             hand = root.Q<ScrollView>("hand");
             passButton = root.Q<Button>("btn-pass");
             endTurnButton = root.Q<Button>("btn-end-turn");
-            leaderButton = root.Q<Button>("btn-leader");
+            leaderSlot = root.Q<VisualElement>("leader-slot");
             statusLabel = root.Q<Label>("status-label");
             messageLabel = root.Q<Label>("message-label");
             eventLog = root.Q<Label>("event-log");
@@ -99,8 +99,6 @@ namespace OpenGwt.UI
             root.Q<TextField>("server-url").value = defaultServerUrl;
             preview = new CardPreview(root.Q<VisualElement>("card-preview"), root);
             motion = new BoardMotion(root.Q<VisualElement>("fx-layer"));
-            leaderButton.AddManipulator(new CardPreviewManipulator(preview, "leader",
-                () => shown?.Me?.Leader == null ? null : Face(shown.Me.Leader.Card)));
 
             root.Q<Button>("btn-connect").clicked += () => Run(ConnectAsync);
             root.Q<Button>("btn-bot").clicked += () => Run(StartBotAsync);
@@ -109,11 +107,12 @@ namespace OpenGwt.UI
             root.Q<Button>("btn-back").clicked += ShowConnectStep;
             passButton.clicked += () => Send(Intents.Pass());
             endTurnButton.clicked += () => Send(Intents.EndTurn());
-            leaderButton.clicked += () =>
-            {
-                if (shown?.Me?.Leader != null) Send(Intents.UseOrder(shown.Me.Leader.Instance));
-            };
             modalCancel.clicked += HideModal;
+            foreach (var zone in new[] { "my-graveyard", "my-banished", "opp-graveyard", "opp-banished" })
+            {
+                var name = zone;
+                root.Q<Label>(zone).RegisterCallback<ClickEvent>(_ => ShowZone(name));
+            }
 
             FillLanguages();
             language.RegisterValueChangedCallback(evt =>
@@ -256,6 +255,7 @@ namespace OpenGwt.UI
             roomWaitingCode = null;
             ResetSteps();
             hand.Clear();
+            leaderSlot.Clear();
             foreach (var row in RowNames)
             {
                 root.Q<VisualElement>("my-row-" + row).Q<VisualElement>("units").Clear();
@@ -375,11 +375,16 @@ namespace OpenGwt.UI
 
             root.Q<Label>("my-score").text = me.Score.ToString();
             root.Q<Label>("opp-score").text = opp.Score.ToString();
-            root.Q<Label>("my-lives").text = Pips(me.RoundsWon);
-            root.Q<Label>("opp-lives").text = Pips(opp.RoundsWon);
+            root.Q<Label>("my-rounds").text = Pips(me.RoundsWon);
+            root.Q<Label>("opp-rounds").text = Pips(opp.RoundsWon);
             root.Q<Label>("deck-count").text = T("ui.board.deck", "count", me.DeckCount);
             root.Q<Label>("opp-hand").text = T("ui.board.opponent-hand", "hand", opp.HandCount, "deck", opp.DeckCount);
+            root.Q<Label>("my-graveyard").text = T("ui.board.zone", "zone", "@ui.zone.graveyard", "count", me.Graveyard.Count);
+            root.Q<Label>("my-banished").text = T("ui.board.zone", "zone", "@ui.zone.banished", "count", me.Banished.Count);
+            root.Q<Label>("opp-graveyard").text = T("ui.board.zone", "zone", "@ui.zone.graveyard", "count", opp.Graveyard.Count);
+            root.Q<Label>("opp-banished").text = T("ui.board.zone", "zone", "@ui.zone.banished", "count", opp.Banished.Count);
             root.Q<Label>("opp-passed").text = opp.Passed ? T("ui.board.passed") : "";
+            root.Q<Label>("my-passed").text = me.Passed ? T("ui.board.passed") : "";
             root.Q<Label>("round-label").text = T("ui.board.round", "round", view.Round);
             root.Q<Label>("turn-label").text = TurnText(view);
             statusLabel.text = StatusText(view);
@@ -394,6 +399,7 @@ namespace OpenGwt.UI
                 RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, offers, row, false, board);
             }
             RenderHand(view, offers, inHand);
+            RenderLeader(me, offers);
             flash.Clear();
             if (animate)
             {
@@ -412,8 +418,6 @@ namespace OpenGwt.UI
 
             passButton.SetEnabled(offers.Allows("pass"));
             endTurnButton.SetEnabled(offers.Allows("end_turn"));
-            leaderButton.SetEnabled(me.Leader != null && offers.CanUseOrder(me.Leader.Instance));
-            leaderButton.text = me.Leader == null ? T("ui.board.leader-none") : T("ui.board.leader", "name", client.CardName(me.Leader.Card));
 
             if (live && view.Phase == "mulligan" && me.Mulligan != null && !me.Mulligan.Done) ShowMulligan(view);
             else if (live && view.PendingChoice != null) ShowChoice(view);
@@ -482,23 +486,52 @@ namespace OpenGwt.UI
                 total += card.Power ?? 0;
                 var classes = new List<string>();
                 if ((card.Owner != seat) == mine) classes.Add("card--foreign");
-                var element = Card(card.Instance, Face(card.Card, card.Power, card.Base), classes);
+                var element = Card(card.Instance, Face(card, offers), classes);
                 if (flash.Contains(card.Instance)) Flash(element);
                 units.Add(element);
                 board[card.Instance] = element;
             }
             rowElement.Q<Label>("total").text = total.ToString();
-            rowElement.Q<Label>("effects").text = row.Effect == null ? "" : EffectText(row.Effect);
+            RenderEffect(rowElement, row.Effect);
             var active = mine && offers.LegalIntents.Any(i => (string)i["kind"] == "play_card" && (string)i["row"] == rowName);
             rowElement.EnableInClassList("row--active", active);
         }
 
-        /// <summary>The name of a row effect and its numbers; the name once the tables have it.</summary>
-        private string EffectText(RowEffectView effect)
+        /// <summary>The row-side's effect: its name and numbers in the row head, coloured by a class
+        /// per effect id, with what it does in the preview on hover.</summary>
+        private void RenderEffect(VisualElement rowElement, RowEffectView effect)
         {
-            var name = Known("row-effect." + effect.Effect.Replace('_', '-') + ".name");
+            var label = rowElement.Q<Label>("effects");
+            foreach (var c in label.GetClasses().Where(c => c.StartsWith("row__effects--")).ToList()) label.RemoveFromClassList(c);
+            if (label.userData is IManipulator old) label.RemoveManipulator(old);
+            label.userData = null;
+            if (effect == null)
+            {
+                label.text = "";
+                return;
+            }
+            var id = effect.Effect.Replace('_', '-');
+            var name = Known("row-effect." + id + ".name");
             var numbers = effect.Count.HasValue ? effect.Amount + "×" + effect.Count.Value : effect.Amount.ToString();
-            return name.Length == 0 ? numbers : name + " " + numbers;
+            label.text = name.Length == 0 ? numbers : name + " " + numbers;
+            label.AddToClassList("row__effects--" + id);
+            var parameters = MatchClient.P("amount", effect.Amount, "count", effect.Count ?? 1);
+            var about = client.Knows("row-effect." + id + ".text") ? client.Text("row-effect." + id + ".text", parameters) : "";
+            var key = rowElement.name + ":effect";
+            var manipulator = new CardPreviewManipulator(preview, key, byTouch => preview.ShowNote(label, key, label.text, about, byTouch));
+            label.AddManipulator(manipulator);
+            label.userData = manipulator;
+        }
+
+        /// <summary>The leader as a small card in the bottom bar, with its activated ability.</summary>
+        private void RenderLeader(SideView me, MatchView offers)
+        {
+            leaderSlot.Clear();
+            if (me.Leader == null) return;
+            var leader = me.Leader;
+            var face = Face(leader.Card, statuses: null, power: null, basePower: null, aura: null, armor: null,
+                order: leader.Order, usable: offers.CanUseOrder(leader.Instance));
+            leaderSlot.Add(Card(leader.Instance, face, new[] { "card--mini" }));
         }
 
         private static void Flash(VisualElement element)
@@ -570,43 +603,116 @@ namespace OpenGwt.UI
         /// arrive with the interface texts of a later phase.</summary>
         private string Known(string key) => client.Knows(key) ? T(key) : "";
 
-        /// <summary>Everything a card shows, rendered in the current language: kind, rows and
-        /// statuses from the pack as the server serves it (`opengwt.pack/2`). <paramref name="power"/>
-        /// and <paramref name="basePower"/> come from the view for a card on the board; a card
-        /// elsewhere shows the printed power.</summary>
-        private CardFace Face(string cardId, int? power = null, int? basePower = null)
+        /// <summary>The face of a card on the board: its numbers, statuses and ability from the
+        /// view (`match.md` §7), the rest from the pack.</summary>
+        private CardFace Face(BoardCardView card, MatchView offers) =>
+            Face(card.Card, card.Statuses, card.Power, card.Base, card.Aura, card.Armor, card.Order, offers.CanUseOrder(card.Instance));
+
+        /// <summary>The face of a card that is not on the board — in the hand, a zone or an offer:
+        /// the printed power and armour and the innate statuses of the pack.</summary>
+        private CardFace Face(string cardId)
+        {
+            var def = Def(cardId);
+            var innate = Words(def, "statuses").Select(st => new StatusView { Status = st }).ToList();
+            return Face(cardId, innate, (int?)def?["power"], null, null, (int?)def?["armor"], null, false);
+        }
+
+        /// <summary>Everything a card shows, rendered in the current language: kind and rows from the
+        /// pack as the server serves it (`opengwt.pack/2`), the rest as given.</summary>
+        private CardFace Face(string cardId, IReadOnlyList<StatusView> statuses, int? power, int? basePower, int? aura, int? armor,
+            OrderView order, bool usable)
         {
             var def = Def(cardId);
             var kind = (string)def?["kind"] ?? "";
             var rows = Words(def, "rows");
-            var statuses = Words(def, "statuses");
+            statuses = statuses ?? Array.Empty<StatusView>();
             var face = new CardFace
             {
                 Card = cardId,
                 Kind = kind,
                 Rows = rows,
                 Statuses = statuses,
-                Power = power ?? (int?)def?["power"],
+                Power = power,
                 BasePower = basePower,
+                Aura = aura,
+                Armor = armor,
+                Order = order,
+                OrderUsable = usable,
                 Name = client.CardName(cardId),
                 Text = client.CardText(cardId),
                 KindLabel = kind.Length == 0 ? "" : T("ui.kind." + kind),
                 RowLabels = rows.Select(r => T("ui.row." + r)).ToList(),
-                StatusLabels = statuses.Select(st => Known("status." + st.Replace('_', '-') + ".name")).ToList(),
+                StatusLabels = statuses.Select(st => Known("status." + st.Status.Replace('_', '-') + ".name")).ToList(),
+                StatusTexts = statuses.Select(st => Known("status." + st.Status.Replace('_', '-') + ".text")).ToList(),
+                StatusTimers = statuses.Select(st => st.Turns.HasValue ? T("ui.card.turns", "count", st.Turns.Value) : "").ToList(),
             };
-            if (power.HasValue && basePower.HasValue && power.Value != basePower.Value)
-            {
-                face.PowerNote = T("ui.preview.base-power", "power", basePower.Value);
-            }
+            face.Notes = Notes(face, def);
             return face;
         }
 
-        /// <summary>A card that opens the preview on hover or long press.</summary>
+        /// <summary>The short lines the preview shows under the name (`cards.md` §5, §6.3, §11.1).</summary>
+        private List<string> Notes(CardFace face, JObject def)
+        {
+            var notes = new List<string>();
+            if (face.Power.HasValue && face.BasePower.HasValue)
+            {
+                var own = face.OwnPower.Value;
+                if (own > face.BasePower.Value) notes.Add(T("ui.card.boosted", "amount", own - face.BasePower.Value));
+                else if (own < face.BasePower.Value) notes.Add(T("ui.card.damaged", "amount", face.BasePower.Value - own));
+                if (own != face.BasePower.Value) notes.Add(T("ui.preview.base-power", "power", face.BasePower.Value));
+            }
+            if ((face.Aura ?? 0) != 0) notes.Add(T("ui.card.aura", "amount", face.Aura.Value));
+            if ((face.Armor ?? 0) > 0) notes.Add(T("ui.card.armor", "count", face.Armor.Value));
+            if (face.Order != null)
+            {
+                notes.Add(face.Order.Charges.HasValue ? T("ui.card.charges", "count", face.Order.Charges.Value) : T("ui.card.charges-unlimited"));
+                if (face.OrderUsable) notes.Add(T("ui.card.ready"));
+                else if (face.Order.Cooldown > 0) notes.Add(T("ui.card.cooldown", "count", face.Order.Cooldown));
+            }
+            var provisions = (int?)def?["provisions"];
+            var color = (string)def?["color"];
+            if (provisions.HasValue) notes.Add(T("ui.card.provisions", "count", provisions.Value) + (color == null ? "" : " · " + T("ui.card.color." + color)));
+            if ((bool?)def?["token"] == true) notes.Add(T("ui.card.token"));
+            return notes;
+        }
+
+        /// <summary>A card that opens the preview on hover or long press; its activated ability's
+        /// button, when it has one, sends `use_order` — it is only enabled when that is legal.</summary>
         private CardElement Card(string instance, CardFace face, IEnumerable<string> classes)
         {
             var element = new CardElement(instance, face, classes) { userData = face };
             element.AddManipulator(new CardPreviewManipulator(preview, instance ?? face.Card, () => face));
+            if (element.OrderButton != null && instance != null)
+            {
+                element.OrderButton.clicked += () => Send(Intents.UseOrder(instance));
+            }
             return element;
+        }
+
+        /// <summary>A public zone — a graveyard or banished pile — as a list of card faces.</summary>
+        private void ShowZone(string zone)
+        {
+            if (shown == null) return;
+            var side = zone.StartsWith("my-") ? shown.Me : shown.Opponent;
+            var graveyard = zone.EndsWith("graveyard");
+            var cards = graveyard ? side.Graveyard : side.Banished;
+            var who = T(side == shown.Me ? "ui.board.me" : "ui.board.opponent");
+            var title = who + " · " + T(graveyard ? "ui.zone.graveyard" : "ui.zone.banished");
+            modalForPhase = false;
+            modal.RemoveFromClassList("hidden");
+            modalTitle.text = title;
+            modalOptions.Clear();
+            if (cards.Count == 0)
+            {
+                var empty = new Label(T("ui.zone.empty"));
+                empty.AddToClassList("dialog__note");
+                modalOptions.Add(empty);
+            }
+            foreach (var card in cards) modalOptions.Add(Card(card.Instance, Face(card.Card), Array.Empty<string>()));
+            modalConfirm.style.display = DisplayStyle.None;
+            modalCancel.style.display = DisplayStyle.Flex;
+            modalCancel.text = T("ui.modal.close");
+            modalCancel.clickable = new Clickable(HideModal);
         }
 
         // --- modals -------------------------------------------------------------------------
@@ -733,6 +839,9 @@ namespace OpenGwt.UI
                 case "card_destroyed":
                     motion.NoteDestroyed(instance);
                     line = T("ui.event.unit-destroyed", "card", Name(card));
+                    break;
+                case "card_banished":
+                    motion.NoteBanished(instance);
                     break;
                 case "card_returned":
                     line = T("ui.event.unit-returned", "who", Who(evt), "card", Name(card));
