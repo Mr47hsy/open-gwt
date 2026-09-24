@@ -35,6 +35,8 @@ Load a file from `skills/` only when its task comes up:
 - `skills/docs-i18n-sync/` — keep the English / 简体中文 / Русский docs in sync
 - `skills/client-headless-check/` — verify a Unity client change without the editor GUI
 - `skills/i18n-strings/` — add or change a player-facing string in all three languages
+- `skills/ability-to-vocabulary/` — draft plain-language card designs into the card vocabulary
+  and report the vocabulary gaps (a Claude Code workflow)
 
 ## Keeping it honest
 

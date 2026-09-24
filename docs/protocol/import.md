@@ -149,11 +149,12 @@ no tool can check that, so review the set before importing it.
 ## 8. Drafting abilities from plain language
 
 A designer who writes abilities in plain language — a spreadsheet column such as
-`打出时：对一个敌方单位造成 3 点伤害。` — can have them drafted into the vocabulary by the Claude
-Code workflow [`.claude/workflows/ability-to-vocabulary.js`](../../.claude/workflows/ability-to-vocabulary.js):
+`打出时：对一个敌方单位造成 3 点伤害。` — can have them drafted into the vocabulary by the agent
+skill [`.agent/skills/ability-to-vocabulary/`](../../.agent/skills/ability-to-vocabulary/SKILL.md),
+a Claude Code workflow:
 
 ```text
-Workflow({ scriptPath: ".claude/workflows/ability-to-vocabulary.js",
+Workflow({ scriptPath: ".agent/skills/ability-to-vocabulary/workflow.js",
            args: { source: "my-designs.csv", set: "my-set", locale: "zh-CN", batch: 8 } })
 ```
 

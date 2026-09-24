@@ -1,7 +1,7 @@
 export const meta = {
   name: 'ability-to-vocabulary',
   description: 'Draft opengwt.cards/2 abilities from natural-language card designs, verify each against its text, and report the vocabulary gaps',
-  whenToUse: 'The owner has original card designs whose abilities are written in plain language (a spreadsheet CSV, YAML, JSON or a Markdown table) and wants an importable card set plus the list of mechanics the vocabulary cannot express yet. args: {source, set, locale?, out?, batch?}',
+  whenToUse: 'Procedure: .agent/skills/ability-to-vocabulary/SKILL.md. The owner has original card designs whose abilities are written in plain language (a spreadsheet CSV, YAML, JSON or a Markdown table) and wants an importable card set plus the list of mechanics the vocabulary cannot express yet. args: {source, set, locale?, out?, batch?}',
   phases: [
     { title: 'Guard', detail: 'check the input is original, normalise it, split it into batches' },
     { title: 'Translate', detail: 'one agent per batch writes the draft abilities and the unmapped phrases' },
