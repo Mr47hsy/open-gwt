@@ -351,8 +351,10 @@ def test_a_saved_deck_the_rules_now_refuse_is_shown_and_cannot_start_a_match(
     assert client.put("/decks/old", headers=headers, json=body).status_code == 200
     three = _with_count(body["cards"], "u-1003", 3)
 
+    player_id = client.get("/me", headers=headers).json()["player_id"]
+
     async def break_it(session: AsyncSession) -> None:
-        row = await session.get(DeckRow, "old")
+        row = await session.get(DeckRow, {"player_id": player_id, "id": "old"})
         assert row is not None
         row.cards = three
 
@@ -383,8 +385,10 @@ def test_joining_a_room_refuses_a_deck_the_rules_now_refuse(client: TestClient) 
     room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"}).json()
     assert client.put("/decks/mine", headers=h1, json=_starter_body("starter-b")).status_code == 200
 
+    player_id = client.get("/me", headers=h1).json()["player_id"]
+
     async def break_mine(session: AsyncSession) -> None:
-        row = await session.get(DeckRow, "mine")
+        row = await session.get(DeckRow, {"player_id": player_id, "id": "mine"})
         assert row is not None
         row.cards = _with_count(row.cards, "u-2001", 3)
 
@@ -446,6 +450,39 @@ def test_joining_a_room_judges_decks_by_the_rules_it_was_made_with(
             "/matches/join", headers=h1, json={"room_code": room["room_code"], "deck_id": "short"}
         )
         assert joined.status_code == 200, joined.text
+
+
+def test_each_player_keeps_their_own_deck_of_an_id(client: TestClient) -> None:
+    """Deck ids are per player: two players each save a deck ``mine``, each plays their own, and
+    deleting one leaves the other's in place."""
+    ha, ta = _guest(client, "a")
+    hb, tb = _guest(client, "b")
+    assert client.put("/decks/mine", headers=ha, json=_starter_body("starter-a")).status_code == 200
+    assert client.put("/decks/mine", headers=hb, json=_starter_body("starter-b")).status_code == 200
+
+    def decks(headers: dict[str, str]) -> list[tuple[str, str]]:
+        return [(d["deck_id"], d["faction"]) for d in client.get("/decks", headers=headers).json()]
+
+    assert decks(ha) == [("mine", "placeholder-a")]
+    assert decks(hb) == [("mine", "placeholder-b")]
+
+    room = client.post("/matches", headers=ha, json={"mode": "room", "deck_id": "mine"}).json()
+    joined = client.post(
+        "/matches/join", headers=hb, json={"room_code": room["room_code"], "deck_id": "mine"}
+    )
+    assert joined.status_code == 200, joined.text
+    for token, faction in ((ta, "placeholder-a"), (tb, "placeholder-b")):
+        with client.websocket_connect(f"/ws/matches/{room['match_id']}?token={token}") as ws:
+            _, first = _handshake(ws)
+            assert first["view"]["me"]["faction"] == faction
+
+    assert client.delete("/decks/mine", headers=hb).status_code == 204
+    assert client.delete("/decks/mine", headers=hb).status_code == 404
+    assert decks(hb) == [] and decks(ha) == [("mine", "placeholder-a")]
+    gone = client.post("/matches", headers=hb, json={"mode": "bot", "deck_id": "mine"})
+    assert gone.status_code == 404 and gone.json()["error"]["code"] == "deck_not_found"
+    kept = client.post("/matches", headers=ha, json={"mode": "bot", "deck_id": "mine"})
+    assert kept.status_code == 201, kept.text
 
 
 def test_full_match_against_the_bot_and_its_replay(client: TestClient) -> None:
@@ -612,6 +649,76 @@ def test_matches_from_before_phase_b_stay_as_history(tmp_path: Path) -> None:
         "decks": [v1_deck, v1_deck],
         "intents": [{"seat": 0, "intent": {"kind": "pass"}}],
     }
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "sqlite",
+        pytest.param(
+            "postgres",
+            marks=pytest.mark.skipif(
+                not os.environ.get("OPENGWT_TEST_POSTGRES_URL"),
+                reason="set OPENGWT_TEST_POSTGRES_URL to run",
+            ),
+        ),
+    ],
+)
+async def test_migration_0004_keys_decks_by_player(backend: str, tmp_path: Path) -> None:
+    """Upgrading keeps the decks saved before it and lets a second player reuse their id;
+    downgrading leaves a shared id to the smallest player id, as the global key needs."""
+    from sqlalchemy.exc import IntegrityError
+
+    from opengwt.server.db.models import Base
+
+    if backend == "sqlite":
+        url = f"sqlite+aiosqlite:///{tmp_path / 'test.db'}"
+    else:
+        url = os.environ["OPENGWT_TEST_POSTGRES_URL"]
+    engine = make_engine(url)
+    config = alembic_config()
+
+    def migrate(step: Callable[[Any, str], None], revision: str) -> Callable[[Any], None]:
+        def run(connection: Any) -> None:
+            config.attributes["connection"] = connection
+            step(config, revision)
+
+        return run
+
+    save = text(
+        "INSERT INTO decks (id, player_id, name, faction, leader, stratagem, cards, updated_at) "
+        "VALUES ('mine', :player, :name, 'placeholder-a', NULL, NULL, '[]', "
+        "'2026-09-01 00:00:00')"
+    )
+    saved = text("SELECT player_id, name FROM decks ORDER BY player_id")
+    try:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.drop_all)
+            await connection.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+            await connection.run_sync(migrate(command.upgrade, "0003"))
+            await connection.execute(
+                text(
+                    "INSERT INTO players (id, display_name, locale, created_at) VALUES "
+                    "('p1', 'a', NULL, '2026-09-01 00:00:00'), "
+                    "('p2', 'b', NULL, '2026-09-01 00:00:00')"
+                )
+            )
+            await connection.execute(save, {"player": "p2", "name": "old"})
+        async with engine.begin() as connection:
+            await connection.run_sync(migrate(command.upgrade, "0004"))
+            await connection.execute(save, {"player": "p1", "name": "new"})
+            assert (await connection.execute(saved)).all() == [("p1", "new"), ("p2", "old")]
+        async with engine.begin() as connection:
+            await connection.run_sync(migrate(command.downgrade, "0003"))
+            assert (await connection.execute(saved)).all() == [("p1", "new")]
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as connection:
+                await connection.execute(save, {"player": "p2", "name": "again"})
+        async with engine.begin() as connection:
+            await connection.run_sync(migrate(command.upgrade, "head"))
+            assert (await connection.execute(saved)).all() == [("p1", "new")]
+    finally:
+        await engine.dispose()
 
 
 def test_two_clients_play_through_a_room_and_one_reconnects(client: TestClient) -> None:

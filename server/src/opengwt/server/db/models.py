@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, PrimaryKeyConstraint, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -23,9 +23,13 @@ class Player(Base):
 
 
 class DeckRow(Base):
-    __tablename__ = "decks"
+    """A saved deck. Its id is the owner's own name for it, so two players may each keep a deck
+    of the same id: the key is the pair."""
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    __tablename__ = "decks"
+    __table_args__ = (PrimaryKeyConstraint("player_id", "id"),)
+
+    id: Mapped[str] = mapped_column(String(64))
     player_id: Mapped[str] = mapped_column(String(32), ForeignKey("players.id"), index=True)
     name: Mapped[str] = mapped_column(String(64))
     faction: Mapped[str] = mapped_column(String(64))
