@@ -80,6 +80,8 @@ namespace OpenGwt.UI
         private string roomWaitingCode;
         /// <summary>The hand card the player picked to play, while they choose its row and position.</summary>
         private string selected;
+        /// <summary>During a row choice, the option index each row element (by name) answers with.</summary>
+        private readonly Dictionary<string, int> rowChoices = new Dictionary<string, int>();
 
         public BoardView(VisualElement root, MatchClient client, string defaultServerUrl)
         {
@@ -128,6 +130,17 @@ namespace OpenGwt.UI
             {
                 var name = zone;
                 root.Q<Label>(zone).RegisterCallback<ClickEvent>(_ => ShowZone(name));
+            }
+            foreach (var row in RowNames)
+            {
+                foreach (var side in new[] { "my-row-", "opp-row-" })
+                {
+                    var element = root.Q<VisualElement>(side + row);
+                    element.RegisterCallback<ClickEvent>(_ =>
+                    {
+                        if (rowChoices.TryGetValue(element.name, out var option)) Send(Intents.Choose(option));
+                    });
+                }
             }
 
             FillLanguages();
@@ -391,8 +404,10 @@ namespace OpenGwt.UI
             var seat = client.Seat;
             // Only the newest view offers anything: an older one is a step on the way to it.
             var offers = live ? view : NoView;
+            var choice = live ? view.PendingChoice : null;
             roomWaitingCode = null;
             if (selected != null && offers.PlayRows(selected).Count == 0) selected = null;
+            rowChoices.Clear();
 
             root.Q<Label>("my-score").text = me.Score.ToString();
             root.Q<Label>("opp-score").text = opp.Score.ToString();
@@ -416,8 +431,8 @@ namespace OpenGwt.UI
             var inHand = new Dictionary<string, CardElement>();
             foreach (var row in RowNames)
             {
-                RenderRow(root.Q<VisualElement>("my-row-" + row), me.Rows[row], seat, offers, row, true, board);
-                RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, offers, row, false, board);
+                RenderRow(root.Q<VisualElement>("my-row-" + row), me.Rows[row], seat, offers, choice, row, true, board);
+                RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, offers, choice, row, false, board);
             }
             RenderHand(view, offers, inHand);
             RenderLeader(me, offers);
@@ -439,21 +454,35 @@ namespace OpenGwt.UI
 
             passButton.SetEnabled(offers.Allows("pass"));
             endTurnButton.SetEnabled(offers.Allows("end_turn"));
-            RenderPrompt(view, offers);
+            RenderPrompt(view, offers, choice);
 
-            if (live && view.PendingChoice != null) ShowChoice(view);
+            if (choice != null && choice.Kind == "card") ShowChoice(view);
             else if (modalForPhase) HideModal();
         }
 
-        /// <summary>The middle bar's question: redraws left and the end-mulligan button during the
-        /// mulligan, where to put the card picked from the hand, or nothing.</summary>
-        private void RenderPrompt(MatchView view, MatchView offers)
+        /// <summary>The middle bar's question: the pending choice's prompt with its source card and
+        /// a cancel button when it may be cancelled, redraws left and the end-mulligan button
+        /// during the mulligan, where to put the card picked from the hand, or nothing.</summary>
+        private void RenderPrompt(MatchView view, MatchView offers, PendingChoice choice)
         {
             var me = view.Me;
             promptCard.Clear();
             promptSource.text = "";
             endMulliganButton.AddToClassList("hidden");
             cancelChoiceButton.AddToClassList("hidden");
+            if (choice != null)
+            {
+                promptText.text = T(choice.PromptKey, "card", Name(choice.Card?.Card));
+                if (choice.Source?.Card != null) promptSource.text = client.CardName(choice.Source.Card);
+                if (choice.Card != null) promptCard.Add(Card(choice.Card.Instance, Face(choice.Card.Card), new[] { "card--mini" }));
+                if (choice.Cancellable)
+                {
+                    cancelChoiceButton.RemoveFromClassList("hidden");
+                    cancelChoiceButton.SetEnabled(offers.Allows("cancel_choice"));
+                }
+                prompt.RemoveFromClassList("hidden");
+                return;
+            }
             if (view.Phase == "mulligan" && me.Mulligan != null)
             {
                 promptText.text = me.Mulligan.Done ? T("ui.board.mulligan-waiting") : T("ui.board.redraws-left", "count", me.Mulligan.Remaining);
@@ -473,11 +502,24 @@ namespace OpenGwt.UI
         }
 
         /// <summary>The positions a card may be put at on a row-side right now, each with what a
-        /// click there sends: the legal rows of the hand card picked to play, every position from
-        /// the left end to the right end (`match.md` §6).</summary>
-        private Dictionary<int, Action> SlotsFor(MatchView offers, bool mine, string rowName)
+        /// click there sends: the options of a pending `place` choice, or the legal rows of the
+        /// hand card picked to play, every position from the left end to the right end
+        /// (`match.md` §6, §7).</summary>
+        private Dictionary<int, Action> SlotsFor(MatchView offers, PendingChoice choice, bool mine, string rowName)
         {
             var slots = new Dictionary<int, Action>();
+            if (choice != null)
+            {
+                if (choice.Kind != "place") return slots;
+                for (var i = 0; i < choice.Options.Count; i++)
+                {
+                    var option = choice.Options[i];
+                    if ((option.Side == "me") != mine || option.Row != rowName || !option.Position.HasValue) continue;
+                    var index = i;
+                    slots[option.Position.Value] = () => Send(Intents.Choose(index));
+                }
+                return slots;
+            }
             if (selected == null) return slots;
             var card = shown.Me.Hand?.FirstOrDefault(c => c.Instance == selected);
             if (card == null) return slots;
@@ -494,6 +536,30 @@ namespace OpenGwt.UI
                 };
             }
             return slots;
+        }
+
+        /// <summary>During a `unit` choice, the option index of each candidate card; null otherwise.</summary>
+        private static Dictionary<string, int> Candidates(PendingChoice choice)
+        {
+            if (choice == null || choice.Kind != "unit") return null;
+            var candidates = new Dictionary<string, int>();
+            for (var i = 0; i < choice.Options.Count; i++)
+            {
+                if (choice.Options[i].Instance != null) candidates[choice.Options[i].Instance] = i;
+            }
+            return candidates;
+        }
+
+        /// <summary>During a `row` choice, the option index of this row-side, or null.</summary>
+        private static int? RowOption(PendingChoice choice, bool mine, string rowName)
+        {
+            if (choice == null || choice.Kind != "row") return null;
+            for (var i = 0; i < choice.Options.Count; i++)
+            {
+                var option = choice.Options[i];
+                if ((option.Side == "me") == mine && option.Row == rowName) return i;
+            }
+            return null;
         }
 
         /// <summary>A place marker between the cards of a row-side.</summary>
@@ -556,12 +622,13 @@ namespace OpenGwt.UI
             return T("ui.board.rounds", "mine", view.Me.RoundsWon, "theirs", view.Opponent.RoundsWon);
         }
 
-        private void RenderRow(VisualElement rowElement, RowView row, int seat, MatchView offers, string rowName, bool mine,
-            Dictionary<string, CardElement> board)
+        private void RenderRow(VisualElement rowElement, RowView row, int seat, MatchView offers, PendingChoice choice, string rowName,
+            bool mine, Dictionary<string, CardElement> board)
         {
             var units = rowElement.Q<VisualElement>("units");
             units.Clear();
-            var slots = SlotsFor(offers, mine, rowName);
+            var slots = SlotsFor(offers, choice, mine, rowName);
+            var candidates = Candidates(choice);
             var total = 0;
             for (var position = 0; position < row.Cards.Count; position++)
             {
@@ -570,7 +637,12 @@ namespace OpenGwt.UI
                 total += card.Power ?? 0;
                 var classes = new List<string>();
                 if ((card.Owner != seat) == mine) classes.Add("card--foreign");
+                if (candidates != null) classes.Add(candidates.ContainsKey(card.Instance) ? "card--candidate" : "card--dimmed");
                 var element = Card(card.Instance, Face(card, offers), classes);
+                if (candidates != null && candidates.TryGetValue(card.Instance, out var option))
+                {
+                    element.RegisterCallback<ClickEvent>(_ => Send(Intents.Choose(option)));
+                }
                 if (flash.Contains(card.Instance)) Flash(element);
                 units.Add(element);
                 board[card.Instance] = element;
@@ -578,6 +650,9 @@ namespace OpenGwt.UI
             if (slots.TryGetValue(row.Cards.Count, out var last)) units.Add(Slot(last));
             rowElement.Q<Label>("total").text = total.ToString();
             RenderEffect(rowElement, row.Effect);
+            var rowOption = RowOption(choice, mine, rowName);
+            if (rowOption.HasValue) rowChoices[rowElement.name] = rowOption.Value;
+            rowElement.EnableInClassList("row--candidate", rowOption.HasValue);
             // Lit: the rows the picked card may go to, or, before a pick, any card may.
             var playable = selected == null
                 ? offers.LegalIntents.Any(i => (string)i["kind"] == "play_card" && (string)i["row"] == rowName)
@@ -794,43 +869,37 @@ namespace OpenGwt.UI
 
         // --- modals -------------------------------------------------------------------------
 
+        /// <summary>A `card` choice: the options as card faces in the dialog — a card of a zone by
+        /// its instance, a `create` offer by its card alone — with cancel when it may be cancelled.</summary>
         private void ShowChoice(MatchView view)
         {
             var choice = view.PendingChoice;
-            var options = new List<(string, Action)>();
+            modalForPhase = true;
+            modal.RemoveFromClassList("hidden");
+            modalTitle.text = T(choice.PromptKey, "card", Name(choice.Card?.Card));
+            modalOptions.Clear();
             for (var i = 0; i < choice.Options.Count; i++)
             {
                 var index = i;
-                options.Add((OptionLabel(choice.Options[i]), () =>
+                var option = choice.Options[i];
+                if (option.Card == null) continue;
+                var element = Card(option.Instance ?? "offer:" + i, Face(option.Card), new[] { "card--candidate" });
+                element.RegisterCallback<ClickEvent>(_ =>
                 {
                     HideModal();
                     Send(Intents.Choose(index));
-                }));
+                });
+                modalOptions.Add(element);
             }
-            ShowModal(T(choice.PromptKey, "card", "@card." + (choice.Card?.Card ?? choice.Source?.Card) + ".name"), options, true);
+            modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = choice.Cancellable ? DisplayStyle.Flex : DisplayStyle.None;
+            modalCancel.text = T("ui.modal.cancel");
+            modalCancel.SetEnabled(view.Allows("cancel_choice"));
             modalCancel.clickable = new Clickable(() =>
             {
                 HideModal();
                 Send(Intents.CancelChoice());
             });
-            // An option that is a card: let the player read it before choosing.
-            var buttons = modalOptions.Children().ToList();
-            for (var i = 0; i < buttons.Count && i < choice.Options.Count; i++)
-            {
-                if (choice.Options[i].Card == null) continue;
-                var face = Face(choice.Options[i].Card);
-                buttons[i].AddManipulator(new CardPreviewManipulator(preview, "choice:" + i, () => face));
-            }
-        }
-
-        /// <summary>What an option is, in words: the card, or the row-side, or the place on it.</summary>
-        private string OptionLabel(ChoiceOption option)
-        {
-            if (option.Card != null) return client.CardName(option.Card);
-            var side = T(option.Side == "me" ? "ui.board.me" : "ui.board.opponent");
-            var row = T("ui.row." + option.Row);
-            return option.Position.HasValue ? side + " · " + row + " · " + (option.Position.Value + 1) : side + " · " + row;
         }
 
         private void ShowModal(string title, List<(string label, Action onClick)> options, bool forPhase)
@@ -848,6 +917,7 @@ namespace OpenGwt.UI
             modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = DisplayStyle.Flex;
             modalCancel.text = T("ui.modal.cancel");
+            modalCancel.SetEnabled(true);
             modalCancel.clickable = new Clickable(HideModal);
         }
 

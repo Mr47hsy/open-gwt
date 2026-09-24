@@ -92,6 +92,10 @@ namespace OpenGwt.Tests
                 ["status.shielded.name"] = "Test shielded",
                 ["row-effect.damage-weakest.name"] = "Test frost",
                 ["row-effect.damage-weakest.text"] = "The weakest unit takes {amount} damage.",
+                ["choice.damage"] = "Test: choose what to damage",
+                ["choice.set-row-effect"] = "Test: choose a row",
+                ["choice.place"] = "Test: put {card}",
+                ["choice.create"] = "Test: choose a card to create",
             });
             root = document.rootVisualElement;
             sent = new System.Collections.Generic.List<JObject>();
@@ -506,6 +510,150 @@ namespace OpenGwt.Tests
             yield return Frames(2);
             Assert.IsFalse(root.Q<Button>("btn-end-turn").enabledSelf);
             Assert.IsFalse(root.Q<Button>("btn-pass").enabledSelf);
+        }
+
+        // --- the four kinds of choice (match.md §7) -------------------------------------------
+
+        private JObject Choosing(string kind, string promptKey, bool cancellable, params JObject[] options)
+        {
+            var view = View(hand: new[] { ("h1", Special) }, mine: new[] { ("b1", Unit, 5, 5) }, theirs: new[] { ("o1", Guard, 7, 7) });
+            ((JArray)view["opponent"]["rows"]["ranged"]["cards"]).Add(BoardCard("o2", Unit, 1, power: 3, basePower: 5));
+            view["phase"] = "choosing";
+            var legal = new JArray();
+            for (var i = 0; i < options.Length; i++) legal.Add(new JObject { ["kind"] = "choose", ["option"] = i });
+            if (cancellable) legal.Add(new JObject { ["kind"] = "cancel_choice" });
+            view["legal_intents"] = legal;
+            view["pending_choice"] = new JObject
+            {
+                ["kind"] = kind, ["prompt_key"] = promptKey, ["source"] = new JObject { ["instance"] = "s1", ["card"] = Special },
+                ["cancellable"] = cancellable, ["options"] = new JArray(options.Cast<object>().ToArray()),
+            };
+            return view;
+        }
+
+        private static JObject Option(string side, string row, int? position = null, string instance = null, string card = null)
+        {
+            var option = new JObject();
+            if (side != null) option["side"] = side;
+            if (row != null) option["row"] = row;
+            if (position.HasValue) option["position"] = position.Value;
+            if (instance != null) option["instance"] = instance;
+            if (card != null) option["card"] = card;
+            return option;
+        }
+
+        [UnityTest]
+        public IEnumerator AUnitChoiceHighlightsItsCandidatesOnTheBoard()
+        {
+            Show(Choosing("unit", "choice.damage", true,
+                Option("opponent", "melee", 0, "o1", Guard), Option("opponent", "ranged", 0, "o2", Unit)));
+            yield return Frames(3);
+
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"), "a unit is chosen on the board, not in a dialog");
+            Assert.IsTrue(RowCard("opp-row-melee", "o1").ClassListContains("card--candidate"));
+            Assert.IsTrue(RowCard("opp-row-ranged", "o2").ClassListContains("card--candidate"));
+            Assert.IsTrue(RowCard("my-row-melee", "b1").ClassListContains("card--dimmed"), "not a candidate");
+            Assert.IsFalse(HandCard("h1").ClassListContains("card--playable"), "no play while a choice is pending");
+            Assert.AreEqual("Test: choose what to damage", root.Q<Label>("prompt-text").text);
+            Assert.AreEqual("Test special", root.Q<Label>("prompt-source").text, "the card whose ability asks");
+            var cancel = root.Q<Button>("btn-cancel-choice");
+            Assert.IsFalse(cancel.ClassListContains("hidden"));
+            Assert.IsTrue(cancel.enabledSelf);
+            Assert.AreEqual(client.Text("ui.turn.your-choice"), root.Q<Label>("turn-label").text);
+            yield return Seconds(0.3f);
+            yield return Screenshot("12-choice-unit");
+
+            Click(RowCard("opp-row-ranged", "o2"));
+            Assert.AreEqual("choose", (string)sent[0]["kind"]);
+            Assert.AreEqual(1, (int)sent[0]["option"]);
+            Click(RowCard("my-row-melee", "b1"));
+            Assert.AreEqual(1, sent.Count, "a card that is not a candidate does nothing");
+            Click(cancel);
+            Assert.AreEqual("cancel_choice", (string)sent[1]["kind"]);
+
+            // Not cancellable: no cancel button.
+            Show(Choosing("unit", "choice.damage", false, Option("opponent", "melee", 0, "o1", Guard)));
+            yield return Frames(2);
+            Assert.IsTrue(cancel.ClassListContains("hidden"));
+        }
+
+        [UnityTest]
+        public IEnumerator ARowChoiceLightsTheRowSides()
+        {
+            Show(Choosing("row", "choice.set-row-effect", false, Option("opponent", "melee"), Option("me", "ranged")));
+            yield return Frames(3);
+
+            Assert.IsTrue(root.Q("opp-row-melee").ClassListContains("row--candidate"));
+            Assert.IsTrue(root.Q("my-row-ranged").ClassListContains("row--candidate"));
+            Assert.IsFalse(root.Q("my-row-melee").ClassListContains("row--candidate"));
+            Assert.IsFalse(RowCard("opp-row-melee", "o1").ClassListContains("card--candidate"), "the row is the option, not its cards");
+            Assert.AreEqual("Test: choose a row", root.Q<Label>("prompt-text").text);
+            yield return Seconds(0.3f);
+            yield return Screenshot("13-choice-row");
+
+            Click(root.Q("my-row-ranged"));
+            Assert.AreEqual(1, (int)sent[0]["option"]);
+            Click(root.Q("my-row-melee"));
+            Assert.AreEqual(1, sent.Count, "a row-side that is not offered does nothing");
+
+            // Once the choice is made the rows go back to normal.
+            Show(View(mine: new[] { ("b1", Unit, 5, 5) }));
+            yield return Frames(2);
+            Assert.IsFalse(root.Q("my-row-ranged").ClassListContains("row--candidate"));
+            Click(root.Q("my-row-ranged"));
+            Assert.AreEqual(1, sent.Count);
+        }
+
+        [UnityTest]
+        public IEnumerator APlaceChoiceOffersSlotsForTheCardBeingPlaced()
+        {
+            var view = Choosing("place", "choice.place", false,
+                Option("me", "melee", 0), Option("me", "melee", 1), Option("me", "ranged", 0));
+            view["pending_choice"]["card"] = new JObject { ["instance"] = "p1", ["card"] = Guard };
+            Show(view);
+            yield return Frames(3);
+
+            Assert.AreEqual(2, Slots("my-row-melee").Count);
+            Assert.AreEqual(1, Slots("my-row-ranged").Count);
+            Assert.IsEmpty(Slots("opp-row-melee"));
+            Assert.AreEqual("Test: put Test guard", root.Q<Label>("prompt-text").text, "the view names the card being placed");
+            Assert.AreEqual(Guard, root.Q("prompt-card").Q<CardElement>().Card, "and it is shown");
+            yield return Seconds(0.3f);
+            yield return Screenshot("14-choice-place");
+
+            Click(Slots("my-row-ranged")[0]);
+            Assert.AreEqual("choose", (string)sent[0]["kind"]);
+            Assert.AreEqual(2, (int)sent[0]["option"]);
+        }
+
+        [UnityTest]
+        public IEnumerator ACardChoiceListsTheOffer()
+        {
+            // A `create` offer: cards without an instance yet, next to one from a zone.
+            Show(Choosing("card", "choice.create", false, Option(null, null, instance: "z1", card: Unit), Option(null, null, card: Special)));
+            yield return Frames(3);
+
+            Assert.IsFalse(root.Q("modal").ClassListContains("hidden"));
+            Assert.AreEqual("Test: choose a card to create", root.Q<Label>("modal-title").text);
+            var faces = root.Q("modal-options").Query<CardElement>().ToList();
+            Assert.AreEqual(2, faces.Count);
+            Assert.AreEqual(Unit, faces[0].Card);
+            Assert.AreEqual(Special, faces[1].Card);
+            Assert.AreEqual(DisplayStyle.None, root.Q<Button>("modal-cancel").resolvedStyle.display, "not cancellable");
+            yield return Seconds(0.3f);
+            yield return Screenshot("15-choice-card");
+
+            Click(faces[1]);
+            Assert.AreEqual("choose", (string)sent[0]["kind"]);
+            Assert.AreEqual(1, (int)sent[0]["option"]);
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"));
+
+            // A cancellable one — a graveyard without an offer — shows the cancel button.
+            Show(Choosing("card", "choice.play-from-graveyard", true, Option(null, null, instance: "z1", card: Unit)));
+            yield return Frames(3);
+            Assert.AreEqual(DisplayStyle.Flex, root.Q<Button>("modal-cancel").resolvedStyle.display);
+            Click(root.Q<Button>("modal-cancel"));
+            Assert.AreEqual("cancel_choice", (string)sent[1]["kind"]);
         }
 
         [UnityTest]
