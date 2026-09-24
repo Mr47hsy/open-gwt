@@ -139,11 +139,17 @@ UNPLAYABLE_DECK_KEYS = frozenset(
 )
 
 
+def _deck_card(defn: CardDef | None) -> bool:
+    """A card a deck may hold: known, and not a leader, a stratagem or a token (§12). Anything
+    else among a deck's cards counts toward their number and nothing more."""
+    return defn is not None and defn.kind not in (Kind.LEADER, Kind.STRATAGEM) and not defn.token
+
+
 def deck_provisions(lib: Library, deck: Deck, rules: Rules) -> tuple[int, int]:
     """What a deck's cards cost and the budget its leader gives: ``(used, budget)`` (§12). The
-    leader and the stratagem cost nothing and unknown cards count for nothing; without a leader
-    card the budget is ``provision_base`` alone."""
-    used = sum(lib[cid].provisions for cid in deck.cards if cid in lib)
+    leader and the stratagem cost nothing, and neither do unknown cards or what a deck never
+    holds; without a leader card the budget is ``provision_base`` alone."""
+    used = sum(lib[cid].provisions for cid in deck.cards if _deck_card(lib.get(cid)))
     leader = lib.get(deck.leader)
     bonus = leader.provision_bonus if leader is not None and leader.kind is Kind.LEADER else 0
     return used, rules.provision_base + bonus
@@ -209,7 +215,7 @@ def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[DeckProblem]:
     for cid in deck.cards:
         defn = lib.get(cid)
         n = copies.pop(cid, 0)
-        if defn is None or defn.color is None or n == 0:
+        if defn is None or not _deck_card(defn) or n == 0:
             continue  # unknown, a leader, a stratagem or a token: reported above
         limit = rules.copies_gold if defn.color is Color.GOLD else rules.copies_bronze
         if n > limit:

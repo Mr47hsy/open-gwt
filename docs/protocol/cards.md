@@ -591,7 +591,9 @@ key, the card it is about for the rules marked *card*, and the numbers its messa
 How the rules count:
 
 - The leader and the stratagem are checked first, then each card in deck order, then the
-  counts. A card's problems are reported once, where it first appears.
+  counts. The leader and the stratagem have one problem at most each — the first of *unknown*,
+  *not a leader* / *not a stratagem*, *wrong faction* — since the next check means nothing once
+  one fails. A card's problems are reported once, where it first appears.
 - A *unit* is a card of kind `unit`; specials and artifacts are not units. The copies of a card
   are counted across the whole deck, however its entries are split.
 - A deck's provisions are the sum of its cards' `provisions`; the leader and the stratagem cost

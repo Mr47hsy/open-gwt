@@ -216,6 +216,30 @@ def test_what_a_deck_never_holds_is_reported_and_not_counted() -> None:
     assert deck_provisions(LIB, _deck(cards), RULES) == (72, 165)
 
 
+def test_what_a_deck_never_holds_counts_for_nothing_even_with_a_cost() -> None:
+    """Leaders, stratagems and tokens carry no colour and no provisions in the schema; built
+    with them anyway, they still count only toward the number of cards (§12). Unknown ids and
+    a leader among the cards are reported once, however often they appear."""
+    lib = {
+        **LIB,
+        "x-leader": card_def_from_mapping(
+            "x-leader", "red", {**_leader(0), "color": "gold", "provisions": 9}
+        ),
+        "x-tok": card_def_from_mapping(
+            "x-tok", "red", {"kind": "unit", "token": True, "power": 1, "provisions": 9}
+        ),
+    }
+    cards = ("r-u-01", "x-leader", "x-leader", "x-tok", "x-tok", "x-tok", "nope", "nope")
+    deck = Deck("red", cards, "r-leader", "r-strat")
+    rules = replace(RULES, deck_min_cards=1, deck_min_units=1, provision_base=0, copies_bronze=1)
+    assert deck_provisions(lib, deck, rules) == (6, 15)
+    assert _keys(check_deck(lib, deck, rules)) == [
+        "error.deck.leader-in-deck:x-leader",
+        "error.deck.token-in-deck:x-tok",
+        "error.deck.unknown-card:nope",
+    ]
+
+
 def test_every_problem_at_once_in_the_order_of_the_rules() -> None:
     cards = (
         "b-u-1",
