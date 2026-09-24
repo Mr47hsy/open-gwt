@@ -77,7 +77,7 @@ never encode a name.
 | `side` | unit | no | `self` (default) or `opponent`: the side of the board the unit lands on when it is played or summoned (`place_new_card` sets the side itself). |
 | `statuses` | unit, artifact | no | Statuses the card has whenever it enters the board: `shielded`, `immune`, `banish_on_leave`, `kept_at_round_end`, `status_proof`, `guarding` (artifacts: not `shielded` or `guarding`). |
 | `tags` | unit, special, artifact | no | Free-form tag ids (`^[a-z][a-z0-9-]{1,31}$`), original words, used by `where` filters. |
-| `activation` | unit, artifact, leader, stratagem | no | How the card's activated ability may be used (section 6.3). Only on a card with an `on_activate` ability. A stratagem without one has a single charge. |
+| `activation` | unit, artifact, leader, stratagem | with an `on_activate` ability, except on a stratagem | How the card's activated ability may be used (section 6.3). Only on a card with an `on_activate` ability. Without it a unit's, artifact's or leader's activated ability could never be used, so the schema refuses such a card; a stratagem without one has a single charge. |
 | `abilities` | all | special, leader and stratagem: yes | Ordered list of abilities (section 6). |
 
 What each kind is:
@@ -215,7 +215,7 @@ that changed sides while its ability waited in the queue acts for its new side.
 | `on_ally_played` | when its controller plays another unit that lands on this card's side. The played unit is the *trigger unit*. |
 | `on_boosted` | when this unit is boosted (`boost`, `drain`, `consume`, `growing`, `boost_random`). Not by a continuous effect and not by `raise_base_power`. |
 | `on_damaged` | when damage reaches this unit's power — past shields and armour — and the unit survives it. |
-| `while_on_board` | not a trigger: a continuous effect, in force while the card is on the board and not locked (section 11.1). Only `continuous_boost` uses it. |
+| `while_on_board` | not a trigger: a continuous effect, in force while the card is on the board and not locked (section 11.1). Only `continuous_boost` uses it, and it takes no `if` (section 6.2). |
 
 A special has only `on_play` abilities and a leader only `on_activate`; an artifact has every
 trigger except `on_boosted` and `on_damaged`; a unit has them all.
@@ -232,13 +232,17 @@ trigger except `on_boosted` and `on_damaged`; a unit has them all.
 | `starting_deck_without_neutral` | `true` | the acting player's deck held no neutral card when the match started. |
 
 All listed conditions must hold. They are checked when the ability's turn in the queue comes;
-an ability whose conditions fail is skipped without an event.
+an ability whose conditions fail is skipped without an event. A `while_on_board` ability takes
+no `if`: it is never queued (section 11.3), so there is no moment to check one, and the schema
+refuses it.
 
 ### 6.3 Activated abilities — `on_activate` and `activation`
 
 All `on_activate` abilities of a card form its one **activated ability**, used with the
 `use_order` intent ([`match.md`](match.md) §6); each use resolves them in the order written.
-`activation` is set on the card, not on an ability:
+`activation` is set on the card, not on an ability. A unit, artifact or leader with an
+`on_activate` ability must have one — its activated ability is never ready without it, so the
+schema refuses the card; a stratagem without one has a single charge:
 
 | Key | Meaning |
 | --- | --- |

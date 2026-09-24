@@ -109,6 +109,51 @@ def test_no_card_costs_fewer_than_four_provisions(tmp_path: Path) -> None:
     assert any("provisions" in p and "minimum of 4" in p for p in info.value.problems)
 
 
+def _one_card_file(tmp_path: Path, card: dict[str, object]) -> Path:
+    path = tmp_path / "x.cards.yaml"
+    path.write_text(
+        yaml.safe_dump({"schema": "opengwt.cards/2", "faction": "test-x", "cards": {"c-1": card}})
+    )
+    return path
+
+
+def test_a_continuous_effect_takes_no_condition(tmp_path: Path) -> None:
+    """A ``while_on_board`` ability is never queued, so no moment exists to check an ``if``
+    (cards.md §6.2, §11.3): the compiler refuses one rather than let the aura act
+    unconditionally."""
+    aura = {"when": "while_on_board", "do": "continuous_boost", "amount": 1, "scope": "row"}
+    unit = {"kind": "unit", "color": "bronze", "provisions": 4, "power": 2}
+    assert load_cards_file(_one_card_file(tmp_path, {**unit, "abilities": [aura]}))["c-1"]
+    with pytest.raises(DataError) as info:
+        load_cards_file(
+            _one_card_file(tmp_path, {**unit, "abilities": [{**aura, "if": {"on_row": "melee"}}]})
+        )
+    assert any("c-1/abilities/0" in p for p in info.value.problems)
+
+
+@pytest.mark.parametrize(
+    "card",
+    [
+        {"kind": "unit", "color": "bronze", "provisions": 4, "power": 2},
+        {"kind": "artifact", "color": "bronze", "provisions": 4},
+        {"kind": "leader", "provision_bonus": 15},
+    ],
+    ids=["unit", "artifact", "leader"],
+)
+def test_an_activated_ability_needs_its_activation(tmp_path: Path, card: dict[str, object]) -> None:
+    """Without ``activation`` a unit's, artifact's or leader's ``on_activate`` abilities could
+    never be used (cards.md §3, §6.3), so the compiler refuses the card; a stratagem without one
+    has a single charge."""
+    order = {"when": "on_activate", "do": "draw"}
+    with_activation = {**card, "activation": {"charges": 1}, "abilities": [order]}
+    assert load_cards_file(_one_card_file(tmp_path, with_activation))["c-1"].activation
+    with pytest.raises(DataError) as info:
+        load_cards_file(_one_card_file(tmp_path, {**card, "abilities": [order]}))
+    assert any("c-1" in p and "activation" in p for p in info.value.problems)
+    stratagem = {"kind": "stratagem", "abilities": [order]}
+    assert load_cards_file(_one_card_file(tmp_path, stratagem))["c-1"].activation
+
+
 def test_no_leader_is_neutral(dataset: DataSet) -> None:
     """A leader belongs to the faction whose decks it leads (cards.md §12)."""
     from dataclasses import replace

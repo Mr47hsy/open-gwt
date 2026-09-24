@@ -946,6 +946,39 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "abilities"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "unit",
+                  "artifact",
+                  "leader"
+                ]
+              },
+              "abilities": {
+                "contains": {
+                  "required": [
+                    "when"
+                  ],
+                  "properties": {
+                    "when": {
+                      "const": "on_activate"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "activation"
+            ]
+          }
         }
       ]
     },
@@ -1416,6 +1449,15 @@
               "do": {
                 "const": "continuous_boost"
               }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "if"
+                  ]
+                }
+              ]
             }
           }
         },
