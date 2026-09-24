@@ -1,7 +1,8 @@
 # ADR 0002: Rules core as a zero-dependency Python package
 
 - Status: accepted, 2026-09-22; the PRNG clause is superseded by
-  [ADR 0010](0010-unpredictable-random-stream.md) from ruleset phase B on
+  [ADR 0010](0010-unpredictable-random-stream.md) from ruleset phase B on, and testing on the
+  newest Python release by [ADR 0012](0012-ci-on-the-python-floor-only.md)
 - Deciders: project owner
 - Related: [ADR 0001](0001-python-server-unity-thin-client.md)
 

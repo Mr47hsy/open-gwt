@@ -56,7 +56,7 @@ protocol, SQLite plus memory `MatchStore` / `EventBus` / `Cache`, Alembic migrat
 holds v2 placeholder cards for two factions and neutral, two starter decks and en / zh-CN / ru
 texts. CI runs
 ruff, mypy, import-linter, pytest (with the migrations on SQLite and PostgreSQL) and a simulation
-on Python 3.10 and 3.14.
+on Python 3.10 (ADR 0012).
 
 `client/` is the Unity 6.6 project of milestone M3: `Assets/OpenGwt/` with the C# twin of the
 i18n renderer, `ServerApi` and `MatchSocket`, `MatchClient`, the UI Toolkit `BoardView`
