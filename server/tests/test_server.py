@@ -374,33 +374,78 @@ def test_a_saved_deck_the_rules_now_refuse_is_shown_and_cannot_start_a_match(
     assert started.status_code == 201
 
 
-def test_joining_a_room_whose_deck_the_rules_now_refuse_is_refused(client: TestClient) -> None:
-    """A room keeps the deck it was made with; if deck building tightened since, the join is
-    refused with the problems and the seat whose deck has them, and the room keeps waiting."""
+def test_joining_a_room_refuses_a_deck_the_rules_now_refuse(client: TestClient) -> None:
+    """A join names the seat whose deck the rules refuse, and the room keeps waiting. The
+    joiner's own deck comes with its problems; the room's deck does not — they would show the
+    joiner the other player's cards (match.md §2, §10)."""
     h0, _ = _guest(client, "a")
     h1, _ = _guest(client, "b")
     room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"}).json()
+    assert client.put("/decks/mine", headers=h1, json=_starter_body("starter-b")).status_code == 200
 
-    async def break_it(session: AsyncSession) -> None:
+    async def break_mine(session: AsyncSession) -> None:
+        row = await session.get(DeckRow, "mine")
+        assert row is not None
+        row.cards = _with_count(row.cards, "u-2001", 3)
+
+    _db(client, break_mine)
+    join = {"room_code": room["room_code"], "deck_id": "mine"}
+    joined = client.post("/matches/join", headers=h1, json=join)
+    assert joined.status_code == 422
+    assert joined.json()["error"]["details"] == {
+        "seat": 1,
+        "problems": [
+            {
+                "key": "error.deck.too-many-copies",
+                "card": "u-2001",
+                "params": {"card": "@card.u-2001.name", "count": 3, "limit": 2},
+            },
+            {"key": "error.deck.over-budget", "params": {"used": 173, "budget": 165}},
+        ],
+    }
+
+    async def break_the_room(session: AsyncSession) -> None:
         row = await session.get(MatchRow, room["match_id"])
         assert row is not None
         deck = dict(row.decks[0])
         deck["cards"] = [*deck["cards"], deck["cards"][0], deck["cards"][0]]
         row.decks = [deck]
 
-    _db(client, break_it)
-    joined = client.post(
-        "/matches/join", headers=h1, json={"room_code": room["room_code"], "deck_id": "starter-b"}
-    )
+    _db(client, break_the_room)
+    joined = client.post("/matches/join", headers=h1, json={**join, "deck_id": "starter-b"})
     assert joined.status_code == 422
-    details = joined.json()["error"]["details"]
-    assert details["seat"] == 0
-    assert [p["key"] for p in details["problems"]] == [
-        "error.deck.too-many-copies",
-        "error.deck.over-budget",
-    ]
+    assert joined.json()["error"]["details"] == {"seat": 0}
     status = client.get(f"/matches/{room['match_id']}", headers=h0).json()
     assert status["status"] == "waiting"
+
+
+def test_joining_a_room_judges_decks_by_the_rules_it_was_made_with(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A room made under 25 cards at least takes a deck of 29 after the server moved to 30: the
+    rules the room stores are the ones its match is played with (match.md §2)."""
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        h0, _ = _guest(client, "a")
+        h1, _ = _guest(client, "b")
+        room = client.post(
+            "/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"}
+        ).json()
+        body = _starter_body("starter-b")
+        body["cards"] = [c for c in body["cards"] if c["id"] != "u-2001"]  # 29 cards
+        assert client.put("/decks/short", headers=h1, json=body).status_code == 200
+    stricter = replace(Rules(), deck_min_cards=30)
+    monkeypatch.setattr(
+        app_module, "load_content", lambda data_dir: load_content(data_dir, stricter)
+    )
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        listed = client.get("/decks", headers=h1).json()
+        assert [p["key"] for p in listed[0]["problems"]] == ["error.deck.too-few-cards"]
+        refused = client.post("/matches", headers=h1, json={"mode": "bot", "deck_id": "short"})
+        assert refused.status_code == 422
+        joined = client.post(
+            "/matches/join", headers=h1, json={"room_code": room["room_code"], "deck_id": "short"}
+        )
+        assert joined.status_code == 200, joined.text
 
 
 def test_full_match_against_the_bot_and_its_replay(client: TestClient) -> None:

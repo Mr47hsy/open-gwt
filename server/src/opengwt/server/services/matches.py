@@ -289,17 +289,18 @@ class MatchService:
 
     def _check_room_decks(self, row: MatchRow, joining: Deck) -> None:
         """Both decks of a room must be legal under the rules its match will be played with —
-        the ones stored when the room was made. The first deck was judged then; if deck building
-        has tightened since, the join is refused rather than the match (cards.md §12)."""
+        the ones stored when the room was made (match.md §2). The room's deck was judged then;
+        if deck building has tightened since, the join is refused rather than the match, and
+        says only which seat: that deck's problems would show the joiner the other player's
+        cards. The joiner's own deck comes with its problems (cards.md §12)."""
         rules = rules_from_dict(row.rules)
-        for seat, deck in enumerate((deck_from_dict(row.decks[0]), joining)):
-            problems = check_deck(self.content.library, deck, rules)
-            if problems:
-                raise AppError(
-                    "deck_illegal",
-                    422,
-                    details={"seat": seat, "problems": problems_to_list(problems)},
-                )
+        if check_deck(self.content.library, deck_from_dict(row.decks[0]), rules):
+            raise AppError("deck_illegal", 422, details={"seat": 0})
+        problems = check_deck(self.content.library, joining, rules)
+        if problems:
+            raise AppError(
+                "deck_illegal", 422, details={"seat": 1, "problems": problems_to_list(problems)}
+            )
 
     def _bot_deck(self, against: Deck) -> Deck:
         """A starter deck of another faction, picked with ``secrets``: which deck the bot plays

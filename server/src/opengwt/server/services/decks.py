@@ -18,8 +18,8 @@ def _literal(text: str) -> str:
 
 def problem_to_dict(problem: DeckProblem) -> dict[str, Any]:
     """``{key, card?, params}``: the rule's key, the id of the card it is about, and parameters a
-    client renders the key with — ``card`` as a reference to the card's name, or the id itself
-    for a card the pack does not have."""
+    client renders the key with — ``card`` as a reference to the card's name, or, for a card the
+    pack does not have, the id itself, with an ``@`` in front when it starts with one."""
     params: dict[str, Param] = dict(problem.numbers)
     out: dict[str, Any] = {"key": problem.key}
     if problem.card is not None:

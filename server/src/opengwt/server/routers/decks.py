@@ -45,16 +45,16 @@ def _out(row: DeckRow, content: Content) -> DeckOut:
 
 
 async def resolve_deck(
-    request: Request, session: AsyncSession, player_id: str, deck_id: str
+    request: Request, session: AsyncSession, player_id: str, deck_id: str, judge: bool = True
 ) -> Deck:
     """A player's own deck by id, or one of the starter decks shipped with the content. A saved
     deck the server's rules make illegal — one saved under older rules, say — is refused with
-    its problems."""
+    its problems, unless ``judge`` is off: joining a room judges it by the room's rules."""
     content: Content = request.app.state.content
     row = await session.get(DeckRow, deck_id)
     if row is not None and row.player_id == player_id:
         deck = _deck(row)
-        problems = check_deck(content.library, deck, content.rules)
+        problems = check_deck(content.library, deck, content.rules) if judge else []
         if problems:
             raise AppError("deck_illegal", 422, details={"problems": problems_to_list(problems)})
         return deck

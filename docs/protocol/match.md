@@ -45,11 +45,11 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
-| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions, problems}]` | The caller's decks, judged by the `Rules` the server plays with (the pack's): `provisions` is `{used, budget}` (`cards.md` §12) and `problems` the deck-building rules the deck breaks, as in section 10 — empty, except for a deck saved under rules that have tightened since. |
+| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions, problems}]` | The caller's decks, judged by the `Rules` the server plays with (the pack's): `provisions` is `{used, budget}` (`cards.md` §12) and `problems` the deck-building rules the deck breaks, as in section 10 — empty for a deck saved now, but a deck saved earlier breaks rules that have tightened or content that changed since (a deck from before ADR 0011, with no stratagem, reports it as an unknown card with an empty id). |
 | `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck, as `GET /decks` lists it | Validated against the pack and the rules core's deck legality (`cards.md` §12); an illegal deck is refused with `deck_illegal` and is not saved. `leader` and `stratagem` are required. |
 | `DELETE /decks/{deck_id}` | → `204` | |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. `deck_id` is a saved deck of the caller or a starter deck of the pack; a saved deck the rules refuse is refused with `deck_illegal`. |
-| `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. Both decks are judged by the rules the room was made with; if either breaks one, the join is refused with `deck_illegal` and `details.seat`, and the room keeps waiting. |
+| `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. Both decks are judged by the rules the room was made with, which its match is played with; if either breaks one, the join is refused with `deck_illegal` and `details.seat`, and the room keeps waiting. The joiner's own deck (seat 1) comes with its `problems`; the room's (seat 0) does not, since they would show the joiner the other player's cards. |
 | `GET /matches/{match_id}` | → `{match_id, mode, status, seat, room_code, result}` | `status` is `waiting`, `playing` or `finished`; `seat` is the caller's seat or null. |
 | `GET /matches/{match_id}/replay` | → replay record (section 9) | Only after the match ended; only for its players in the MVP. |
 
@@ -321,17 +321,18 @@ timer runs on through them.
 | `protocol_version` | Client and server protocol versions differ. |
 | `unauthorised` | Token invalid, or not a player of this match. |
 | `not_a_player` | The caller is not seated in the match (replay, status). |
-| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the deck-building rules the deck breaks (below), and `details.seat`, when joining a room, whose deck it is. |
+| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the deck-building rules the caller's deck breaks (below); when joining a room, `details.seat` says whose deck it is, and only seat 1's — the caller's — comes with `problems`. |
 | `room_not_found`, `room_full`, `own_room` | Joining a room. |
 | `locale_unsupported`, `invalid_request`, `unknown_message` | Request shape and content. |
 
 Each deck problem is `{key, card?, params}`, one per rule and card, in the order of `cards.md`
-§12: `key` is the rule's key and its message's (`error.deck.<rule>`); `card` the id of the card
-it is about, for the rules that concern one card; `params` what the message is rendered with —
-`card` as a reference to the card's name (`@card.<id>.name`, or the id itself for a card the pack
-does not have), and the rule's numbers: `count` and `min` (`too-few-cards`, `too-few-units`),
-`count` and `max` (`too-many-cards`), `count` and `limit` (`too-many-copies`), `used` and
-`budget` (`over-budget`). `count` selects the message's plural form (`i18n.md` §5).
+§12. `key` is the rule's key and its message's (`error.deck.<rule>`); `card` is the id of the
+card it is about, for the rules that concern one card; `params` is what the message is rendered
+with. Its `card` refers to the card's name (`@card.<id>.name`); for a card the pack does not
+have, it is the id itself, with one more `@` in front when the id starts with `@` (`i18n.md`
+§4). Its numbers are the rule's: `count` and `min` (`too-few-cards`, `too-few-units`), `count`
+and `max` (`too-many-cards`), `count` and `limit` (`too-many-copies`), `used` and `budget`
+(`over-budget`); `count` selects the message's plural form (`i18n.md` §5).
 
 ```json
 { "code": "deck_illegal", "message_key": "error.deck-illegal", "params": {},
