@@ -28,6 +28,7 @@ from opengwt.core.engine import (
     IllegalIntent,
     acting_seats,
     apply,
+    check_deck,
     legal_intents,
     new_match,
     play_positions,
@@ -65,6 +66,7 @@ from opengwt.server.db.session import session_scope
 from opengwt.server.errors import AppError
 from opengwt.server.services.auth import new_id
 from opengwt.server.services.content import Content
+from opengwt.server.services.decks import problems_to_list
 
 logger = logging.getLogger(__name__)
 
@@ -277,12 +279,27 @@ class MatchService:
                 raise AppError("room_full", 409)
             if row.seat0_player_id == player_id:
                 raise AppError("own_room", 409)
+            self._check_room_decks(row, deck)
             row.seat1_player_id = player_id
             row.decks = [*row.decks, deck_to_dict(deck)]
             row.status = STATUS_PLAYING
             info = _info(row)
         await self._start(info)
         return info
+
+    def _check_room_decks(self, row: MatchRow, joining: Deck) -> None:
+        """Both decks of a room must be legal under the rules its match will be played with —
+        the ones stored when the room was made. The first deck was judged then; if deck building
+        has tightened since, the join is refused rather than the match (cards.md §12)."""
+        rules = rules_from_dict(row.rules)
+        for seat, deck in enumerate((deck_from_dict(row.decks[0]), joining)):
+            problems = check_deck(self.content.library, deck, rules)
+            if problems:
+                raise AppError(
+                    "deck_illegal",
+                    422,
+                    details={"seat": seat, "problems": problems_to_list(problems)},
+                )
 
     def _bot_deck(self, against: Deck) -> Deck:
         """A starter deck of another faction, picked with ``secrets``: which deck the bot plays
@@ -325,7 +342,7 @@ class MatchService:
             seat0_player_id=seats[0],
             seat1_player_id=seats[1],
             decks=[deck_to_dict(d) for d in decks],
-            rules=rules_to_dict(Rules()),
+            rules=rules_to_dict(self.content.rules),
             result=None,
             created_at=_now(),
             finished_at=None,

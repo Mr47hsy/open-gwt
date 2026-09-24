@@ -40,6 +40,11 @@ class DeckUpsert(BaseModel):
     cards: list[DeckCardEntry]
 
 
+class DeckProvisions(BaseModel):
+    used: int
+    budget: int
+
+
 class DeckOut(BaseModel):
     deck_id: str
     name: str
@@ -47,6 +52,9 @@ class DeckOut(BaseModel):
     leader: str | None
     stratagem: str | None
     cards: list[DeckCardEntry]
+    provisions: DeckProvisions
+    # the deck-building rules the deck breaks, as in an error's details (match.md §10)
+    problems: list[dict[str, Any]]
 
 
 class CreateMatch(BaseModel):

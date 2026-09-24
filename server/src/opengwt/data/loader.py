@@ -232,14 +232,15 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     return problems
 
 
-def load_data(data_dir: Path) -> DataSet:
-    """Everything under ``data/``, validated. Raises ``DataError`` listing every problem found."""
+def load_data(data_dir: Path, rules: Rules = DEFAULT_RULES) -> DataSet:
+    """Everything under ``data/``, validated, the decks legal under ``rules`` — the ``Rules``
+    the pack will carry (cards.md §14). Raises ``DataError`` listing every problem found."""
     lib = load_library(data_dir / "cards")
     problems: list[str] = check_references(lib)
     decks: dict[str, Deck] = {}
     tables: dict[str, dict[str, str]] = {}
     try:
-        decks = load_decks(data_dir / "decks", lib)
+        decks = load_decks(data_dir / "decks", lib, rules)
     except DataError as e:
         problems.extend(e.problems)
     try:
