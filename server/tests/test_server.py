@@ -952,7 +952,10 @@ def test_a_timeout_after_an_activated_ability_plays_a_card(tmp_path: Path) -> No
 
 def _order_waiting_on_a_cancellable_choice(room: _Room) -> int:
     """Both decks are starter-b: the starter plays a unit, the other player passes, and the
-    starter's stratagem — boost an ally — is ready. Returns the starter's seat."""
+    starter's stratagem — boost an ally — is ready. Returns the starter's seat.
+
+    Make the room under ``PINNED_SEED``: on some seeds the unit played is immune, so the
+    stratagem has no ally to boost and cannot be used."""
     lib = room.service.content.library
     starter = room.state().starter
     room.move(starter, EndMulligan())
@@ -971,12 +974,18 @@ def _order_waiting_on_a_cancellable_choice(room: _Room) -> int:
         room.move(starter, Choose(0))
     room.move(starter, EndTurn())
     room.move(1 - starter, Pass())
+    assert any(isinstance(i, UseOrder) for i in room.legal(starter)), (
+        "the starter cannot use their stratagem: the seed dealt no unit it can boost"
+    )
     return starter
 
 
-def test_using_an_order_and_cancelling_it_does_not_restart_the_clock(tmp_path: Path) -> None:
+def test_using_an_order_and_cancelling_it_does_not_restart_the_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """match.md §9: a cancelled activated ability leaves the match as it was, so it cannot buy
     the player a fresh turn timer."""
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
     with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
         room = _Room(client, ("starter-b", "starter-b"))
         starter = _order_waiting_on_a_cancellable_choice(room)
@@ -992,7 +1001,10 @@ def test_using_an_order_and_cancelling_it_does_not_restart_the_clock(tmp_path: P
             assert room.timer(starter).at == clock.at
 
 
-def test_a_timeout_on_a_cancellable_choice_cancels_it_and_moves_on(tmp_path: Path) -> None:
+def test_a_timeout_on_a_cancellable_choice_cancels_it_and_moves_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(match_service, "new_seed", lambda: PINNED_SEED)
     with TestClient(create_app(_settings(tmp_path, turn_timeout_seconds=3600))) as client:
         room = _Room(client, ("starter-b", "starter-b"))
         starter = _order_waiting_on_a_cancellable_choice(room)
