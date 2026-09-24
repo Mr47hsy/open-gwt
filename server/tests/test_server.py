@@ -188,6 +188,9 @@ def test_health_pack_and_i18n(client: TestClient) -> None:
     pack = client.get("/content/pack")
     assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/2"
     assert pack.json()["rules"]["row_capacity"] == 9
+    decks = {d["id"]: d for d in pack.json()["decks"]}
+    assert decks["starter-a"]["provisions"] == {"used": 163, "budget": 165}
+    assert decks["starter-b"]["provisions"] == {"used": 165, "budget": 165}
     etag = pack.headers["etag"]
     assert client.get("/content/pack", headers={"If-None-Match": etag}).status_code == 304
     locales = client.get("/content/i18n").json()
@@ -303,21 +306,28 @@ def test_the_server_judges_decks_by_the_rules_it_plays_with(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """One ``Rules`` value: the pack publishes it, saving a deck and starting a match judge by
-    it, and a match stores it. A budget of 149 + 15 takes both starter decks but not a deck
-    of 165 provisions, which the default rules would take."""
-    rules = replace(Rules(), provision_base=149)
+    it, and a match stores it. A budget of 151 + 15 takes a deck of 166 provisions, which the
+    default rules would refuse, and refuses one of 167 against that budget."""
+    rules = replace(Rules(), provision_base=151)
     monkeypatch.setattr(app_module, "load_content", lambda data_dir: load_content(data_dir, rules))
     with TestClient(create_app(_settings(tmp_path))) as client:
-        assert client.get("/content/pack").json()["rules"]["provision_base"] == 149
+        assert client.get("/content/pack").json()["rules"]["provision_base"] == 151
         headers, _ = _guest(client)
         body = _starter_body()
-        body["cards"] = _with_count(body["cards"], "u-1005", 2)  # 163 + 6 - 4
-        body["cards"] = [c for c in body["cards"] if c["id"] != "u-1001"]
-        refused = client.put("/decks/dear", headers=headers, json=body)
+        # 163 - 4 - 5 + 6 + 6: u-1001 and u-1002 out, a second u-1005 and u-1006 in
+        cards = _with_count(_with_count(body["cards"], "u-1005", 2), "u-1006", 2)
+        body["cards"] = [c for c in cards if c["id"] not in ("u-1001", "u-1002")]
+        saved = client.put("/decks/dear", headers=headers, json=body)
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["provisions"] == {"used": 166, "budget": 166}
+        body["cards"] = _with_count(_with_count(body["cards"], "u-1003", 1), "u-1004", 2)
+        refused = client.put("/decks/dearer", headers=headers, json=body)
         assert refused.status_code == 422
         assert refused.json()["error"]["details"]["problems"] == [
-            {"key": "error.deck.over-budget", "params": {"used": 165, "budget": 164}}
+            {"key": "error.deck.over-budget", "params": {"used": 167, "budget": 166}}
         ]
+        started = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "dear"})
+        assert started.status_code == 201
         room = client.post(
             "/matches", headers=headers, json={"mode": "room", "deck_id": "starter-a"}
         )
@@ -328,7 +338,7 @@ def test_the_server_judges_decks_by_the_rules_it_plays_with(
             assert row is not None
             return row.rules
 
-        assert _db(client, stored_rules)["provision_base"] == 149
+        assert _db(client, stored_rules)["provision_base"] == 151
 
 
 def test_a_saved_deck_the_rules_now_refuse_is_shown_and_cannot_start_a_match(

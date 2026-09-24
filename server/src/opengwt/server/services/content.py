@@ -12,6 +12,7 @@ from opengwt.core.model import DEFAULT_RULES, Deck, Library, Rules
 from opengwt.core.serialize import canonical_json, rules_to_dict
 from opengwt.data import load_cards_raw, load_data
 from opengwt.i18n import Renderer
+from opengwt.server.services.decks import provisions_to_dict
 
 PACK_SCHEMA = "opengwt.pack/2"
 
@@ -52,6 +53,7 @@ def load_content(data_dir: Path, rules: Rules = DEFAULT_RULES) -> Content:
                 "leader": d.leader,
                 "stratagem": d.stratagem,
                 "cards": deck_entries(d),
+                "provisions": provisions_to_dict(data.library, d, rules),
             }
             for deck_id, d in sorted(data.decks.items())
         ],

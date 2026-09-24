@@ -16,6 +16,7 @@ from opengwt.core.model import (
 from opengwt.data import DataError, DataSet, load_data
 from opengwt.data.loader import (
     check_i18n,
+    check_leaders,
     check_references,
     load_cards_file,
     load_deck,
@@ -86,6 +87,36 @@ def test_schema_violation_is_reported_with_path(tmp_path: Path) -> None:
     with pytest.raises(DataError) as info:
         load_cards_file(bad)
     assert any("u-1" in p and "power" in p for p in info.value.problems)
+
+
+def test_no_card_costs_fewer_than_four_provisions(tmp_path: Path) -> None:
+    """The cheapest card of the standalone game costs 4 (cards.md §3); tokens, leaders and
+    stratagems cost nothing and carry no provisions at all."""
+
+    def cards_file(provisions: int) -> Path:
+        path = tmp_path / f"cost-{provisions}.cards.yaml"
+        unit = {"kind": "unit", "color": "bronze", "provisions": provisions, "power": 1}
+        path.write_text(
+            yaml.safe_dump(
+                {"schema": "opengwt.cards/2", "faction": "test-x", "cards": {"u-1": unit}}
+            )
+        )
+        return path
+
+    assert load_cards_file(cards_file(4))["u-1"].provisions == 4
+    with pytest.raises(DataError) as info:
+        load_cards_file(cards_file(3))
+    assert any("provisions" in p and "minimum of 4" in p for p in info.value.problems)
+
+
+def test_no_leader_is_neutral(dataset: DataSet) -> None:
+    """A leader belongs to the faction whose decks it leads (cards.md §12)."""
+    from dataclasses import replace
+
+    lib = dict(dataset.library)
+    lib["l-1001"] = replace(lib["l-1001"], faction="neutral")
+    assert check_leaders(lib) == ["l-1001: a leader belongs to a faction, not to neutral"]
+    assert check_leaders(dataset.library) == []
 
 
 def test_v1_files_are_rejected(tmp_path: Path) -> None:
