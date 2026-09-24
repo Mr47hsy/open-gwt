@@ -224,7 +224,7 @@ trigger except `on_boosted` and `on_damaged`; a unit has them all.
 
 | Key | Value | Holds when |
 | --- | --- | --- |
-| `on_row` | a row | the acting card is on that row — for `on_play`, the row it was played on. |
+| `on_row` | a row | the acting card is on that row — for `on_play`, the row it was played on; for `on_destroyed`, the row it was on when it was destroyed. |
 | `trigger_unit` | a `where` filter | `on_ally_played` only: the played unit matches the filter. |
 | `this` | a `where` filter | the acting card matches the filter — `boosted` or `damaged`, say. |
 | `hand_at_most` | an integer | the acting player holds at most that many cards. |
@@ -286,8 +286,9 @@ unless `where.kind` lists `artifact`; a stratagem is never one. Power actions (`
 
 A player's **choice** — `chosen` — is narrower: it never offers an `immune` unit, and while a
 unit with `guarding` stands on a row-side, the players other than its controller are not offered
-any other card of that row-side. Every other selector, row effects included, reaches immune and
-guarded units alike (section 9).
+any other card of that row-side except another guarding unit: with two guards on one row-side,
+both are still offered. Every other selector, row effects included, reaches immune and guarded
+units alike (section 9).
 
 | `units` | Targets |
 | --- | --- |
@@ -322,12 +323,12 @@ ability does nothing, and no choice is asked.
 
 The zone is given by the action (`play_from_deck`, `play_from_graveyard`, `summon_from_deck`,
 and the hand for `discard`); `side` (`self` by default) says whose. Candidates are the cards in
-that zone matching `where`.
+that zone matching `where`. With no candidates the ability does nothing, and no choice is asked.
 
 | `pick` | Cards |
 | --- | --- |
-| `chosen` | one card the acting player picks (kind `card`). With `offer: n`, only `n` candidates drawn with the seeded PRNG are offered. |
-| `random` | `count` (default 1) candidates drawn with the seeded PRNG. |
+| `chosen` | one card the acting player picks (kind `card`). With `offer: n`, only `n` candidates drawn with the seeded PRNG are offered, or all of them if there are fewer. |
+| `random` | `count` (default 1) distinct candidates drawn with the seeded PRNG, or all of them if there are fewer. |
 | `first` | the first `count` (default 1) candidates in zone order: from the top of a deck, from the earliest arrival in a graveyard, from the oldest card in a hand. |
 | `all` | every candidate in zone order, at most `count` if given. |
 
@@ -345,8 +346,8 @@ hand shows the chooser its candidates — the card reveals them by design.
 | `tags_any` / `tags_none` | the card has at least one / none of the listed tags. |
 | `statuses_any` / `statuses_none` | the card has at least one / none of the listed statuses. Cards off the board have none. |
 | `same_id_as_this` | the card has the acting card's card id. |
-| `power_at_least` / `power_at_most` | its power is at least / at most the value: current power on the board, printed power elsewhere. |
-| `stronger_than_this` | its power is greater than the acting card's; false when the acting card is not a unit on the board. |
+| `power_at_least` / `power_at_most` | its power is at least / at most the value: its power on the board (section 11.1), its printed power elsewhere. |
+| `stronger_than_this` | its power, read as for `power_at_least`, is greater than the acting card's power on the board; false when the acting card is not a unit on the board — the card of an `on_destroyed` ability, say. A trigger unit that has left the board by the time `if.trigger_unit` is checked is therefore compared by its printed power. |
 | `boosted` / `damaged` | it is a unit on the board whose current power is above / below its base power (auras aside). |
 
 All listed filters must hold.
@@ -363,13 +364,13 @@ All listed filters must hold.
 | `raise_base_power` | `target`, `amount` | Each target's base power rises by `amount`, and its current power with it. |
 | `destroy` | `target` | Each target is destroyed (section 11.2). |
 | `banish` | `target` | Each target leaves the board for its owner's banished zone. `on_destroyed` does not fire. |
-| `add_status` | `target`, `status`, `turns` | Each target gains the status (section 9). `turns` is required for `bleeding` and `growing`, optional for `locked` and `immune`, not allowed otherwise. |
+| `add_status` | `target`, `status`, `turns` | Each target gains the status (section 9). `turns` is required for `bleeding` and `growing`, optional for `locked`, `immune`, `status_proof` and `guarding`, not allowed otherwise. |
 | `remove_statuses` | `target`, `statuses` | Each target loses the listed statuses, or all of them when `statuses` is absent. |
 | `move_to_other_row` | `target` | Each target moves to the other row of its side, at the right end; nothing happens if that row is full. Row restrictions only govern playing a card. |
 | `return_to_hand` | `target` | Each target goes to its owner's hand; it stays where it is if that hand is full. |
 | `take_control` | `target` | Each target moves to the acting player's side, same row, at the right end; nothing happens if that row-side is full or the target is on that side already. It gains or loses `on_enemy_side` accordingly. |
 | `drain` | `target`, `amount` | Each target takes `amount` damage; the acting unit, if it is on the board, is boosted by the damage that reached the target's power. |
-| `duel` | `target` | The acting unit and each target damage each other in turn by their power, the acting unit first, until one of them has left the board. |
+| `duel` | `target` | The acting unit and each target damage each other in turn by their power, the acting unit first, until one of them has left the board — or until 64 strikes in all, 32 each, have been struck, when the duel ends with both still on the board. |
 | `consume` | `target` | Each target is destroyed; the acting unit, if it is on the board, is boosted by the target's power at that moment. |
 | `discard` | `cards` | Each selected card leaves its owner's hand for their graveyard without any of its abilities (`pick: chosen` is kind `card`). |
 | `draw` | `side` (default `self`), `count` (default 1) | That player draws, one card at a time (section 11.5). |
@@ -399,8 +400,8 @@ kind `unit` or `artifact`; the compiler checks this (section 14).
 | `growing` | required | At each of its controller's turn ends the unit is boosted by 1. |
 | `banish_on_leave` | — | Whenever the card leaves the board — destroyed, returned, or cleared at round end — it is banished instead of reaching any other zone. `on_destroyed` still fires when it was destroyed. |
 | `kept_at_round_end` | — | When the board is cleared at the end of a round, the card stays, with everything it carries; the status is then removed. |
-| `status_proof` | optional | No status can be added to the card: adding one does nothing. Its own statuses stay, and it can still be targeted. |
-| `guarding` | optional | While the unit is on a row-side, the players other than its controller cannot choose any other card of that row-side (section 7.1). It still applies while the unit is locked. |
+| `status_proof` | optional | No status can be added to the card: adding one does nothing and cancels nothing — bleeding added to it leaves its growing as it is, and the other way round. Its own statuses stay, and it can still be targeted. |
+| `guarding` | optional | While the unit is on a row-side, the players other than its controller cannot choose any other card of that row-side except another guarding unit, so two guards on one row-side can both be chosen (section 7.1). It still applies while the unit is locked. |
 | `on_enemy_side` | — | Carried by every card on the board whose controller is not its owner, and only by those: the board adds and removes it, no action does. |
 
 A card's statuses are an ordered list, at most one entry per status, in order of arrival.
@@ -411,7 +412,8 @@ A card's statuses are an ordered list, at most one entry per status, in order of
   added to a card with `status_proof`.
 - **Bleeding and growing cancel** turn for turn: adding one to a unit that has the other first
   takes the smaller number of turns off both, removing a status whose turns run out; whatever is
-  left of the new one is then added.
+  left of the new one is then added. On a card with `status_proof` nothing is added, so nothing
+  is cancelled either.
 - **Innate** statuses — the card's `statuses` — are added whenever the card enters the board,
   before anything else happens to it.
 - **Timers** tick at the controller's turn end (section 11.4): `bleeding` and `growing` act,
@@ -427,15 +429,16 @@ A row-side holds at most one row effect: `{effect, amount, count?}`. `set_row_ef
 the current one; `clear_row_effect` and the end of the round remove it. Row effects do not
 target, so immune units are affected. A player who has passed has no more turn starts in the
 round, so the per-turn effects on their rows stop acting. When both of a player's row-sides have
-a per-turn effect, the one set earlier acts first. `boost_random` is a **boon**; every other row
+a per-turn effect, the one set earlier acts first. A per-turn effect acts on the units of its
+row-side only; with none there, it does nothing. `boost_random` is a **boon**; every other row
 effect is a **hazard** (`clear_row_effect.only`).
 
 | Effect | Acts |
 | --- | --- |
 | `damage_strongest` | at each turn start of the row-side's player: its strongest unit takes `amount` damage (a tie is broken with the seeded PRNG). |
 | `damage_weakest` | the same, on its weakest unit. |
-| `damage_random` | the same, on `count` distinct units drawn with the seeded PRNG. |
-| `boost_random` | at each turn start of the row-side's player: `count` distinct units drawn with the seeded PRNG are boosted by `amount`. |
+| `damage_random` | the same, on `count` distinct units drawn with the seeded PRNG, or all of them if there are fewer. |
+| `boost_random` | at each turn start of the row-side's player: `count` distinct units drawn with the seeded PRNG, or all of them if there are fewer, are boosted by `amount`. |
 | `damage_on_arrival` | whenever a unit enters the row-side — played, summoned, placed new, moved or taken over — it takes `amount` damage, after its innate statuses and before its `on_play`. |
 
 ## 11. Power and resolution order
@@ -538,7 +541,9 @@ Each of steps 2, 3, 6 and 7 resolves with everything it causes before the next s
   stratagem is then placed on their board (section 3).
 - **Round start.** Each player, the starter first, draws `draws_per_round` cards. A draw into a
   hand already holding `hand_limit` cards does not happen and the card stays on top of the deck;
-  a draw from an empty deck does nothing.
+  a draw from an empty deck does nothing. ADR 0009 (*Hand and draws*) says such draws are lost;
+  ADRs are not rewritten, so the difference is noted here: this document governs, as the rules
+  core does, and the card stays on the deck.
 - **Mulligan.** Both players redraw at the same time, each up to `mulligans_per_round` times plus
   `mulligans_per_skipped_draw` for every draw of this round start their full hand prevented —
   and in round one the starter `starter_extra_mulligans` more — and may stop early; a player with no redraws, an empty hand or an empty deck is done at once. A
@@ -556,6 +561,9 @@ Each of steps 2, 3, 6 and 7 resolves with everything it causes before the next s
   4. the match ends once a player has `rounds_to_win` round wins or `max_rounds` rounds have
      been played: the player with more round wins wins the match, and equal wins are a draw;
   5. otherwise the next round starts, begun by the player `next_round_starter` names.
+- **Between rounds** only the board and its row effects are cleared: each player's hand, deck,
+  graveyard and banished zone are kept as they are into the next round, and a leader keeps its
+  charges and cooldown (section 5).
 
 ## 12. Decks
 

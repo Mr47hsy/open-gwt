@@ -33,7 +33,7 @@ names appear here.
 | heal / reset | 治疗 / 重置 | исцеление / сброс | Bring a damaged unit back up to its base power / bring any unit back to its base power |
 | boosted / damaged | 已增益 / 受伤 | усиленный / раненый | A unit whose current power is above / below its base power |
 | hazard / boon | 有害行效果 / 有益行效果 | вредный / полезный эффект ряда | A row effect that damages / boosts; `clear_row_effect` can clear just one kind |
-| guarding | 守护 | охрана | A status: the opponent cannot choose any other card on the guard's row |
+| guarding | 守护 | охрана | A status: the opponent cannot choose any other card on the guard's row-side, except another guard |
 | status-proof | 状态免疫 | защита от статусов | A status: no status can be added to the card |
 | status | 状态 | статус | A marker on a unit that alters how rules apply to it, possibly with a timer |
 | activated ability | 主动能力 | активируемая способность | An ability the player triggers during a turn, before or after its card; using it does not end the turn but commits it to a card (intent `use_order`) |
