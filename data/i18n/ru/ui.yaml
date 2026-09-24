@@ -117,3 +117,11 @@ ui.card.token: Токен
 
 # Действия хода, мулиган и зоны (фаза E).
 ui.modal.close: Закрыть
+
+# Действия хода, мулиган и зоны (фаза E).
+ui.board.redraws-left.one: "Осталась {count} замена"
+ui.board.redraws-left.few: "Осталось {count} замены"
+ui.board.redraws-left.many: "Осталось {count} замен"
+ui.board.redraws-left.other: "Осталось {count} замен"
+ui.board.mulligan-waiting: Ждём, пока соперник закончит мулиган
+ui.board.choose-place: "Выберите, куда сыграть {card}"

@@ -99,3 +99,8 @@ ui.card.token: 衍生卡
 
 # 回合操作、换牌与区域（阶段 E）。
 ui.modal.close: 关闭
+
+# 回合操作、换牌与区域（阶段 E）。
+ui.board.redraws-left.other: "还可换牌 {count} 次"
+ui.board.mulligan-waiting: 等待对手换牌结束
+ui.board.choose-place: "选择 {card} 打出的位置"

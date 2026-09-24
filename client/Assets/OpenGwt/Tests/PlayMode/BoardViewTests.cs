@@ -30,6 +30,7 @@ namespace OpenGwt.Tests
         private const string Artifact = "t-a-0001";
         private const string Leader = "t-l-0001";
         private const string Stratagem = "t-g-0001";
+        private const string Spy = "t-u-0003";
 
         private GameObject host;
         private RenderTexture target;
@@ -37,6 +38,7 @@ namespace OpenGwt.Tests
         private BoardView board;
         private VisualElement root;
         private int seq;
+        private System.Collections.Generic.List<JObject> sent;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -65,6 +67,7 @@ namespace OpenGwt.Tests
             client.Cards[Special] = JObject.Parse("{\"id\":\"t-s-0001\",\"kind\":\"special\",\"color\":\"gold\",\"provisions\":9}");
             client.Cards[Artifact] = JObject.Parse("{\"id\":\"t-a-0001\",\"kind\":\"artifact\",\"activation\":{\"charges\":2}}");
             client.Cards[Leader] = JObject.Parse("{\"id\":\"t-l-0001\",\"kind\":\"leader\",\"provision_bonus\":15,\"activation\":{\"charges\":2}}");
+            client.Cards[Spy] = JObject.Parse("{\"id\":\"t-u-0003\",\"kind\":\"unit\",\"side\":\"opponent\",\"power\":4}");
             client.Cards[Stratagem] = JObject.Parse("{\"id\":\"t-g-0001\",\"kind\":\"stratagem\",\"rows\":[\"melee\"]}");
             client.I18n.MergeTable("en", new System.Collections.Generic.Dictionary<string, string>
             {
@@ -80,6 +83,8 @@ namespace OpenGwt.Tests
                 ["card.t-l-0001.text"] = "Leads.",
                 ["card.t-g-0001.name"] = "Test stratagem",
                 ["card.t-g-0001.text"] = "Used once.",
+                ["card.t-u-0003.name"] = "Test spy",
+                ["card.t-u-0003.text"] = "Lands on the other side.",
                 // The tables the tests need of the phase E interface texts (the real ones are in data/i18n).
                 ["status.immune.name"] = "Test immune",
                 ["status.bleeding.name"] = "Test bleeding",
@@ -89,6 +94,8 @@ namespace OpenGwt.Tests
                 ["row-effect.damage-weakest.text"] = "The weakest unit takes {amount} damage.",
             });
             root = document.rootVisualElement;
+            sent = new System.Collections.Generic.List<JObject>();
+            client.IntentSent += intent => sent.Add(intent);
             board = new BoardView(root, client, "http://127.0.0.1:1");
             root.Q("connect-panel").AddToClassList("hidden");
             root.Q("match").RemoveFromClassList("hidden");
@@ -360,11 +367,145 @@ namespace OpenGwt.Tests
             // The graveyard count opens the zone.
             var count = root.Q<Label>("my-graveyard");
             Assert.AreEqual(client.Text("ui.board.zone", MatchClient.P("zone", "@ui.zone.graveyard", "count", 1)), count.text);
-            using (var click = ClickEvent.GetPooled()) { click.target = count; count.SendEvent(click); }
+            Click(count);
             yield return Frames(2);
             Assert.IsFalse(root.Q("modal").ClassListContains("hidden"));
             Assert.AreEqual(Special, root.Q("modal-options").Q<CardElement>().Card);
             yield return Screenshot("09-graveyard");
+        }
+
+        [UnityTest]
+        public IEnumerator MulliganRedrawsOneCardAtATimeFromTheHand()
+        {
+            var view = View(hand: new[] { ("h1", Unit), ("h2", Special) }, turn: null);
+            view["phase"] = "mulligan";
+            view["me"]["mulligan"] = new JObject { ["remaining"] = 2, ["done"] = false };
+            view["opponent"]["mulligan"] = new JObject { ["remaining"] = 3, ["done"] = false };
+            view["legal_intents"] = new JArray(
+                new JObject { ["kind"] = "mulligan", ["card"] = "h1" },
+                new JObject { ["kind"] = "mulligan", ["card"] = "h2" },
+                new JObject { ["kind"] = "end_mulligan" });
+            Show(view);
+            yield return Frames(3);
+
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"), "no modal: the hand itself is the mulligan");
+            Assert.IsTrue(HandCard("h1").ClassListContains("card--redrawable"));
+            Assert.IsFalse(HandCard("h1").ClassListContains("card--playable"));
+            var prompt = root.Q("prompt");
+            Assert.IsFalse(prompt.ClassListContains("hidden"));
+            Assert.AreEqual(client.Text("ui.board.redraws-left", MatchClient.P("count", 2)), root.Q<Label>("prompt-text").text);
+            var endMulligan = root.Q<Button>("btn-end-mulligan");
+            Assert.IsFalse(endMulligan.ClassListContains("hidden"));
+            Assert.IsTrue(endMulligan.enabledSelf);
+            Assert.IsFalse(root.Q<Button>("btn-end-turn").enabledSelf);
+            Assert.IsFalse(root.Q<Button>("btn-pass").enabledSelf);
+            Assert.AreEqual(client.Text("ui.turn.your-mulligan"), root.Q<Label>("turn-label").text);
+            yield return Seconds(0.3f);
+            yield return Screenshot("10-mulligan");
+
+            Click(HandCard("h1"));
+            Assert.AreEqual(1, sent.Count);
+            Assert.AreEqual("mulligan", (string)sent[0]["kind"]);
+            Assert.AreEqual("h1", (string)sent[0]["card"]);
+            Click(endMulligan);
+            Assert.AreEqual("end_mulligan", (string)sent[1]["kind"]);
+
+            // Done: nothing to click, waiting for the opponent.
+            view["me"]["mulligan"] = new JObject { ["remaining"] = 1, ["done"] = true };
+            view["legal_intents"] = new JArray();
+            Show(view);
+            yield return Frames(3);
+            Assert.IsFalse(HandCard("h1").ClassListContains("card--redrawable"));
+            Assert.AreEqual(client.Text("ui.board.mulligan-waiting"), root.Q<Label>("prompt-text").text);
+            Assert.IsFalse(endMulligan.enabledSelf);
+            Assert.AreEqual(client.Text("ui.turn.opponent-mulligan"), root.Q<Label>("turn-label").text);
+        }
+
+        [UnityTest]
+        public IEnumerator PlayingAUnitAsksForRowAndPosition()
+        {
+            Show(View(hand: new[] { ("h1", Guard), ("h2", Special) }, mine: new[] { ("b1", Unit, 5, 5) },
+                plays: new[] { ("h1", "melee"), ("h1", "ranged"), ("h2", (string)null) }));
+            yield return Frames(3);
+            Assert.IsEmpty(Slots("my-row-melee"), "no slots before a card is picked");
+            Assert.IsTrue(root.Q("prompt").ClassListContains("hidden"));
+            Assert.IsTrue(root.Q("my-row-melee").ClassListContains("row--active"), "a row any card may go to is lit");
+
+            // Picking the card: a slot per legal position on each legal row, and the prompt.
+            Click(HandCard("h1"));
+            yield return Frames(3);
+            Assert.IsTrue(HandCard("h1").ClassListContains("card--selected"));
+            Assert.AreEqual(2, Slots("my-row-melee").Count, "left of the unit and right of it");
+            Assert.AreEqual(1, Slots("my-row-ranged").Count);
+            Assert.IsEmpty(Slots("opp-row-melee"));
+            Assert.IsTrue(root.Q("my-row-ranged").ClassListContains("row--active"));
+            Assert.AreEqual(client.Text("ui.board.choose-place", MatchClient.P("card", "@card.t-u-0002.name")), root.Q<Label>("prompt-text").text);
+            Assert.IsEmpty(sent, "nothing is sent until a place is picked");
+            yield return Seconds(0.3f);
+            yield return Screenshot("11-choose-place");
+
+            // Picking it again unpicks it; picking a slot sends the card, row and position.
+            Click(HandCard("h1"));
+            yield return Frames(2);
+            Assert.IsEmpty(Slots("my-row-melee"));
+            Click(HandCard("h1"));
+            yield return Frames(2);
+            Click(Slots("my-row-melee")[0]);
+            Assert.AreEqual(1, sent.Count);
+            Assert.AreEqual("play_card", (string)sent[0]["kind"]);
+            Assert.AreEqual("h1", (string)sent[0]["card"]);
+            Assert.AreEqual("melee", (string)sent[0]["row"]);
+            Assert.AreEqual(0, (int)sent[0]["position"]);
+
+            // A special plays at once, without a row.
+            Click(HandCard("h2"));
+            Assert.AreEqual("play_card", (string)sent[1]["kind"]);
+            Assert.AreEqual("h2", (string)sent[1]["card"]);
+            Assert.IsNull(sent[1]["row"]);
+            Assert.IsNull(sent[1]["position"]);
+        }
+
+        [UnityTest]
+        public IEnumerator AUnitForTheOtherSideTakesItsPositionThere()
+        {
+            Show(View(hand: new[] { ("h3", Spy) }, theirs: new[] { ("o1", Guard, 7, 7) }, plays: new[] { ("h3", "melee") }));
+            yield return Frames(3);
+            Click(HandCard("h3"));
+            yield return Frames(3);
+            Assert.AreEqual(2, Slots("opp-row-melee").Count, "the positions of the opponent's row-side");
+            Assert.IsEmpty(Slots("my-row-melee"));
+            Assert.IsTrue(root.Q("opp-row-melee").ClassListContains("row--active"));
+            Click(Slots("opp-row-melee")[1]);
+            Assert.AreEqual(1, (int)sent[0]["position"]);
+            Assert.AreEqual("melee", (string)sent[0]["row"]);
+        }
+
+        [UnityTest]
+        public IEnumerator TurnButtonsFollowTheLegalIntents()
+        {
+            var view = View(mine: new[] { ("b1", Unit, 5, 5) });
+            view["legal_intents"] = new JArray(new JObject { ["kind"] = "end_turn" });
+            Show(view);
+            yield return Frames(2);
+            Assert.IsTrue(root.Q<Button>("btn-end-turn").enabledSelf);
+            Assert.IsFalse(root.Q<Button>("btn-pass").enabledSelf, "a pass the server withholds cannot be sent");
+            Click(root.Q<Button>("btn-end-turn"));
+            Assert.AreEqual("end_turn", (string)sent[0]["kind"]);
+
+            view["legal_intents"] = new JArray(new JObject { ["kind"] = "pass" });
+            Show(view);
+            yield return Frames(2);
+            Assert.IsFalse(root.Q<Button>("btn-end-turn").enabledSelf);
+            Assert.IsTrue(root.Q<Button>("btn-pass").enabledSelf);
+            Click(root.Q<Button>("btn-pass"));
+            Assert.AreEqual("pass", (string)sent[1]["kind"]);
+
+            view["legal_intents"] = new JArray();
+            view["turn"] = "opponent";
+            Show(view);
+            yield return Frames(2);
+            Assert.IsFalse(root.Q<Button>("btn-end-turn").enabledSelf);
+            Assert.IsFalse(root.Q<Button>("btn-pass").enabledSelf);
         }
 
         [UnityTest]
@@ -429,6 +570,29 @@ namespace OpenGwt.Tests
                 : null;
             return entry;
         }
+
+        /// <summary>Click an element: a button answers to a submit like the one a pointer click
+        /// raises through its Clickable; anything else to the click event the board listens for.</summary>
+        private static void Click(VisualElement element)
+        {
+            if (element is Button)
+            {
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    submit.target = element;
+                    element.SendEvent(submit);
+                }
+                return;
+            }
+            using (var click = ClickEvent.GetPooled())
+            {
+                click.target = element;
+                element.SendEvent(click);
+            }
+        }
+
+        private System.Collections.Generic.List<VisualElement> Slots(string row) =>
+            root.Q(row).Q("units").Children().Where(c => c.ClassListContains("slot")).ToList();
 
         private void Hover(VisualElement element)
         {

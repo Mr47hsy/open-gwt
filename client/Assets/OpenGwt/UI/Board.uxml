@@ -23,6 +23,13 @@
 
             <ui:VisualElement name="middle" class="middle">
                 <ui:Label name="status-label" class="middle__status" />
+                <ui:VisualElement name="prompt" class="prompt hidden">
+                    <ui:VisualElement name="prompt-card" class="prompt__card" />
+                    <ui:Label name="prompt-text" class="prompt__text" />
+                    <ui:Label name="prompt-source" class="prompt__source" />
+                    <ui:Button name="btn-end-mulligan" class="button button--primary hidden" />
+                    <ui:Button name="btn-cancel-choice" class="button hidden" />
+                </ui:VisualElement>
                 <ui:Label name="message-label" class="middle__message" />
             </ui:VisualElement>
 

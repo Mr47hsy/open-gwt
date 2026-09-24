@@ -53,6 +53,12 @@ namespace OpenGwt.UI
         private readonly ScrollView hand;
         private readonly Button passButton;
         private readonly Button endTurnButton;
+        private readonly Button endMulliganButton;
+        private readonly Button cancelChoiceButton;
+        private readonly VisualElement prompt;
+        private readonly VisualElement promptCard;
+        private readonly Label promptText;
+        private readonly Label promptSource;
         private readonly VisualElement leaderSlot;
         private readonly Label statusLabel;
         private readonly Label messageLabel;
@@ -72,6 +78,8 @@ namespace OpenGwt.UI
         private readonly Dictionary<string, string> deckByLabel = new Dictionary<string, string>();
         private bool modalForPhase;
         private string roomWaitingCode;
+        /// <summary>The hand card the player picked to play, while they choose its row and position.</summary>
+        private string selected;
 
         public BoardView(VisualElement root, MatchClient client, string defaultServerUrl)
         {
@@ -89,6 +97,12 @@ namespace OpenGwt.UI
             hand = root.Q<ScrollView>("hand");
             passButton = root.Q<Button>("btn-pass");
             endTurnButton = root.Q<Button>("btn-end-turn");
+            endMulliganButton = root.Q<Button>("btn-end-mulligan");
+            cancelChoiceButton = root.Q<Button>("btn-cancel-choice");
+            prompt = root.Q<VisualElement>("prompt");
+            promptCard = root.Q<VisualElement>("prompt-card");
+            promptText = root.Q<Label>("prompt-text");
+            promptSource = root.Q<Label>("prompt-source");
             leaderSlot = root.Q<VisualElement>("leader-slot");
             statusLabel = root.Q<Label>("status-label");
             messageLabel = root.Q<Label>("message-label");
@@ -107,6 +121,8 @@ namespace OpenGwt.UI
             root.Q<Button>("btn-back").clicked += ShowConnectStep;
             passButton.clicked += () => Send(Intents.Pass());
             endTurnButton.clicked += () => Send(Intents.EndTurn());
+            endMulliganButton.clicked += () => Send(Intents.EndMulligan());
+            cancelChoiceButton.clicked += () => Send(Intents.CancelChoice());
             modalCancel.clicked += HideModal;
             foreach (var zone in new[] { "my-graveyard", "my-banished", "opp-graveyard", "opp-banished" })
             {
@@ -170,6 +186,8 @@ namespace OpenGwt.UI
             root.Q<Label>("opp-name").text = T("ui.board.opponent");
             passButton.text = T("ui.board.pass");
             endTurnButton.text = T("ui.board.end-turn");
+            endMulliganButton.text = T("ui.board.end-mulligan");
+            cancelChoiceButton.text = T("ui.modal.cancel");
             modalConfirm.text = T("ui.modal.confirm");
             modalCancel.text = T("ui.modal.cancel");
             foreach (var row in RowNames)
@@ -256,6 +274,8 @@ namespace OpenGwt.UI
             ResetSteps();
             hand.Clear();
             leaderSlot.Clear();
+            selected = null;
+            prompt.AddToClassList("hidden");
             foreach (var row in RowNames)
             {
                 root.Q<VisualElement>("my-row-" + row).Q<VisualElement>("units").Clear();
@@ -372,6 +392,7 @@ namespace OpenGwt.UI
             // Only the newest view offers anything: an older one is a step on the way to it.
             var offers = live ? view : NoView;
             roomWaitingCode = null;
+            if (selected != null && offers.PlayRows(selected).Count == 0) selected = null;
 
             root.Q<Label>("my-score").text = me.Score.ToString();
             root.Q<Label>("opp-score").text = opp.Score.ToString();
@@ -418,10 +439,70 @@ namespace OpenGwt.UI
 
             passButton.SetEnabled(offers.Allows("pass"));
             endTurnButton.SetEnabled(offers.Allows("end_turn"));
+            RenderPrompt(view, offers);
 
-            if (live && view.Phase == "mulligan" && me.Mulligan != null && !me.Mulligan.Done) ShowMulligan(view);
-            else if (live && view.PendingChoice != null) ShowChoice(view);
+            if (live && view.PendingChoice != null) ShowChoice(view);
             else if (modalForPhase) HideModal();
+        }
+
+        /// <summary>The middle bar's question: redraws left and the end-mulligan button during the
+        /// mulligan, where to put the card picked from the hand, or nothing.</summary>
+        private void RenderPrompt(MatchView view, MatchView offers)
+        {
+            var me = view.Me;
+            promptCard.Clear();
+            promptSource.text = "";
+            endMulliganButton.AddToClassList("hidden");
+            cancelChoiceButton.AddToClassList("hidden");
+            if (view.Phase == "mulligan" && me.Mulligan != null)
+            {
+                promptText.text = me.Mulligan.Done ? T("ui.board.mulligan-waiting") : T("ui.board.redraws-left", "count", me.Mulligan.Remaining);
+                endMulliganButton.RemoveFromClassList("hidden");
+                endMulliganButton.SetEnabled(offers.Allows("end_mulligan"));
+                prompt.RemoveFromClassList("hidden");
+                return;
+            }
+            if (selected != null)
+            {
+                var card = me.Hand?.FirstOrDefault(c => c.Instance == selected);
+                promptText.text = T("ui.board.choose-place", "card", Name(card?.Card));
+                prompt.RemoveFromClassList("hidden");
+                return;
+            }
+            prompt.AddToClassList("hidden");
+        }
+
+        /// <summary>The positions a card may be put at on a row-side right now, each with what a
+        /// click there sends: the legal rows of the hand card picked to play, every position from
+        /// the left end to the right end (`match.md` §6).</summary>
+        private Dictionary<int, Action> SlotsFor(MatchView offers, bool mine, string rowName)
+        {
+            var slots = new Dictionary<int, Action>();
+            if (selected == null) return slots;
+            var card = shown.Me.Hand?.FirstOrDefault(c => c.Instance == selected);
+            if (card == null) return slots;
+            var side = LandingSide(card.Card);
+            if ((side == shown.Me) != mine || !offers.PlayRows(selected).Contains(rowName)) return slots;
+            var instance = selected;
+            for (var position = 0; position <= side.Rows[rowName].Cards.Count; position++)
+            {
+                var at = position;
+                slots[at] = () =>
+                {
+                    selected = null;
+                    Send(Intents.PlayCard(instance, rowName, at));
+                };
+            }
+            return slots;
+        }
+
+        /// <summary>A place marker between the cards of a row-side.</summary>
+        private static VisualElement Slot(Action onClick)
+        {
+            var slot = new VisualElement();
+            slot.AddToClassList("slot");
+            slot.RegisterCallback<ClickEvent>(_ => onClick());
+            return slot;
         }
 
         private IEnumerable<CardElement> BoardCards()
@@ -480,9 +561,12 @@ namespace OpenGwt.UI
         {
             var units = rowElement.Q<VisualElement>("units");
             units.Clear();
+            var slots = SlotsFor(offers, mine, rowName);
             var total = 0;
-            foreach (var card in row.Cards)
+            for (var position = 0; position < row.Cards.Count; position++)
             {
+                if (slots.TryGetValue(position, out var before)) units.Add(Slot(before));
+                var card = row.Cards[position];
                 total += card.Power ?? 0;
                 var classes = new List<string>();
                 if ((card.Owner != seat) == mine) classes.Add("card--foreign");
@@ -491,10 +575,14 @@ namespace OpenGwt.UI
                 units.Add(element);
                 board[card.Instance] = element;
             }
+            if (slots.TryGetValue(row.Cards.Count, out var last)) units.Add(Slot(last));
             rowElement.Q<Label>("total").text = total.ToString();
             RenderEffect(rowElement, row.Effect);
-            var active = mine && offers.LegalIntents.Any(i => (string)i["kind"] == "play_card" && (string)i["row"] == rowName);
-            rowElement.EnableInClassList("row--active", active);
+            // Lit: the rows the picked card may go to, or, before a pick, any card may.
+            var playable = selected == null
+                ? offers.LegalIntents.Any(i => (string)i["kind"] == "play_card" && (string)i["row"] == rowName)
+                : slots.Count > 0;
+            rowElement.EnableInClassList("row--active", playable && (selected == null ? mine : true));
         }
 
         /// <summary>The row-side's effect: its name and numbers in the row head, coloured by a class
@@ -540,51 +628,40 @@ namespace OpenGwt.UI
             element.schedule.Execute(() => element.RemoveFromClassList("card--flash")).StartingIn(60);
         }
 
+        /// <summary>The hand: during the mulligan a click returns a card the server lists as
+        /// redrawable; on the turn a click plays a special at once or picks a unit or artifact,
+        /// whose row and position the slots on the board then take.</summary>
         private void RenderHand(MatchView view, MatchView offers, Dictionary<string, CardElement> inHand)
         {
             hand.Clear();
             foreach (var card in view.Me.Hand ?? new List<CardRef>())
             {
                 var rows = offers.PlayRows(card.Instance);
+                var redrawable = offers.CanRedraw(card.Instance);
                 var classes = new List<string>();
                 if (rows.Count > 0) classes.Add("card--playable");
+                if (redrawable) classes.Add("card--redrawable");
+                if (card.Instance == selected) classes.Add("card--selected");
                 var element = Card(card.Instance, Face(card.Card), classes);
                 if (flash.Contains(card.Instance)) Flash(element);
-                if (rows.Count > 0)
-                {
-                    var instance = card.Instance;
-                    var cardId = card.Card;
-                    element.RegisterCallback<ClickEvent>(_ => OnHandCardClicked(instance, cardId, rows));
-                }
+                var instance = card.Instance;
+                if (redrawable) element.RegisterCallback<ClickEvent>(_ => Send(Intents.Mulligan(instance)));
+                else if (rows.Count > 0) element.RegisterCallback<ClickEvent>(_ => OnHandCardClicked(instance, rows));
                 hand.Add(element);
                 inHand[card.Instance] = element;
             }
         }
 
-        private void OnHandCardClicked(string instance, string cardId, List<string> rows)
+        private void OnHandCardClicked(string instance, List<string> rows)
         {
-            var distinct = rows.Where(r => r != null).Distinct().ToList();
-            if (distinct.Count == 0)
+            if (rows.All(r => r == null))
             {
                 Send(Intents.PlayCard(instance));
                 return;
             }
-            if (distinct.Count == 1)
-            {
-                Send(Intents.PlayCard(instance, distinct[0], RightEnd(cardId, distinct[0])));
-                return;
-            }
-            var options = distinct.Select(row => (T("ui.row." + row), (Action)(() =>
-            {
-                HideModal();
-                Send(Intents.PlayCard(instance, row, RightEnd(cardId, row)));
-            }))).ToList();
-            ShowModal(T("ui.modal.choose-row"), options, false);
+            selected = selected == instance ? null : instance;
+            Render(shown, steps.Count == 0, false);
         }
-
-        /// <summary>The position at the right end of the row-side a card lands on: the last of the
-        /// positions a compressed `play_card` entry stands for (`match.md` §6).</summary>
-        private int RightEnd(string cardId, string row) => LandingSide(cardId).Rows[row].Cards.Count;
 
         /// <summary>The side of the board a card in hand lands on (`cards.md` §3 `side`).</summary>
         private SideView LandingSide(string cardId)
@@ -717,36 +794,6 @@ namespace OpenGwt.UI
 
         // --- modals -------------------------------------------------------------------------
 
-        /// <summary>Redraw one card at a time (`match.md` §6): a click returns that card and its
-        /// replacement arrives with the next view; the confirm button ends the mulligan.</summary>
-        private void ShowMulligan(MatchView view)
-        {
-            modalForPhase = true;
-            modal.RemoveFromClassList("hidden");
-            modalTitle.text = T("ui.modal.mulligan", "count", view.Me.Mulligan.Remaining);
-            modalOptions.Clear();
-            foreach (var card in view.Me.Hand)
-            {
-                var redrawable = view.CanRedraw(card.Instance);
-                var element = Card(card.Instance, Face(card.Card), redrawable ? new[] { "card--playable" } : Array.Empty<string>());
-                if (redrawable)
-                {
-                    var instance = card.Instance;
-                    element.RegisterCallback<ClickEvent>(_ => Send(Intents.Mulligan(instance)));
-                }
-                modalOptions.Add(element);
-            }
-            modalConfirm.text = T("ui.board.end-mulligan");
-            modalConfirm.SetEnabled(view.Allows("end_mulligan"));
-            modalConfirm.style.display = DisplayStyle.Flex;
-            modalCancel.style.display = DisplayStyle.None;
-            modalConfirm.clickable = new Clickable(() =>
-            {
-                HideModal();
-                Send(Intents.EndMulligan());
-            });
-        }
-
         private void ShowChoice(MatchView view)
         {
             var choice = view.PendingChoice;
@@ -814,7 +861,7 @@ namespace OpenGwt.UI
 
         private string Who(JObject evt) => (int?)evt["seat"] == client.Seat ? "@ui.who.you" : "@ui.who.opponent";
 
-        private static string Name(string cardId) => "@card." + cardId + ".name";
+        private static string Name(string cardId) => cardId == null ? "" : "@card." + cardId + ".name";
 
         /// <summary>Apply one event of the step being shown (`match.md` §8): its log line, a flash on
         /// the card it touched, and what the motion needs to know about it. Events with nothing to

@@ -105,3 +105,9 @@ ui.card.token: Token
 
 # Turn actions, redraws and zones (phase E).
 ui.modal.close: Close
+
+# Turn actions, redraws and zones (phase E).
+ui.board.redraws-left.one: "{count} redraw left"
+ui.board.redraws-left.other: "{count} redraws left"
+ui.board.mulligan-waiting: Waiting for the opponent to finish redrawing
+ui.board.choose-place: "Choose where to play {card}"

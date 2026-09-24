@@ -60,6 +60,8 @@ namespace OpenGwt.Match
         public event Action<int> ProtocolMismatch;
         /// <summary>Every message as it arrived, before parsing: for tests that check the wire.</summary>
         public event Action<string> MessageReceived;
+        /// <summary>Every intent the board sends, as sent: for tests that drive the board without a server.</summary>
+        public event Action<JObject> IntentSent;
 
         private string wsUrl;
         private bool closeHandled;
@@ -198,12 +200,17 @@ namespace OpenGwt.Match
             RoomCode = null;
         }
 
-        public Task SendIntentAsync(JObject intent) => Socket.SendAsync(new JObject
+        public Task SendIntentAsync(JObject intent)
         {
-            ["type"] = "intent",
-            ["intent_id"] = Guid.NewGuid().ToString("N"),
-            ["intent"] = intent,
-        });
+            IntentSent?.Invoke(intent);
+            if (Socket == null) return Task.CompletedTask;
+            return Socket.SendAsync(new JObject
+            {
+                ["type"] = "intent",
+                ["intent_id"] = Guid.NewGuid().ToString("N"),
+                ["intent"] = intent,
+            });
+        }
 
         /// <summary>Drain the socket on the main thread; call once per frame.</summary>
         public void Pump()
