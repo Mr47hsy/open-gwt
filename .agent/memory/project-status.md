@@ -11,7 +11,7 @@ As of 2026-09-23, `develop` holds the whole MVP (pull requests #1–#6 merged):
 - `server/`: `opengwt.core` (rules), `opengwt.data` (YAML loading, `opengwt-data` tooling),
   `opengwt.i18n` (renderer), `opengwt.bots`, `opengwt.sim` (`opengwt-sim`), `opengwt.server`
   (`opengwt-server`: FastAPI, WebSocket match protocol, SQLite + memory backends, Alembic).
-  Around 70 tests; CI on Python 3.10 and 3.14 with PostgreSQL migrations.
+  Around 70 tests; CI on Python 3.10 with PostgreSQL migrations (3.14 dropped by ADR 0012).
 - `data/`: placeholder cards for three factions, two starter decks, en / zh-CN / ru texts for cards,
   interface and errors, the i18n conformance suite (YAML and its JSON twin).
 - `client/`: Unity 6000.6.2f1 thin client on UI Toolkit — connect → lobby → match screens,

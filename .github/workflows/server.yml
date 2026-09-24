@@ -13,7 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.10", "3.14"]
+        # the Python floor only (ADR 0012); raise it together with requires-python
+        python: ["3.10"]
     services:
       postgres:
         image: postgres:16
