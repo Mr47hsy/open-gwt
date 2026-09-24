@@ -960,9 +960,15 @@ namespace OpenGwt.UI
 
         // --- events, errors, end ------------------------------------------------------------
 
-        private string Who(JObject evt) => (int?)evt["seat"] == client.Seat ? "@ui.who.you" : "@ui.who.opponent";
+        private string Who(JObject evt) => WhoIs((int?)evt["seat"]);
+
+        private string WhoIs(int? seat) => seat == client.Seat ? "@ui.who.you" : "@ui.who.opponent";
 
         private static string Name(string cardId) => cardId == null ? "" : "@card." + cardId + ".name";
+
+        private static string StatusName(JObject evt) => "@status." + ((string)evt["status"] ?? "").Replace('_', '-') + ".name";
+
+        private static string RowName(string row) => "@ui.row." + row;
 
         /// <summary>Apply one event of the step being shown (`match.md` §8): its log line, a flash on
         /// the card it touched, and what the motion needs to know about it. Events with nothing to
@@ -976,57 +982,117 @@ namespace OpenGwt.UI
             string line = null;
             switch (type)
             {
-                case "card_played":
-                    motion.NotePlayed(instance, card, (int?)evt["seat"] == client.Seat);
-                    line = T("ui.event.card-played", "who", Who(evt), "card", Name(card));
+                case "match_started":
+                    line = T("ui.event.match-started", "who", WhoIs((int?)evt["starter"]));
                     break;
-                case "card_summoned":
+                case "round_started":
+                    line = T("ui.event.round-started", "round", (long)evt["round"], "who", WhoIs((int?)evt["starter"]));
+                    break;
                 case "stratagem_placed":
-                    line = T("ui.event.unit-summoned", "who", Who(evt), "card", Name(card));
-                    break;
-                case "card_destroyed":
-                    motion.NoteDestroyed(instance);
-                    line = T("ui.event.unit-destroyed", "card", Name(card));
-                    break;
-                case "card_banished":
-                    motion.NoteBanished(instance);
-                    break;
-                case "card_returned":
-                    line = T("ui.event.unit-returned", "who", Who(evt), "card", Name(card));
-                    break;
-                case "order_used":
-                    if (instance != null) flash.Add(instance);
-                    line = T("ui.event.leader-used", "who", Who(evt));
-                    break;
-                case "player_passed":
-                    line = T("ui.event.player-passed", "who", Who(evt));
+                    line = T("ui.event.stratagem-placed", "who", Who(evt), "card", Name(card));
                     break;
                 case "card_drawn":
                     line = T("ui.event.card-drawn", "who", Who(evt), "count", 1);
                     break;
-                case "round_ended":
-                    var scores = (JArray)evt["scores"];
-                    var mine = client.Seat == 0 ? scores[0] : scores[1];
-                    var theirs = client.Seat == 0 ? scores[1] : scores[0];
-                    line = T("ui.event.round-ended", "round", (long)evt["round"], "mine", (long)mine, "theirs", (long)theirs);
+                case "draw_skipped":
+                    line = T((string)evt["reason"] == "hand_full" ? "ui.event.draw-skipped-hand-full" : "ui.event.draw-skipped-deck-empty",
+                        "who", Who(evt), "count", (long?)evt["count"] ?? 1);
+                    break;
+                case "mulligan_started":
+                    var redraws = evt["redraws"] as JArray;
+                    if (redraws != null && redraws.Count == 2 && client.Seat >= 0 && client.Seat <= 1)
+                    {
+                        line = T("ui.event.mulligan-started", "mine", (long)redraws[client.Seat], "theirs", (long)redraws[1 - client.Seat]);
+                    }
+                    break;
+                case "card_redrawn":
+                    line = T("ui.event.card-redrawn", "who", Who(evt));
+                    break;
+                case "mulligan_done":
+                    line = T("ui.event.mulligan-done", "who", Who(evt), "count", (long?)evt["count"] ?? 0);
+                    break;
+                case "card_played":
+                    motion.NotePlayed(instance, card, (int?)evt["seat"] == client.Seat);
+                    line = T("ui.event.card-played", "who", Who(evt), "card", Name(card));
+                    break;
+                case "order_used":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event.order-used", "who", Who(evt), "card", Name(card));
+                    break;
+                case "card_summoned":
+                    line = T("ui.event.card-summoned", "who", Who(evt), "card", Name(card));
+                    break;
+                case "card_moved":
+                    line = T("ui.event.card-moved", "card", Name(card), "row", RowName((string)evt["to_row"]));
+                    break;
+                case "card_returned":
+                    line = T("ui.event.card-returned", "who", Who(evt), "card", Name(card));
+                    break;
+                case "control_changed":
+                    line = T("ui.event.control-changed", "who", Who(evt), "card", Name(card));
+                    break;
+                case "card_discarded":
+                    line = T("ui.event.card-discarded", "who", Who(evt), "card", Name(card));
+                    break;
+                case "card_destroyed":
+                    motion.NoteDestroyed(instance);
+                    line = T((bool?)evt["banished"] == true ? "ui.event.card-banished" : "ui.event.card-destroyed", "card", Name(card));
+                    break;
+                case "card_banished":
+                    motion.NoteBanished(instance);
+                    line = T("ui.event.card-banished", "card", Name(card));
+                    break;
+                case "unit_damaged":
+                case "damage_blocked":
+                case "unit_boosted":
+                case "unit_healed":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event." + type.Replace('_', '-'), "card", Name(card), "amount", (long?)evt["amount"] ?? 0);
+                    break;
+                case "base_power_changed":
+                case "armor_changed":
+                case "charges_changed":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event." + type.Replace('_', '-'), "card", Name(card), "from", (long?)evt["from"] ?? 0, "to", (long?)evt["to"] ?? 0);
+                    break;
+                case "power_changed":
+                    if (instance != null) flash.Add(instance);
+                    break;
+                case "status_added":
+                    if (instance != null) flash.Add(instance);
+                    line = evt["turns"] != null && evt["turns"].Type != JTokenType.Null
+                        ? T("ui.event.status-added-timed", "card", Name(card), "status", StatusName(evt), "count", (long)evt["turns"])
+                        : T("ui.event.status-added", "card", Name(card), "status", StatusName(evt));
+                    break;
+                case "status_reduced":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event.status-reduced", "card", Name(card), "status", StatusName(evt), "count", (long?)evt["turns"] ?? 0);
+                    break;
+                case "status_removed":
+                    if (instance != null) flash.Add(instance);
+                    line = T("ui.event.status-removed", "card", Name(card), "status", StatusName(evt));
                     break;
                 case "row_effect_set":
                 case "row_effect_cleared":
-                    line = T(type == "row_effect_set" ? "ui.event.row-effect-applied" : "ui.event.row-effect-cleared",
-                        "who", Who(evt), "row", "@ui.row." + (string)evt["row"], "effect", "@row-effect." + ((string)evt["effect"]).Replace('_', '-') + ".name");
+                    line = T(type == "row_effect_set" ? "ui.event.row-effect-set" : "ui.event.row-effect-cleared",
+                        "who", Who(evt), "row", RowName((string)evt["row"]), "effect", "@row-effect." + ((string)evt["effect"] ?? "").Replace('_', '-') + ".name");
                     break;
-                case "unit_damaged":
-                case "unit_boosted":
-                case "unit_healed":
-                case "damage_blocked":
-                case "base_power_changed":
-                case "armor_changed":
-                case "power_changed":
-                case "status_added":
-                case "status_reduced":
-                case "status_removed":
-                case "charges_changed":
-                    if (instance != null) flash.Add(instance);
+                case "choice_requested":
+                    if ((int?)evt["seat"] != client.Seat) line = T("ui.event.choice-requested", "who", Who(evt));
+                    break;
+                case "choice_cancelled":
+                    line = T("ui.event.choice-cancelled", "who", Who(evt));
+                    break;
+                case "player_passed":
+                    line = T((bool?)evt["auto"] == true ? "ui.event.player-passed-auto" : "ui.event.player-passed", "who", Who(evt));
+                    break;
+                case "round_ended":
+                    var scores = (JArray)evt["scores"];
+                    var winners = evt["winners"] as JArray;
+                    var mine = client.Seat == 0 ? scores[0] : scores[1];
+                    var theirs = client.Seat == 0 ? scores[1] : scores[0];
+                    line = T(winners != null && winners.Count != 1 ? "ui.event.round-tied" : "ui.event.round-ended",
+                        "round", (long)evt["round"], "mine", (long)mine, "theirs", (long)theirs);
                     break;
             }
             if (line == null) return;

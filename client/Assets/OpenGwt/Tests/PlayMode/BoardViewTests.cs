@@ -551,6 +551,76 @@ namespace OpenGwt.Tests
             root.Q("connect-panel").AddToClassList("hidden");
         }
 
+        [UnityTest]
+        public IEnumerator EveryEventOfTheProtocolHasALogLineOrIsIgnored()
+        {
+            // The log keeps the last three lines; each event type either writes one or is ignored on purpose.
+            var ignored = new[] { "turn_started", "turn_ended", "power_changed", "choice_made", "board_cleared", "match_ended" };
+            var events = new[]
+            {
+                new JObject { ["type"] = "match_started", ["starter"] = 1 },
+                new JObject { ["type"] = "stratagem_placed", ["seat"] = 1, ["instance"] = "g1", ["card"] = Stratagem, ["row"] = "melee", ["position"] = 0 },
+                new JObject { ["type"] = "round_started", ["round"] = 1, ["starter"] = 1 },
+                new JObject { ["type"] = "card_drawn", ["seat"] = 0, ["instance"] = "h1", ["card"] = Unit },
+                new JObject { ["type"] = "draw_skipped", ["seat"] = 1, ["reason"] = "hand_full", ["count"] = 2 },
+                new JObject { ["type"] = "mulligan_started", ["round"] = 1, ["redraws"] = new JArray(2, 3) },
+                new JObject { ["type"] = "card_redrawn", ["seat"] = 0, ["instance"] = "h1", ["card"] = Unit },
+                new JObject { ["type"] = "mulligan_done", ["seat"] = 0, ["count"] = 1 },
+                new JObject { ["type"] = "turn_started", ["seat"] = 1 },
+                new JObject { ["type"] = "card_played", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["from"] = "hand", ["row"] = "melee", ["position"] = 0, ["side"] = "self" },
+                new JObject { ["type"] = "order_used", ["seat"] = 1, ["instance"] = "g1", ["card"] = Stratagem, ["charges"] = 0, ["cooldown"] = 0 },
+                new JObject { ["type"] = "card_summoned", ["seat"] = 1, ["instance"] = "o2", ["card"] = Unit, ["from"] = "deck", ["row"] = "ranged", ["position"] = 0, ["side"] = "self" },
+                new JObject { ["type"] = "card_moved", ["seat"] = 1, ["instance"] = "o2", ["card"] = Unit, ["from_row"] = "ranged", ["to_row"] = "melee", ["position"] = 1 },
+                new JObject { ["type"] = "card_returned", ["seat"] = 0, ["instance"] = "b1", ["card"] = Unit },
+                new JObject { ["type"] = "control_changed", ["seat"] = 1, ["instance"] = "b2", ["card"] = Unit, ["from_seat"] = 0, ["row"] = "melee", ["position"] = 2, ["source"] = "o1" },
+                new JObject { ["type"] = "card_discarded", ["seat"] = 0, ["instance"] = "h2", ["card"] = Special },
+                new JObject { ["type"] = "card_destroyed", ["seat"] = 1, ["instance"] = "o2", ["card"] = Unit, ["row"] = "melee", ["banished"] = false, ["source"] = null },
+                new JObject { ["type"] = "card_banished", ["seat"] = 1, ["instance"] = "o3", ["card"] = Unit },
+                new JObject { ["type"] = "unit_damaged", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["amount"] = 2, ["power"] = 5, ["reason"] = "damage", ["source"] = "s1" },
+                new JObject { ["type"] = "damage_blocked", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["amount"] = 2, ["reason"] = "damage", ["source"] = "s1" },
+                new JObject { ["type"] = "unit_boosted", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["amount"] = 3, ["power"] = 8, ["reason"] = "boost", ["source"] = "s1" },
+                new JObject { ["type"] = "unit_healed", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["amount"] = 1, ["power"] = 7, ["source"] = "s1" },
+                new JObject { ["type"] = "base_power_changed", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["from"] = 7, ["to"] = 9, ["power"] = 9, ["source"] = "s1" },
+                new JObject { ["type"] = "armor_changed", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["from"] = 0, ["to"] = 2, ["reason"] = "add_armor", ["source"] = "s1" },
+                new JObject { ["type"] = "power_changed", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["from"] = 9, ["to"] = 10, ["reason"] = "aura", ["source"] = null },
+                new JObject { ["type"] = "status_added", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["status"] = "bleeding", ["turns"] = 2, ["reason"] = "add_status", ["source"] = "s1" },
+                new JObject { ["type"] = "status_added", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["status"] = "shielded", ["reason"] = "add_status", ["source"] = "s1" },
+                new JObject { ["type"] = "status_reduced", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["status"] = "bleeding", ["turns"] = 1, ["reason"] = "cancelled", ["source"] = "s2" },
+                new JObject { ["type"] = "status_removed", ["seat"] = 1, ["instance"] = "o1", ["card"] = Guard, ["status"] = "shielded", ["reason"] = "blocked", ["source"] = "s1" },
+                new JObject { ["type"] = "charges_changed", ["seat"] = 1, ["instance"] = "g1", ["card"] = Stratagem, ["from"] = 0, ["to"] = 1, ["source"] = "s1" },
+                new JObject { ["type"] = "row_effect_set", ["seat"] = 0, ["row"] = "melee", ["effect"] = "damage_weakest", ["amount"] = 2, ["source"] = "s1" },
+                new JObject { ["type"] = "row_effect_cleared", ["seat"] = 0, ["row"] = "melee", ["effect"] = "damage_weakest", ["source"] = "s2" },
+                new JObject { ["type"] = "choice_requested", ["seat"] = 1, ["kind"] = "unit", ["prompt_key"] = "choice.damage", ["option_count"] = 2, ["source"] = "o1", ["cancellable"] = false },
+                new JObject { ["type"] = "choice_made", ["seat"] = 1 },
+                new JObject { ["type"] = "choice_cancelled", ["seat"] = 1 },
+                new JObject { ["type"] = "player_passed", ["seat"] = 1, ["auto"] = true },
+                new JObject { ["type"] = "turn_ended", ["seat"] = 1 },
+                new JObject { ["type"] = "round_ended", ["round"] = 1, ["winners"] = new JArray(0, 1), ["scores"] = new JArray(5, 5) },
+                new JObject { ["type"] = "board_cleared", ["round"] = 1, ["kept"] = new JArray() },
+                new JObject { ["type"] = "match_ended", ["winner"] = null, ["rounds"] = new JArray() },
+            };
+            var view = View();
+            foreach (var evt in events)
+            {
+                var before = root.Q<Label>("event-log").text;
+                Show(view, evt);
+                // A step after one whose cards moved waits its hold; give each up to a second to show.
+                var until = Time.realtimeSinceStartup + 0.9f;
+                while (Time.realtimeSinceStartup < until && root.Q<Label>("event-log").text == before)
+                {
+                    board.Tick();
+                    yield return null;
+                }
+                var after = root.Q<Label>("event-log").text;
+                var type = (string)evt["type"];
+                if (ignored.Contains(type)) Assert.AreEqual(before, after, type + " is ignored on purpose");
+                else Assert.AreNotEqual(before, after, type + " should add a line");
+                Assert.IsFalse(after.Contains("ui.event."), type + ": a raw key in the log: " + after);
+                Assert.IsFalse(after.Contains("{"), type + ": a placeholder left in the log: " + after);
+            }
+            yield return Screenshot("17-event-log");
+        }
+
         // --- the four kinds of choice (match.md §7) -------------------------------------------
 
         private JObject Choosing(string kind, string promptKey, bool cancellable, params JObject[] options)

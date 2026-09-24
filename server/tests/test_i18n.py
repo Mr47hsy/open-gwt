@@ -1,10 +1,12 @@
+import json
+import re
 from pathlib import Path
 
 import pytest
 import yaml
 
 from opengwt.core.engine import DECK_PROBLEM_KEYS, DECK_UNKNOWN_CARD
-from opengwt.core.model import DeckProblem
+from opengwt.core.model import DeckProblem, RowEffectKind, Status
 from opengwt.i18n import Renderer, negotiate_locale, plural_category
 from opengwt.server.services.decks import problem_to_dict
 
@@ -146,3 +148,73 @@ def test_client_i18n_export_is_fresh() -> None:
         assert target.read_text(encoding="utf-8") == text, f"{target} is stale"
     assert '"ui.language.name": "简体中文"' in exported["zh-CN"]
     assert '"card.' not in exported["en"], "card texts come from the server, not the build"
+
+
+# --- the interface texts of the vocabulary (cards.md §13, i18n.md §2) --------------------------
+
+
+def _choosing_actions() -> list[str]:
+    """The actions whose ability may ask a player something (cards.md §7): those the schema lets
+    take a unit target, a row target, a card source or a create pool."""
+    schema = json.loads((REPO / "docs" / "protocol" / "cards.schema.json").read_text("utf-8"))
+    out = []
+    for name, definition in schema["$defs"].items():
+        if not name.startswith("do_"):
+            continue
+        keys = set(definition.get("properties", {}))
+        if keys & {"target", "row_target", "cards", "pool"}:
+            out.append(name[len("do_") :])
+    assert out, "no choosing actions found in the schema"
+    return out
+
+
+def _hyphens(word: str) -> str:
+    return word.replace("_", "-")
+
+
+def test_every_prompt_key_the_core_may_emit_has_a_text(dataset) -> None:  # type: ignore[no-untyped-def]
+    """The core builds `choice.<action>` from the action's name (engine.run) and asks
+    `choice.place` for a placement; each renders in every locale, `choice.place` with the card."""
+    renderer = Renderer(dataset.i18n)
+    keys = ["choice." + _hyphens(a) for a in _choosing_actions()] + ["choice.place"]
+    for locale in renderer.locales:
+        for key in keys:
+            text = renderer.render(locale, key, {"card": "@card.u-1001.name"})
+            assert text != key and "{" not in text, (locale, key, text)
+    for locale in renderer.locales:
+        assert renderer.render(locale, "card.u-1001.name") in renderer.render(
+            locale, "choice.place", {"card": "@card.u-1001.name"}
+        ), locale
+
+
+def test_every_status_and_row_effect_has_a_name_and_a_text(dataset) -> None:  # type: ignore[no-untyped-def]
+    """`status.<status>.name` / `.text` and `row-effect.<effect>.name` / `.text` for every word of
+    the vocabulary, in every locale; a row effect's text shows its amount and its count."""
+    renderer = Renderer(dataset.i18n)
+    for locale in renderer.locales:
+        for status in Status:
+            for suffix in ("name", "text"):
+                key = f"status.{_hyphens(status.value)}.{suffix}"
+                text = renderer.render(locale, key)
+                assert text != key and "{" not in text, (locale, key, text)
+        for effect in RowEffectKind:
+            name = f"row-effect.{_hyphens(effect.value)}.name"
+            assert renderer.render(locale, name) != name, (locale, name)
+            for count in (1, 3):
+                key = f"row-effect.{_hyphens(effect.value)}.text"
+                text = renderer.render(locale, key, {"amount": 7, "count": count})
+                assert text != key and "{" not in text and "7" in text, (locale, key, text)
+
+
+def test_every_illegal_intent_reason_has_a_text(dataset) -> None:  # type: ignore[no-untyped-def]
+    """Every reason key the engine raises with `illegal_intent` (match.md §10) has a message in
+    every locale, so a client can show why a move was refused."""
+    source = (REPO / "server" / "src" / "opengwt" / "core" / "engine.py").read_text("utf-8")
+    reasons = sorted(
+        set(re.findall(r'IllegalIntent\("illegal_intent", "(error\.[a-z.-]+)"\)', source))
+    )
+    assert len(reasons) >= 20, reasons
+    renderer = Renderer(dataset.i18n)
+    for locale in renderer.locales:
+        for key in reasons:
+            assert renderer.render(locale, key) != key, (locale, key)

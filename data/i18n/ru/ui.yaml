@@ -25,9 +25,6 @@ ui.board.end-turn: Закончить ход
 ui.board.end-mulligan: Завершить мулиган
 ui.board.deck: колода {count}
 ui.board.opponent-hand: рука {hand} · колода {deck}
-ui.board.leader: "Лидер: {name}"
-ui.board.leader-used: Лидер использован
-ui.board.leader-none: Без лидера
 ui.board.round: раунд {round}
 ui.board.rounds: "раунды {mine} : {theirs}"
 ui.board.room-waiting: Комната {code} — ждём второго игрока
@@ -41,18 +38,10 @@ ui.turn.over: матч окончен
 ui.result.won: Вы выиграли матч
 ui.result.lost: Вы проиграли матч
 ui.result.draw: Матч завершился вничью
-ui.modal.choose-row: Выберите ряд
-ui.modal.mulligan.one: "Мулиган: выберите до {count} карты для замены"
-ui.modal.mulligan.few: "Мулиган: выберите до {count} карт для замены"
-ui.modal.mulligan.many: "Мулиган: выберите до {count} карт для замены"
-ui.modal.mulligan.other: "Мулиган: выберите до {count} карт для замены"
-ui.modal.confirm: Подтвердить
 ui.modal.cancel: Отмена
 ui.modal.back: В меню
 ui.net.lost: Связь потеряна ({reason}), переподключение …
 ui.net.protocol-mismatch: Клиент говорит по протоколу матча {client}, а сервер — по протоколу {server}; обновите клиент.
-ui.effect.power-to-one: сила → 1
-ui.effect.double-power: ×2
 ui.row.melee: Ближний
 ui.row.ranged: Дальний
 ui.kind.unit: Отряд
@@ -66,23 +55,13 @@ ui.hand.count.few: "{count} карты в руке"
 ui.hand.count.many: "{count} карт в руке"
 ui.hand.count.other: "{count} карт в руке"
 ui.event.card-played: "{who}: сыграна {card}"
-ui.event.unit-summoned: "{who}: {card} вышла на поле"
-ui.event.unit-destroyed: "{card} уничтожена"
-ui.event.unit-returned: "{who}: {card} вернулась в руку"
-ui.event.leader-used: "{who}: использован лидер"
 ui.event.player-passed: "{who}: пас"
 ui.event.round-ended: "раунд {round} окончен {mine} : {theirs}"
-ui.event.row-effect-applied: "{effect} — {row} ряд ({who})"
 ui.event.row-effect-cleared: "{effect} снят — {row} ряд ({who})"
 ui.event.card-drawn.one: "{who}: взята {count} карта"
 ui.event.card-drawn.few: "{who}: взято {count} карты"
 ui.event.card-drawn.many: "{who}: взято {count} карт"
 ui.event.card-drawn.other: "{who}: взято {count} карт"
-choice.destroy: Выберите отряд для уничтожения
-choice.boost: Выберите отряд для усиления
-choice.set-power: Выберите отряд
-choice.return-from-discard: Выберите отряд, который вернётся из сброса
-choice.swap-with-board-unit: Выберите свой отряд, который вернётся в руку
 
 # Действия хода, мулиган и зоны (фаза E).
 ui.board.zone: "{zone} {count}"
@@ -131,3 +110,119 @@ ui.lobby.leader: "Лидер: {name}"
 ui.lobby.stratagem: "Стратагема: {name}"
 ui.lobby.provisions: "Стоимость {used} / {budget}"
 ui.lobby.problems: "Эта колода нарушает правила сборки:"
+
+# Строки журнала для событий match.md §8.
+ui.event.match-started: "первый ход: {who}"
+ui.event.round-started: "раунд {round}, первый ход: {who}"
+ui.event.stratagem-placed: "{who}: стратагема {card} в игре"
+ui.event.draw-skipped-hand-full.one: "{who}: {count} добор пропущен, рука полна"
+ui.event.draw-skipped-hand-full.few: "{who}: {count} добора пропущено, рука полна"
+ui.event.draw-skipped-hand-full.many: "{who}: {count} доборов пропущено, рука полна"
+ui.event.draw-skipped-hand-full.other: "{who}: {count} доборов пропущено, рука полна"
+ui.event.draw-skipped-deck-empty.one: "{who}: {count} добор пропущен, колода пуста"
+ui.event.draw-skipped-deck-empty.few: "{who}: {count} добора пропущено, колода пуста"
+ui.event.draw-skipped-deck-empty.many: "{who}: {count} доборов пропущено, колода пуста"
+ui.event.draw-skipped-deck-empty.other: "{who}: {count} доборов пропущено, колода пуста"
+ui.event.mulligan-started: "замены: вы {mine}, соперник {theirs}"
+ui.event.card-redrawn: "{who}: заменена карта"
+ui.event.mulligan-done.one: "{who}: рука оставлена после {count} замены"
+ui.event.mulligan-done.few: "{who}: рука оставлена после {count} замен"
+ui.event.mulligan-done.many: "{who}: рука оставлена после {count} замен"
+ui.event.mulligan-done.other: "{who}: рука оставлена после {count} замен"
+ui.event.order-used: "{who}: использована {card}"
+ui.event.card-summoned: "{who}: {card} вышла на поле"
+ui.event.card-moved: "{card} перешла в {row} ряд"
+ui.event.card-returned: "{who}: {card} вернулась в руку"
+ui.event.control-changed: "{who}: захвачена {card}"
+ui.event.card-discarded: "{who}: сброшена {card}"
+ui.event.card-destroyed: "{card} уничтожена"
+ui.event.card-banished: "{card} изгнана"
+ui.event.unit-damaged: "{card} получает {amount} урона"
+ui.event.damage-blocked: "{card}: щит заблокировал {amount} урона"
+ui.event.unit-boosted: "{card} усилена на {amount}"
+ui.event.unit-healed: "{card} исцелена на {amount}"
+ui.event.base-power-changed: "{card}: базовая сила {from} → {to}"
+ui.event.armor-changed: "{card}: броня {from} → {to}"
+ui.event.status-added: "{card}: {status}"
+ui.event.status-added-timed.one: "{card}: {status} на {count} ход"
+ui.event.status-added-timed.few: "{card}: {status} на {count} хода"
+ui.event.status-added-timed.many: "{card}: {status} на {count} ходов"
+ui.event.status-added-timed.other: "{card}: {status} на {count} ходов"
+ui.event.status-reduced.one: "{card}: {status} сокращён до {count} хода"
+ui.event.status-reduced.few: "{card}: {status} сокращён до {count} ходов"
+ui.event.status-reduced.many: "{card}: {status} сокращён до {count} ходов"
+ui.event.status-reduced.other: "{card}: {status} сокращён до {count} ходов"
+ui.event.status-removed: "{card}: {status} — конец"
+ui.event.charges-changed: "{card}: заряды {from} → {to}"
+ui.event.row-effect-set: "{effect} — {row} ряд ({who})"
+ui.event.choice-requested: "{who}: выбирает"
+ui.event.choice-cancelled: "{who}: отмена"
+ui.event.player-passed-auto: "{who}: автоматический пас"
+ui.event.round-tied: "раунд {round} — ничья {mine} : {theirs}"
+
+# Статусы и эффекты ряда (cards.md §9, §10): слова, которые видят игроки.
+status.locked.name: Заблокирован
+status.locked.text: Пока карта заблокирована, её способности не действуют.
+status.shielded.name: Под щитом
+status.shielded.text: Следующий урон будет заблокирован; после этого щит исчезает.
+status.immune.name: Иммунитет
+status.immune.text: Нельзя выбрать целью; эффекты, не выбирающие цель, всё равно действуют.
+status.poisoned.name: Отравлен
+status.poisoned.text: При повторном отравлении отряд уничтожается.
+status.bleeding.name: Кровотечение
+status.bleeding.text: В конце каждого хода своего владельца отряд получает 1 урона, который броня не поглощает.
+status.growing.name: Рост
+status.growing.text: В конце каждого хода своего владельца отряд усиливается на 1.
+status.banish-on-leave.name: Изгоняется при уходе
+status.banish-on-leave.text: Покидая поле, карта изгоняется, а не отправляется куда-либо ещё.
+status.kept-at-round-end.name: Остаётся в конце раунда
+status.kept-at-round-end.text: Остаётся на поле в конце раунда, один раз.
+status.status-proof.name: Защита от статусов
+status.status-proof.text: На карту нельзя наложить ни один статус.
+status.guarding.name: Охрана
+status.guarding.text: Пока отряд стоит в ряду, соперник не может выбрать другую карту этого ряда.
+status.on-enemy-side.name: На стороне противника
+status.on-enemy-side.text: Карта стоит на стороне игрока, которому не принадлежит.
+row-effect.damage-strongest.name: Урон сильнейшему
+row-effect.damage-strongest.text: "В начале каждого хода этого игрока сильнейший отряд ряда получает {amount} урона."
+row-effect.damage-weakest.name: Урон слабейшему
+row-effect.damage-weakest.text: "В начале каждого хода этого игрока слабейший отряд ряда получает {amount} урона."
+row-effect.damage-random.name: Случайный урон
+row-effect.damage-random.text.one: "В начале каждого хода этого игрока {count} случайный отряд ряда получает {amount} урона."
+row-effect.damage-random.text.few: "В начале каждого хода этого игрока {count} случайных отряда ряда получают {amount} урона."
+row-effect.damage-random.text.many: "В начале каждого хода этого игрока {count} случайных отрядов ряда получают {amount} урона."
+row-effect.damage-random.text.other: "В начале каждого хода этого игрока {count} случайных отрядов ряда получают {amount} урона."
+row-effect.boost-random.name: Случайное усиление
+row-effect.boost-random.text.one: "В начале каждого хода этого игрока {count} случайный отряд ряда усиливается на {amount}."
+row-effect.boost-random.text.few: "В начале каждого хода этого игрока {count} случайных отряда ряда усиливаются на {amount}."
+row-effect.boost-random.text.many: "В начале каждого хода этого игрока {count} случайных отрядов ряда усиливаются на {amount}."
+row-effect.boost-random.text.other: "В начале каждого хода этого игрока {count} случайных отрядов ряда усиливаются на {amount}."
+row-effect.damage-on-arrival.name: Урон при появлении
+row-effect.damage-on-arrival.text: "Отряд, вошедший в этот ряд, получает {amount} урона."
+
+# Подсказки ожидающего выбора: `choice.<action>` для каждого действия, которое может спросить,
+# и `choice.place` для размещения карты способности (match.md §7).
+choice.damage: Выберите цель для урона
+choice.boost: Выберите цель для усиления
+choice.add-armor: Выберите, кто получит броню
+choice.heal: Выберите цель для исцеления
+choice.reset-power: Выберите, чью силу сбросить
+choice.raise-base-power: Выберите, чью базовую силу поднять
+choice.destroy: Выберите цель для уничтожения
+choice.banish: Выберите цель для изгнания
+choice.add-status: Выберите, кто получит статус
+choice.remove-statuses: Выберите, с кого снять статусы
+choice.move-to-other-row: Выберите, кого перевести в другой ряд
+choice.return-to-hand: Выберите, кого вернуть в руку владельца
+choice.take-control: Выберите, кого взять под контроль
+choice.drain: Выберите цель для вытягивания силы
+choice.duel: Выберите противника для поединка
+choice.consume: Выберите, кого поглотить
+choice.discard: Выберите карту для сброса
+choice.play-from-deck: Выберите карту из колоды, чтобы сыграть
+choice.play-from-graveyard: Выберите карту с кладбища, чтобы сыграть
+choice.summon-from-deck: Выберите карту из колоды, чтобы призвать
+choice.set-row-effect: Выберите ряд для эффекта
+choice.clear-row-effect: Выберите ряд, с которого снять эффект
+choice.create: Выберите карту для создания
+choice.place: "Выберите, куда поставить {card}"
