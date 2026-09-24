@@ -37,3 +37,25 @@ error.deck.too-few-units.other: "The deck has {count} units; it needs at least {
 error.deck.too-many-copies.one: "The deck has {count} copy of {card}; the limit is {limit}."
 error.deck.too-many-copies.other: "The deck has {count} copies of {card}; the limit is {limit}."
 error.deck.over-budget: "The deck costs {used} provisions; its budget is {budget}."
+
+# Why an intent was refused — details.reason of illegal_intent (docs/protocol/match.md §10).
+error.intent.unknown: That kind of move does not exist.
+error.intent.mulligan-phase: Only redraws are possible during the mulligan.
+error.intent.not-mulligan-phase: The mulligan is over.
+error.intent.already-passed: You have already passed this round.
+error.mulligan.over: Your mulligan is over.
+error.mulligan.none-left: You have no redraws left.
+error.play.card-already-played: You have already played a card this turn.
+error.play.not-playable: That card cannot be played now.
+error.play.row-required: Choose a row for that card.
+error.play.row-not-allowed: That card cannot go on that row.
+error.play.row-full: That row is full.
+error.play.position-required: Choose a position on the row.
+error.play.position-out-of-range: There is no such position on that row.
+error.order.not-ready: That ability is not ready.
+error.pass.card-played: You cannot pass once you have played a card this turn; end the turn instead.
+error.pass.order-used: You cannot pass after using an ability while you can still play a card.
+error.end-turn.no-card-played: Play a card or pass before ending the turn.
+error.choice.none-pending: There is no choice to make.
+error.choice.out-of-range: That is not one of the options.
+error.choice.not-cancellable: That choice cannot be cancelled.

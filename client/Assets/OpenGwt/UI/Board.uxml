@@ -3,15 +3,20 @@
     <ui:VisualElement name="root" class="board">
 
         <ui:VisualElement name="match" class="match hidden">
-            <ui:VisualElement name="top-bar" class="bar">
+            <ui:VisualElement name="top-bar" class="bar bar--tall">
                 <ui:Label name="opp-name" class="bar__name" />
                 <ui:Label name="opp-score" text="0" class="bar__score" />
-                <ui:Label name="opp-lives" class="bar__lives" />
+                <ui:Label name="opp-rounds" class="bar__rounds" />
                 <ui:Label name="opp-hand" class="bar__info" />
+                <ui:Label name="opp-graveyard" class="bar__zone" />
+                <ui:Label name="opp-banished" class="bar__zone" />
+                <ui:Label name="opp-mulligan" class="bar__info" />
                 <ui:Label name="opp-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
+                <ui:VisualElement name="opp-leader-slot" class="bar__leader" />
                 <ui:Label name="round-label" class="bar__info" />
                 <ui:Label name="turn-label" class="bar__turn" />
+                <ui:Button name="btn-leave" class="button" />
             </ui:VisualElement>
 
             <ui:VisualElement name="opp-board" class="side side--opponent">
@@ -21,6 +26,13 @@
 
             <ui:VisualElement name="middle" class="middle">
                 <ui:Label name="status-label" class="middle__status" />
+                <ui:VisualElement name="prompt" class="prompt hidden">
+                    <ui:VisualElement name="prompt-card" class="prompt__card" />
+                    <ui:Label name="prompt-text" class="prompt__text" />
+                    <ui:Label name="prompt-source" class="prompt__source" />
+                    <ui:Button name="btn-end-mulligan" class="button button--primary hidden" />
+                    <ui:Button name="btn-cancel-choice" class="button hidden" />
+                </ui:VisualElement>
                 <ui:Label name="message-label" class="middle__message" />
             </ui:VisualElement>
 
@@ -29,14 +41,18 @@
                 <ui:VisualElement name="my-row-ranged" class="row"><ui:VisualElement class="row__head"><ui:VisualElement name="icon" class="row__icon icon--ranged" /><ui:Label name="label" class="row__label" /></ui:VisualElement><ui:Label name="effects" class="row__effects" /><ui:VisualElement name="units" class="row__units" /><ui:Label name="total" class="row__total" text="0" /></ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="bottom-bar" class="bar">
+            <ui:VisualElement name="bottom-bar" class="bar bar--tall">
                 <ui:Label name="my-name" class="bar__name" />
                 <ui:Label name="my-score" text="0" class="bar__score" />
-                <ui:Label name="my-lives" class="bar__lives" />
+                <ui:Label name="my-rounds" class="bar__rounds" />
                 <ui:Label name="deck-count" class="bar__info" />
+                <ui:Label name="my-graveyard" class="bar__zone" />
+                <ui:Label name="my-banished" class="bar__zone" />
+                <ui:Label name="my-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
-                <ui:Button name="btn-leader" class="button" />
-                <ui:Button name="btn-pass" class="button button--primary" />
+                <ui:VisualElement name="leader-slot" class="bar__leader" />
+                <ui:Button name="btn-end-turn" class="button button--primary" />
+                <ui:Button name="btn-pass" class="button" />
             </ui:VisualElement>
 
             <ui:ScrollView name="hand" mode="Horizontal" class="hand" />
@@ -59,6 +75,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="lobby-step" class="hidden">
                     <ui:DropdownField name="deck" class="field" />
+                    <ui:VisualElement name="deck-summary" class="deck-summary" />
                     <ui:VisualElement class="dialog__buttons">
                         <ui:Button name="btn-bot" class="button button--primary" />
                         <ui:Button name="btn-create-room" class="button" />
@@ -80,7 +97,6 @@
                 <ui:Label name="modal-title" class="dialog__title" />
                 <ui:VisualElement name="modal-options" class="modal__options" />
                 <ui:VisualElement class="dialog__buttons">
-                    <ui:Button name="modal-confirm" class="button button--primary" />
                     <ui:Button name="modal-cancel" class="button" />
                 </ui:VisualElement>
             </ui:VisualElement>

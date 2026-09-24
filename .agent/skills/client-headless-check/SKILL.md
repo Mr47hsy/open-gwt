@@ -13,6 +13,9 @@ not 0 — and read the assets when it is 255 (see `.agent/memory/client-workflow
 
 - Strings (`data/i18n/*/ui.yaml`, `errors.yaml`):
   `cd server && uv run opengwt-data client-i18n --out ../client/Assets/OpenGwt/Resources/i18n`
+- The rules core, its events or views, a replay scenario or the golden (the client's protocol
+  fixtures): `cd server && uv run python -m tests.client_fixtures` (writes
+  `client/Assets/OpenGwt/Tests/EditMode/Fixtures/`; `test_client_fixtures.py` fails while stale)
 - Fonts (new TTF): `"$UNITY" -batchmode -nographics -projectPath "$PWD/client" -executeMethod OpenGwt.Editor.FontSetup.Run -quit -logFile /tmp/fonts.log`
 - Scene or settings code: same with `OpenGwt.Editor.ProjectSetup.Run`
 
@@ -32,11 +35,14 @@ cd server && OPENGWT_DATABASE_URL=sqlite+aiosqlite:////tmp/e2e.db OPENGWT_PORT=8
 OPENGWT_TEST_SERVER=http://127.0.0.1:8765 "$UNITY" -batchmode -nographics -projectPath "$PWD/client" -runTests -testPlatform PlayMode -testResults /tmp/playmode.xml -logFile /tmp/playmode.log
 ```
 
-`ClientMatchTests` plays a whole match through `MatchClient` and asserts the opponent's hand never
-appears; `BoardViewTests` runs in the same pass without the server. Stop the server afterwards.
-Until ADR 0009 phase E moves the client to protocol 2, `ClientMatchTests` fails against a current
-server (it expects v1 content and protocol 1); that failure is known, and `BoardViewTests` is what
-gates a board change meanwhile.
+`ClientMatchTests` plays two whole matches (one per starter deck) through `MatchClient`, taking
+every move from `legal_intents` — redraws, activated abilities, cards at a random legal
+position, `end_turn`, passes and every choice — and asserts that no message carried the
+opponent's hand, a deck's order or the seed; `RandomMatchTests` drives the real board through
+`OPENGWT_TEST_SEEDS` matches (three by default; raise it for a longer soak) with random legal
+intents and checks the board against the view after every step; `BoardViewTests` runs in the
+same pass without the server. Stop the server afterwards. The scripted client keeps 60 ms between intents to stay under
+the server's rate limit; do not raise the limit for it.
 
 ## 3b. Look at it, for any visual change
 
@@ -45,9 +51,9 @@ OPENGWT_TEST_SCREENSHOTS=/tmp/shots "$UNITY" -batchmode -projectPath "$PWD/clien
 ```
 
 No `-nographics`: the board renders into a 1600×900 texture and each stage is written as a PNG.
-Open them and check the change the way a player would see it. A run with graphics rewrites the
+Open them and check the change the way a player would see it. Any editor run may rewrite the
 dynamic font assets (`Fonts/*-SDF.asset`); unless fonts were your change, restore them with
-`git checkout -- client/Assets/OpenGwt/Fonts/`.
+`git checkout -- client/Assets/OpenGwt/Fonts/` before committing.
 
 ## 4. Optional macOS build
 

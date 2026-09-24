@@ -1,0 +1,31 @@
+# The events a card's movements emit (match.md §8): moved to the other row by move_to_other_row,
+# taken over by take_control, and returned to its owner's hand by return_to_hand. Instance ids
+# stay the same through all three.
+seed: 3
+decks:
+  - [plain5, plain3, recall, spare]
+  - [shove, seize, spare]
+steps:
+  - [0, play, plain5, melee]
+  - [0, end]
+  - [1, play, shove]
+  - [1, choose, plain5]
+  - [1, end]
+  - [0, play, plain3, melee]
+  - [0, end]
+  - [1, play, seize]
+  - [1, choose, plain5]
+  - [1, end]
+  - [0, play, recall]
+  - [0, choose, plain3]
+  - [0, end]
+events:
+  - {type: card_moved, seat: 0, card: plain5, from_row: melee, to_row: ranged, position: 0}
+  - {type: control_changed, seat: 1, card: plain5, from_seat: 0, row: ranged, position: 0, source: seize}
+  - {type: card_returned, seat: 0, card: plain3}
+board:
+  0: {melee: [], ranged: []}
+  1: {ranged: ["plain5:5"]}
+hand:
+  0: [plain3, spare]
+turn: 1

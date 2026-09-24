@@ -33,3 +33,25 @@ error.deck.too-many-cards.other: "卡组有 {count} 张牌，最多只能有 {ma
 error.deck.too-few-units.other: "卡组有 {count} 张单位牌，至少需要 {min} 张。"
 error.deck.too-many-copies.other: "{card} 放了 {count} 张，上限是 {limit} 张。"
 error.deck.over-budget: "卡组的构筑费用是 {used}，预算只有 {budget}。"
+
+# 操作被拒绝的原因——illegal_intent 的 details.reason（docs/protocol/match.md §10）。
+error.intent.unknown: 没有这种操作。
+error.intent.mulligan-phase: 换牌阶段只能换牌。
+error.intent.not-mulligan-phase: 换牌阶段已经结束。
+error.intent.already-passed: 你这一局已经 pass 了。
+error.mulligan.over: 你的换牌已经结束。
+error.mulligan.none-left: 你没有换牌次数了。
+error.play.card-already-played: 你这回合已经出过牌了。
+error.play.not-playable: 这张牌现在不能打出。
+error.play.row-required: 请为这张牌选择一行。
+error.play.row-not-allowed: 这张牌不能放到那一行。
+error.play.row-full: 那一行已经满了。
+error.play.position-required: 请选择行中的位置。
+error.play.position-out-of-range: 那一行没有这个位置。
+error.order.not-ready: 这个能力还没有就绪。
+error.pass.card-played: 这回合已经出过牌，不能 pass，请结束回合。
+error.pass.order-used: 使用能力后还能出牌，不能 pass。
+error.end-turn.no-card-played: 请先出牌或 pass，再结束回合。
+error.choice.none-pending: 现在没有需要做的选择。
+error.choice.out-of-range: 这不是可选项之一。
+error.choice.not-cancellable: 这个选择不能取消。

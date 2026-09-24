@@ -10,8 +10,10 @@ recall any official card, frame or icon.
 | `card-frame.svg` | every card; white at low opacity over the card's USS background colour |
 | `power-badge.svg` | a card's power and a row's total; USS tints the rim |
 | `row-melee.svg`, `row-ranged.svg` | the two rows (`Rules.rows`): row heads, card headers, card watermarks, the preview |
-| `kind-special.svg` | special cards |
-| `status-immune.svg` | the `immune` status; other statuses show their name only until they get art |
+| `kind-special.svg`, `kind-artifact.svg`, `kind-leader.svg`, `kind-stratagem.svg` | the card kinds that are not units: header icon and watermark |
+| `status-*.svg` | one per status of `cards.md` §9, in card headers (with the timer beside it) and the preview |
+| `badge-armor.svg` | a unit's armour, under the power badge |
+| `order.svg` | an activated ability: the button on a card and the leader |
 
 Icons are drawn in white so `-unity-background-image-tint-color` gives them any token colour.
 `Editor/SvgImportSettings.cs` imports every SVG here as a UI Toolkit `VectorImage` with

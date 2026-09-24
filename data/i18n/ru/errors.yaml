@@ -45,3 +45,25 @@ error.deck.too-many-copies.few: "В колоде {count} копии карты �
 error.deck.too-many-copies.many: "В колоде {count} копий карты «{card}», а можно не больше {limit}."
 error.deck.too-many-copies.other: "В колоде {count} копий карты «{card}», а можно не больше {limit}."
 error.deck.over-budget: "Стоимость колоды — {used}, а бюджет — {budget}."
+
+# Почему намерение отклонено — details.reason у illegal_intent (docs/protocol/match.md §10).
+error.intent.unknown: Такого хода не существует.
+error.intent.mulligan-phase: Во время мулигана возможны только замены.
+error.intent.not-mulligan-phase: Мулиган уже закончен.
+error.intent.already-passed: В этом раунде вы уже спасовали.
+error.mulligan.over: Ваш мулиган закончен.
+error.mulligan.none-left: Замен больше не осталось.
+error.play.card-already-played: В этот ход вы уже сыграли карту.
+error.play.not-playable: Эту карту сейчас нельзя сыграть.
+error.play.row-required: Выберите ряд для этой карты.
+error.play.row-not-allowed: Эту карту нельзя поставить в этот ряд.
+error.play.row-full: Этот ряд заполнен.
+error.play.position-required: Выберите позицию в ряду.
+error.play.position-out-of-range: В этом ряду нет такой позиции.
+error.order.not-ready: Эта способность не готова.
+error.pass.card-played: После сыгранной карты пасовать нельзя — закончите ход.
+error.pass.order-used: После использования способности нельзя пасовать, пока можно сыграть карту.
+error.end-turn.no-card-played: Сыграйте карту или спасуйте, прежде чем закончить ход.
+error.choice.none-pending: Сейчас нечего выбирать.
+error.choice.out-of-range: Это не один из вариантов.
+error.choice.not-cancellable: Этот выбор нельзя отменить.

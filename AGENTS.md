@@ -19,9 +19,9 @@ Mechanics are not copyrightable; a specific expression of them is.
 ## Project shape
 
 Unofficial open-source reimplementation of the Gwent rules — targeting the **two-row standalone
-ruleset** (ADR 0009), built in phases: phases B, C and D have landed (power and board, triggers
-and activated abilities, deck building; protocol 2 on the server), E and F follow in order, so
-check the ADR's phase table before rules work. Engine-agnostic **rules core** (a
+ruleset** (ADR 0009), built in phases: phases B to E have landed (power and board, triggers
+and activated abilities, deck building, protocol 2 on the server and in the client — the
+protocol is frozen), F (content) follows, so check the ADR's phase table before rules work. Engine-agnostic **rules core** (a
 zero-dependency Python package) → **authoritative server** (Python, FastAPI) →
 **Unity client** (C#) that renders and decides nothing — it runs no rules and needs a server even
 for a bot match.
@@ -34,7 +34,7 @@ contracts: `docs/protocol/`.
 (`opengwt.core`), the data loader, the i18n renderer, bots, the simulator and the FastAPI server
 (`opengwt.server`: HTTP API, WebSocket match protocol, SQLite and memory backends) — all tested;
 `data/` holds placeholder cards, decks and translations; `client/` is the Unity 6.6 thin client
-(UI Toolkit, `Assets/OpenGwt/`) with EditMode and PlayMode tests. Check the filesystem before
+(UI Toolkit, `Assets/OpenGwt/`) on protocol 2, with EditMode and PlayMode tests. Check the filesystem before
 describing any module or API as existing.
 
 ## Working rules

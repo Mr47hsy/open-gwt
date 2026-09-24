@@ -46,8 +46,19 @@
     --color-badge: rgb(200, 205, 215);
     --color-badge-boosted: rgb(120, 200, 140);
     --color-badge-reduced: rgb(240, 120, 120);
+    --color-badge-armor: rgb(150, 172, 205);
     --color-icon: rgb(150, 155, 165);
     --color-icon-strong: rgb(215, 218, 225);
+
+    /* Activated abilities, choices and placement */
+    --color-order: rgb(62, 70, 84);
+    --color-order-ready: rgb(214, 160, 64);
+    --color-candidate: rgb(140, 200, 255);
+    --color-candidate-soft: rgb(50, 72, 96);
+    --color-slot: rgba(255, 214, 102, 0.35);
+    --color-slot-hover: rgb(255, 214, 102);
+    --color-effect-hazard: rgb(240, 150, 120);
+    --color-effect-boon: rgb(120, 200, 140);
 
     /* Spacing */
     --space-1: 2px;
@@ -80,6 +91,10 @@
     --size-icon-sm: 12px;
     --size-icon-md: 16px;
     --size-icon-lg: 22px;
+    --size-icon-timer: 9px;
+    --size-slot-width: 14px;
+    --size-card-mini-width: 48px;
+    --size-card-mini-height: 64px;
     --size-card-width: 84px;
     --size-card-height: 112px;
     --size-card-large-width: 240px;

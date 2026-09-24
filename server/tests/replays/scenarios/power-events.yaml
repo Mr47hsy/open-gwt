@@ -1,0 +1,48 @@
+# The power and status events of match.md §8 that no other scenario shows: a shield blocking
+# damage (damage_blocked), bleeding taking turns off growing (status_reduced), a damaged unit
+# healed (unit_healed), and an aura starting (power_changed with reason aura).
+cards:
+  grow4:
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    abilities:
+      - {when: on_play, do: add_status, status: growing, turns: 4, target: {units: this}}
+seed: 1
+decks:
+  - [shield4, grow4, zap-all, aura-row, spare]
+  - [zap2, bleed2, heal-all, spare]
+steps:
+  - [0, play, shield4, melee]
+  - [0, end]
+  - [1, play, zap2, melee]
+  - [1, choose, shield4]
+  - [1, end]
+  - [0, play, grow4, melee]
+  - [0, end]                    # growing acts: +1, three turns left
+  - [1, play, bleed2]
+  - [1, choose, grow4]          # two turns of bleeding take two off growing; nothing is added
+  - [1, end]
+  - [0, play, zap-all]
+  - [0, end]                    # growing acts once more and expires
+  - [1, play, heal-all]
+  - [1, end]
+  - [0, play, aura-row, melee]
+  - [0, end]
+events:
+  - {type: damage_blocked, seat: 0, card: shield4, amount: 2, source: zap2}
+  - {type: status_removed, seat: 0, card: shield4, status: shielded, reason: blocked}
+  - {type: status_added, seat: 0, card: grow4, status: growing, turns: 4}
+  - {type: unit_boosted, seat: 0, card: grow4, amount: 1, power: 4, reason: growing}
+  - {type: status_reduced, seat: 0, card: grow4, status: growing, turns: 1, source: bleed2}
+  - {type: unit_damaged, seat: 1, card: zap2, amount: 1, power: 2, source: zap-all}
+  - {type: status_removed, seat: 0, card: grow4, status: growing, reason: expired}
+  - {type: unit_healed, seat: 1, card: zap2, amount: 1, power: 3, source: heal-all}
+  - {type: power_changed, seat: 0, card: shield4, from: 4, to: 5, reason: aura}
+absent:
+  - {type: status_added, status: bleeding}
+board:
+  0: {melee: ["shield4:5", "grow4:6", "aura-row:2"]}
+  1: {melee: ["zap2:3"]}
+turn: 1

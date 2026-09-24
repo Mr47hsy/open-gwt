@@ -11,9 +11,10 @@ sends intents; every decision is made on the server. Version 2 carries the two-r
 > come from the v2 rules core; phase C completed it — activated abilities of every kind,
 > `end_turn`, and choices of every kind — while no client spoke it yet, so protocol 2 changed in
 > place; phase D changed it in place again — the deck-building problems of `deck_illegal` became
-> objects, and decks carry their provisions and problems (sections 2 and 10). The Unity client on
-> `develop` still speaks protocol 1 (`git show b68be93:docs/protocol/match.md`) until phase E;
-> between the two it cannot play, by the owner's decision.
+> objects, and decks carry their provisions and problems (sections 2 and 10). Phase E moved the
+> Unity client to protocol 2 and made the last in-place corrections the client proved necessary
+> (sections 3, 4, 6, 7 and 10); from then on the protocol is frozen and any change bumps the
+> version. Protocol 1 is history (`git show b68be93:docs/protocol/match.md`).
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
 rendered to a human carries keys or codes, never sentences ([ADR 0006](../adr/0006-i18n-keys-and-unity-localization.md)).
@@ -84,7 +85,8 @@ not seated in it; `4429` more than twenty intents arrived within one second. A n
 On connect the server sends, in order:
 
 1. `hello` — `{type: "hello", protocol: 2, pack_hash, match_id, player_id, seat, locale}`;
-2. `view` — the full current view for this player (section 7);
+2. `view` — the full current view for this player (section 7), once the match has started: a
+   room still waiting for its second player sends it when they join, as the first batch;
 3. nothing more until something happens.
 
 From then on the server pushes `events` batches, each followed by the `view` they lead to, and the
@@ -99,7 +101,7 @@ choice of theirs is pending.
 | `view` | `{seq, view}` | Full per-player snapshot after all events up to `seq`. Always safe to render from scratch. |
 | `events` | `{from_seq, events: [...]}` | Ordered events since the last batch; `from_seq` is the `seq` of the first. |
 | `error` | `{code, message_key, params, message, intent_id?, details?}` | The intent named by `intent_id` was rejected; the view is unchanged. `message` as in section 2. |
-| `match_over` | `{seq, result}` | Final; `result` is `{winner: seat \| null, rounds: [{round, winners, scores}]}`. The socket closes shortly after. |
+| `match_over` | `{seq, result}` | Final; `result` is `{winner: seat \| null, rounds: [{round, winners, scores}]}`. The socket closes shortly after. A client that connects to a match that has already ended receives `hello` and then this message alone, with `seq` `null`. |
 
 `seq` is a per-match counter over events. A client that renders `view` after every `events` batch
 needs no other bookkeeping; a client that animates events may skip the `view` and only use it to
@@ -121,7 +123,7 @@ Exactly what the rules core accepts; the server only adds authentication and rou
 | --- | --- | --- |
 | `mulligan` | `{card: instance}` | During the mulligan, while this player has redraws left, cards in their deck and has not ended their mulligan: return this card from hand and draw a replacement into its place (`cards.md` §11.5). |
 | `end_mulligan` | `{}` | During the mulligan, until this player's mulligan is over. It ends by itself when the redraws run out. |
-| `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending, once per turn. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end). Playing a card does not end the turn (`end_turn`). |
+| `play_card` | `{card: instance, row?, position?}` | On this player's turn, with no choice pending, once per turn. `row` (`melee` or `ranged`) and `position` are required for a unit or an artifact and absent for a special. `position` is the index the card is inserted at, from `0` (left end) to the number of cards on that row-side (right end) — the row-side the card lands on: the player's own, or the opponent's for a unit whose `side` is `opponent` (`cards.md` §3), which a client reads from the pack. Playing a card does not end the turn (`end_turn`). |
 | `use_order` | `{instance}` | On this player's turn, with no choice pending, before or after the turn's card, for a card of theirs on the board or their leader whose activated ability is ready (`cards.md` §6.3). Does not end the turn; once one is used, the turn needs its card. |
 | `end_turn` | `{}` | On this player's turn, with no choice pending, once the turn's card is played. The turn never ends by itself (`cards.md` §11.4). |
 | `pass` | `{}` | On this player's turn, with no choice pending, instead of playing a card: not once the card is played, and not after an activated ability while a card can still be played. |
@@ -133,9 +135,9 @@ accepts them, and that order is what the replay record keeps.
 
 The view carries `legal_intents`: the exact set the server would accept now, in the same shape,
 with two compressions to keep it short. A `play_card` entry lists a legal `card` and `row` without
-`position`: every position from `0` to the number of cards on that row-side is legal. And every
-card in hand has one `mulligan` entry while redraws are left. The client enables controls from
-that list and never derives legality itself.
+`position`: every position from `0` to the number of cards on the row-side the card lands on is
+legal. And every card in hand has one `mulligan` entry while redraws are left. The client enables
+controls from that list and never derives legality itself.
 
 ## 7. View
 
@@ -194,7 +196,7 @@ and the like are shortened for the examples, and a client never parses them.
 | `hand` | Own hand only. `opponent` never has a `hand` array or any deck order — only counts. |
 | `graveyard`, `banished` | Public zones, oldest first. |
 | `leader` | The leader's instance and card, and its `order` (below); `null` for a deck without one. |
-| `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished; otherwise `null`. |
+| `mulligan` | During the mulligan `{remaining, done}` — redraws left and whether that player has finished — for both players, so each sees the other's progress; otherwise `null`. |
 | `rows` | One entry per row in `Rules.rows`: the row-side's `effect` (`{effect, amount, count?}` or `null`) and its `cards`, left to right; a card's position is its index. The starter's stratagem is one of these cards until it is used or round one ends, with its `order`. |
 
 A card on the board:
@@ -327,7 +329,7 @@ timer runs on through them.
 | `illegal_intent` | Not in `legal_intents`; `details.reason` is a key (below). |
 | `not_your_turn` | |
 | `choice_pending` | A `choose` (or `cancel_choice`) intent is required first. |
-| `unknown_instance` | The card instance id does not exist in this player's visible zones. |
+| `unknown_instance` | The card instance id does not exist in this player's visible zones; `details.instance` is the id. |
 | `match_over` | |
 | `match_not_started` | The room still waits for its second player. |
 | `protocol_version` | Client and server protocol versions differ. |
@@ -355,12 +357,15 @@ and `max` (`too-many-cards`), `count` and `limit` (`too-many-copies`), `used` an
     { "key": "error.deck.over-budget", "params": { "used": 167, "budget": 165 } } ] } }
 ```
 
-Reason keys of `illegal_intent` new in protocol 2: `error.play.row-full`,
-`error.play.position-out-of-range`, `error.play.position-required`,
-`error.play.card-already-played`, `error.pass.card-played`, `error.pass.order-used`,
-`error.end-turn.no-card-played`, `error.order.not-ready`, `error.choice.not-cancellable`,
-`error.mulligan.none-left`, `error.mulligan.over`. Protocol 1's keys for playing, passing and
-choosing keep their meaning.
+The reason keys of `illegal_intent` — `details.reason`, each with a message in `errors.yaml`
+that a client shows when it knows the key — are: `error.intent.unknown`,
+`error.intent.mulligan-phase`, `error.intent.not-mulligan-phase`, `error.intent.already-passed`,
+`error.mulligan.over`, `error.mulligan.none-left`, `error.play.card-already-played`,
+`error.play.not-playable`, `error.play.row-required`, `error.play.row-not-allowed`,
+`error.play.row-full`, `error.play.position-required`, `error.play.position-out-of-range`,
+`error.order.not-ready`, `error.pass.card-played`, `error.pass.order-used`,
+`error.end-turn.no-card-played`, `error.choice.none-pending`, `error.choice.out-of-range` and
+`error.choice.not-cancellable`.
 
 ## 11. Security notes
 

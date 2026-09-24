@@ -21,11 +21,10 @@ ui.board.me: You
 ui.board.opponent: Opponent
 ui.board.pass: Pass
 ui.board.passed: PASSED
+ui.board.end-turn: End turn
+ui.board.end-mulligan: End mulligan
 ui.board.deck: deck {count}
 ui.board.opponent-hand: hand {hand} · deck {deck}
-ui.board.leader: "Leader: {name}"
-ui.board.leader-used: Leader used
-ui.board.leader-none: No leader
 ui.board.round: round {round}
 ui.board.rounds: "rounds {mine} : {theirs}"
 ui.board.room-waiting: Room {code} — waiting for the other player
@@ -39,15 +38,10 @@ ui.turn.over: match over
 ui.result.won: You won the match
 ui.result.lost: You lost the match
 ui.result.draw: The match is a draw
-ui.modal.choose-row: Choose a row
-ui.modal.mulligan.one: "Mulligan: pick up to {count} card to redraw"
-ui.modal.mulligan.other: "Mulligan: pick up to {count} cards to redraw"
-ui.modal.confirm: Confirm
 ui.modal.cancel: Cancel
 ui.modal.back: Back to menu
 ui.net.lost: Connection lost ({reason}), reconnecting …
-ui.effect.power-to-one: power → 1
-ui.effect.double-power: ×2
+ui.net.protocol-mismatch: This client speaks match protocol {client} but the server speaks {server}; update the client.
 ui.row.melee: Melee
 ui.row.ranged: Ranged
 ui.kind.unit: Unit
@@ -56,21 +50,163 @@ ui.kind.leader: Leader
 ui.kind.artifact: Artifact
 ui.kind.stratagem: Stratagem
 ui.preview.base-power: "Base power {power}"
-ui.hand.count.one: "{count} card in hand"
-ui.hand.count.other: "{count} cards in hand"
 ui.event.card-played: "{who}: played {card}"
-ui.event.unit-summoned: "{who}: {card} entered the board"
-ui.event.unit-destroyed: "{card} was destroyed"
-ui.event.unit-returned: "{who}: {card} returned to hand"
-ui.event.leader-used: "{who}: used the leader"
 ui.event.player-passed: "{who}: passed"
-ui.event.round-ended: "round {round} ended {mine} : {theirs}"
-ui.event.row-effect-applied: "{effect} on {who}'s {row} row"
-ui.event.row-effect-cleared: "{effect} cleared from {who}'s {row} row"
 ui.event.card-drawn.one: "{who}: drew {count} card"
 ui.event.card-drawn.other: "{who}: drew {count} cards"
-choice.destroy: Choose a unit to destroy
-choice.boost: Choose a unit to boost
-choice.set-power: Choose a unit
-choice.return-from-discard: Choose a unit to return from your discard pile
-choice.swap-with-board-unit: Choose one of your units to return to your hand
+
+# Turn actions, redraws and zones (phase E).
+ui.board.zone: "{zone} {count}"
+ui.zone.graveyard: Graveyard
+ui.zone.banished: Banished
+ui.zone.empty: Nothing here yet
+
+# Card details: power, armour, activated ability, statuses (cards.md §5, §6.3, §9).
+ui.card.armor: "Armour {count}"
+ui.card.boosted: "Boosted by {amount}"
+ui.card.damaged: "Damaged by {amount}"
+ui.card.aura: "+{amount} from nearby cards"
+ui.card.ready: Ready to use
+ui.card.charges.one: "{count} charge left"
+ui.card.charges.other: "{count} charges left"
+ui.card.charges-unlimited: Unlimited charges
+ui.card.cooldown.one: "Ready again in {count} turn"
+ui.card.cooldown.other: "Ready again in {count} turns"
+ui.card.turns.one: "{count} turn left"
+ui.card.turns.other: "{count} turns left"
+ui.card.provisions: "Provisions {count}"
+ui.card.color.bronze: Bronze
+ui.card.color.gold: Gold
+ui.card.token: Token
+
+# Turn actions, redraws and zones (phase E).
+ui.modal.close: Close
+
+# Turn actions, redraws and zones (phase E).
+ui.board.redraws-left.one: "{count} redraw left"
+ui.board.redraws-left.other: "{count} redraws left"
+ui.board.mulligan-waiting: Waiting for the opponent to finish redrawing
+ui.board.choose-place: "Choose where to play {card}"
+
+# Lobby: what a deck of the pack brings (cards.md §12, §14).
+ui.lobby.leader: "Leader: {name}"
+ui.lobby.stratagem: "Stratagem: {name}"
+ui.lobby.provisions: "Provisions {used} / {budget}"
+ui.lobby.problems: "This deck breaks the deck-building rules:"
+
+# Event log lines for the events of match.md §8.
+ui.event.match-started: "first move: {who}"
+ui.event.round-started: "round {round}, first move: {who}"
+ui.event.stratagem-placed: "{who}: stratagem {card} in play"
+ui.event.draw-skipped-hand-full.one: "{who}: {count} draw skipped, hand full"
+ui.event.draw-skipped-hand-full.other: "{who}: {count} draws skipped, hand full"
+ui.event.draw-skipped-deck-empty.one: "{who}: {count} draw skipped, deck empty"
+ui.event.draw-skipped-deck-empty.other: "{who}: {count} draws skipped, deck empty"
+ui.event.mulligan-started: "redraws: you {mine}, opponent {theirs}"
+ui.event.card-redrawn: "{who}: redrew a card"
+ui.event.mulligan-done.one: "{who}: kept the hand after {count} redraw"
+ui.event.mulligan-done.other: "{who}: kept the hand after {count} redraws"
+ui.event.order-used: "{who}: used {card}"
+ui.event.card-summoned: "{who}: {card} entered the board"
+ui.event.card-moved: "{card} moved to the {row} row"
+ui.event.card-returned: "{who}: {card} returned to hand"
+ui.event.control-changed: "{who}: took control of {card}"
+ui.event.card-discarded: "{who}: discarded {card}"
+ui.event.card-destroyed: "{card} was destroyed"
+ui.event.card-banished: "{card} was banished"
+ui.event.unit-damaged: "{card} took {amount} damage"
+ui.event.damage-blocked: "{card}: a shield blocked {amount} damage"
+ui.event.unit-boosted: "{card} boosted by {amount}"
+ui.event.unit-healed: "{card} healed by {amount}"
+ui.event.base-power-changed: "{card}: base power {from} → {to}"
+ui.event.armor-changed: "{card}: armour {from} → {to}"
+ui.event.status-added: "{card}: {status}"
+ui.event.status-added-timed.one: "{card}: {status} for {count} turn"
+ui.event.status-added-timed.other: "{card}: {status} for {count} turns"
+ui.event.status-reduced.one: "{card}: {status} cut to {count} turn"
+ui.event.status-reduced.other: "{card}: {status} cut to {count} turns"
+ui.event.status-removed: "{card}: {status} ended"
+ui.event.charges-changed: "{card}: charges {from} → {to}"
+ui.event.choice-requested: "{who}: choosing"
+ui.event.choice-cancelled: "{who}: cancelled"
+ui.event.player-passed-auto: "{who}: passed automatically"
+ui.event.round-tied: "round {round} tied {mine} : {theirs}"
+
+# Statuses and row effects (cards.md §9, §10): the words players see for the vocabulary.
+status.locked.name: Locked
+status.locked.text: Its abilities do nothing while it is locked.
+status.shielded.name: Shielded
+status.shielded.text: The next damage it would take is blocked; the shield is then gone.
+status.immune.name: Immune
+status.immune.text: Cannot be chosen as a target; effects that target nobody in particular still reach it.
+status.poisoned.name: Poisoned
+status.poisoned.text: Poisoned once more, it is destroyed.
+status.bleeding.name: Bleeding
+status.bleeding.text: At the end of each of its controller's turns it takes 1 damage that armour does not absorb.
+status.growing.name: Growing
+status.growing.text: At the end of each of its controller's turns it is boosted by 1.
+status.banish-on-leave.name: Banished on leaving
+status.banish-on-leave.text: When it leaves the board it is banished instead of going anywhere else.
+status.kept-at-round-end.name: Kept at round end
+status.kept-at-round-end.text: It stays on the board when the round ends, once.
+status.status-proof.name: Status-proof
+status.status-proof.text: No status can be added to it.
+status.guarding.name: Guarding
+status.guarding.text: While it stands on a row, the opponent cannot choose any other card on that row.
+status.on-enemy-side.name: On the enemy side
+status.on-enemy-side.text: It stands on the side of the player who does not own it.
+row-effect.damage-strongest.name: Strongest takes damage
+row-effect.damage-strongest.text: "At the start of each of this player's turns, the strongest unit on this row takes {amount} damage."
+row-effect.damage-weakest.name: Weakest takes damage
+row-effect.damage-weakest.text: "At the start of each of this player's turns, the weakest unit on this row takes {amount} damage."
+row-effect.damage-random.name: Random damage
+row-effect.damage-random.text.one: "At the start of each of this player's turns, {count} random unit on this row takes {amount} damage."
+row-effect.damage-random.text.other: "At the start of each of this player's turns, {count} random units on this row take {amount} damage."
+row-effect.boost-random.name: Random boost
+row-effect.boost-random.text.one: "At the start of each of this player's turns, {count} random unit on this row is boosted by {amount}."
+row-effect.boost-random.text.other: "At the start of each of this player's turns, {count} random units on this row are boosted by {amount}."
+row-effect.damage-on-arrival.name: Damage on arrival
+row-effect.damage-on-arrival.text: "A unit entering this row takes {amount} damage."
+
+# Prompts for a pending choice: `choice.<action>` for every action that may ask one, and
+# `choice.place` for where an ability's card goes (match.md §7).
+choice.damage: Choose what to damage
+choice.boost: Choose what to boost
+choice.add-armor: Choose what gains armour
+choice.heal: Choose what to heal
+choice.reset-power: Choose whose power to reset
+choice.raise-base-power: Choose whose base power to raise
+choice.destroy: Choose what to destroy
+choice.banish: Choose what to banish
+choice.add-status: Choose what receives the status
+choice.remove-statuses: Choose what loses its statuses
+choice.move-to-other-row: Choose what moves to the other row
+choice.return-to-hand: Choose what returns to its owner's hand
+choice.take-control: Choose what to take control of
+choice.drain: Choose what to drain
+choice.duel: Choose the opponent of the duel
+choice.consume: Choose what to consume
+choice.discard: Choose a card to discard
+choice.play-from-deck: Choose a card to play from the deck
+choice.play-from-graveyard: Choose a card to play from the graveyard
+choice.summon-from-deck: Choose a card to summon from the deck
+choice.set-row-effect: Choose the row for the effect
+choice.clear-row-effect: Choose the row to clear
+choice.create: Choose a card to create
+choice.place: "Choose where to put {card}"
+
+# Turn actions, redraws and zones (phase E).
+ui.board.leave: Leave the match
+ui.board.opponent-redraws.one: "opponent: {count} redraw left"
+ui.board.opponent-redraws.other: "opponent: {count} redraws left"
+ui.board.opponent-mulligan-done: "opponent: kept the hand"
+ui.net.retrying: "Connection lost ({reason}); reconnecting, attempt {attempt} of {max} …"
+ui.net.gone: Could not reconnect. Leave the match and try again.
+ui.net.replaced: Another session of yours took over this match.
+ui.net.refreshing: The server's content changed; reloading …
+
+# Event log lines for the events of match.md §8.
+ui.event.row-effect-set: "{who}: {effect} on the {row} row"
+ui.event.row-effect-cleared: "{who}: {effect} cleared from the {row} row"
+ui.event.round-won: "{who}: won round {round} ({mine} : {theirs})"
+ui.event.round-nobody: "round {round}: nobody won ({mine} : {theirs})"
