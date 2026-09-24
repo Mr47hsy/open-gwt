@@ -1,8 +1,9 @@
-// Drives the real board through whole matches against the server-hosted bot with a client that
-// picks a random entry of `legal_intents` every time, for several seeds, and after every step
-// checks that what the board shows is what the newest view says: the hand, the rows, the
-// enabled buttons and slots, the prompt and the dialog. Needs a running server, named by
-// OPENGWT_TEST_SERVER; ignored otherwise.
+// Drives the real board through whole matches against the server-hosted bot with a player that
+// picks a random entry of `legal_intents` every time and performs it the way a person would —
+// a click on the hand card and on a slot, on the ability button, on a candidate, a row, a slot
+// or a face in the dialog, on the pass, end-turn, end-mulligan or cancel button — for several
+// seeds, and after every step checks that what the board shows is what the newest view says.
+// Needs a running server, named by OPENGWT_TEST_SERVER; ignored otherwise.
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -79,7 +80,9 @@ namespace OpenGwt.Tests
                 var checks = 0;
                 var moves = 0;
                 ErrorMessage lastError = null;
+                var sent = new List<JObject>();
                 client.ErrorReceived += e => lastError = e;
+                client.IntentSent += i => sent.Add(i);
                 yield return Await(client, client.PlayBotAsync(deckId));
                 root.Q("connect-panel").AddToClassList("hidden");
                 root.Q("match").RemoveFromClassList("hidden");
@@ -106,7 +109,11 @@ namespace OpenGwt.Tests
                         {
                             moves++;
                             lastSentAt = Time.realtimeSinceStartup;
-                            yield return Await(client, client.SendIntentAsync(move));
+                            sent.Clear();
+                            yield return Perform(root, board, client, view, move);
+                            Assert.AreEqual(1, sent.Count, "seed " + seed + " seq " + view.Seq + ": the board sent " + sent.Count + " intents for " + move);
+                            Assert.AreEqual(move.ToString(Newtonsoft.Json.Formatting.None), sent[0].ToString(Newtonsoft.Json.Formatting.None),
+                                "seed " + seed + " seq " + view.Seq + ": the board sent something else");
                         }
                     }
                     yield return null;
@@ -115,9 +122,15 @@ namespace OpenGwt.Tests
                 Assert.IsNotNull(client.Result, "seed " + seed + ": the match did not finish in time after " + moves + " moves");
                 Debug.Log("random match seed " + seed + " (" + deckId + "): " + moves + " moves, " + checks + " checks, winner " + client.Result.Winner);
 
-                // The result dialog is up; its button goes back to the lobby, as a player would.
-                board.Tick();
-                yield return null;
+                // The result dialog opens once the last steps have been shown; its button goes back
+                // to the lobby, as a player would.
+                var dialogBy = Time.realtimeSinceStartup + 5f;
+                while (root.Q("modal").ClassListContains("hidden") && Time.realtimeSinceStartup < dialogBy)
+                {
+                    client.Pump();
+                    board.Tick();
+                    yield return null;
+                }
                 Assert.IsFalse(root.Q("modal").ClassListContains("hidden"), "seed " + seed + ": the result dialog");
                 var back = root.Q("modal-options").Q<Button>();
                 Assert.IsNotNull(back, "seed " + seed + ": the dialog's back button");
@@ -202,6 +215,125 @@ namespace OpenGwt.Tests
             if (choice != null && choice.Kind == "card")
             {
                 Assert.AreEqual(choice.Options.Count, root.Q("modal-options").Query<CardElement>().ToList().Count, at + ": card options");
+            }
+        }
+
+        /// <summary>Perform an intent through the board's own controls, as a player would.</summary>
+        private static IEnumerator Perform(VisualElement root, BoardView board, MatchClient client, MatchView view, JObject intent)
+        {
+            var kind = (string)intent["kind"];
+            switch (kind)
+            {
+                case "mulligan":
+                    Click(HandCard(root, (string)intent["card"]));
+                    break;
+                case "end_mulligan":
+                    Click(root.Q<Button>("btn-end-mulligan"));
+                    break;
+                case "end_turn":
+                    Click(root.Q<Button>("btn-end-turn"));
+                    break;
+                case "pass":
+                    Click(root.Q<Button>("btn-pass"));
+                    break;
+                case "use_order":
+                    Click(CardOnBoard(root, (string)intent["instance"]).OrderButton);
+                    break;
+                case "play_card":
+                {
+                    var card = HandCard(root, (string)intent["card"]);
+                    if (intent["row"] == null)
+                    {
+                        Click(card);
+                        break;
+                    }
+                    if (!card.ClassListContains("card--selected"))
+                    {
+                        Click(card);
+                        yield return null;
+                        board.Tick();
+                    }
+                    var cardId = view.Me.Hand.First(c => c.Instance == (string)intent["card"]).Card;
+                    var def = client.Cards[cardId];
+                    var mine = !((string)def["kind"] == "unit" && (string)def["side"] == "opponent");
+                    Click(Slots(root, (mine ? "my-row-" : "opp-row-") + (string)intent["row"])[(int)intent["position"]]);
+                    break;
+                }
+                case "choose":
+                {
+                    var choice = view.PendingChoice;
+                    var index = (int)intent["option"];
+                    var option = choice.Options[index];
+                    switch (choice.Kind)
+                    {
+                        case "unit":
+                            Click(CardOnBoard(root, option.Instance));
+                            break;
+                        case "row":
+                            Click(root.Q((option.Side == "me" ? "my-row-" : "opp-row-") + option.Row));
+                            break;
+                        case "place":
+                        {
+                            // The slots of that row-side, in position order, are its options in position order.
+                            var rowName = (option.Side == "me" ? "my-row-" : "opp-row-") + option.Row;
+                            var positions = choice.Options.Where(o => o.Side == option.Side && o.Row == option.Row)
+                                .Select(o => o.Position.Value).OrderBy(p => p).ToList();
+                            Click(Slots(root, rowName)[positions.IndexOf(option.Position.Value)]);
+                            break;
+                        }
+                        case "card":
+                            Click(root.Q("modal-options").Query<CardElement>().ToList()[index]);
+                            break;
+                        default:
+                            Assert.Fail("unknown choice kind " + choice.Kind);
+                            break;
+                    }
+                    break;
+                }
+                case "cancel_choice":
+                    Click(view.PendingChoice?.Kind == "card" ? root.Q<Button>("modal-cancel") : root.Q<Button>("btn-cancel-choice"));
+                    break;
+                default:
+                    Assert.Fail("unknown intent kind " + kind);
+                    break;
+            }
+        }
+
+        private static CardElement HandCard(VisualElement root, string instance)
+        {
+            var card = root.Q<ScrollView>("hand").Children().OfType<CardElement>().FirstOrDefault(c => c.Instance == instance);
+            Assert.IsNotNull(card, "no hand card " + instance);
+            return card;
+        }
+
+        private static CardElement CardOnBoard(VisualElement root, string instance)
+        {
+            var card = root.Q("match").Query<CardElement>().ToList().FirstOrDefault(c => c.Instance == instance);
+            Assert.IsNotNull(card, "no card " + instance + " on the board");
+            return card;
+        }
+
+        private static List<VisualElement> Slots(VisualElement root, string row) =>
+            root.Q(row).Q("units").Children().Where(c => c.ClassListContains("slot")).ToList();
+
+        /// <summary>Click an element: a button answers to a submit like the one a pointer click
+        /// raises through its Clickable; anything else to the click event the board listens for.</summary>
+        private static void Click(VisualElement element)
+        {
+            Assert.IsNotNull(element, "nothing to click");
+            if (element is Button)
+            {
+                using (var submit = NavigationSubmitEvent.GetPooled())
+                {
+                    submit.target = element;
+                    element.SendEvent(submit);
+                }
+                return;
+            }
+            using (var click = ClickEvent.GetPooled())
+            {
+                click.target = element;
+                element.SendEvent(click);
             }
         }
 

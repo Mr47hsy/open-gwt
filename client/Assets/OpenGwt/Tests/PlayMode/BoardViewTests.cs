@@ -411,6 +411,10 @@ namespace OpenGwt.Tests
             Assert.AreEqual(1, sent.Count);
             Assert.AreEqual("mulligan", (string)sent[0]["kind"]);
             Assert.AreEqual("h1", (string)sent[0]["card"]);
+            Click(HandCard("h2"));
+            Assert.AreEqual(1, sent.Count, "nothing else is sent until the server answers");
+            Show(view);
+            yield return Frames(2);
             Click(endMulligan);
             Assert.AreEqual("end_mulligan", (string)sent[1]["kind"]);
 
@@ -461,7 +465,10 @@ namespace OpenGwt.Tests
             Assert.AreEqual("melee", (string)sent[0]["row"]);
             Assert.AreEqual(0, (int)sent[0]["position"]);
 
-            // A special plays at once, without a row.
+            // A special plays at once, without a row — once the server has answered the last intent.
+            Show(View(hand: new[] { ("h1", Guard), ("h2", Special) }, mine: new[] { ("b1", Unit, 5, 5) },
+                plays: new[] { ("h1", "melee"), ("h1", "ranged"), ("h2", (string)null) }));
+            yield return Frames(2);
             Click(HandCard("h2"));
             Assert.AreEqual("play_card", (string)sent[1]["kind"]);
             Assert.AreEqual("h2", (string)sent[1]["card"]);
@@ -677,6 +684,12 @@ namespace OpenGwt.Tests
             Assert.AreEqual(1, (int)sent[0]["option"]);
             Click(RowCard("my-row-melee", "b1"));
             Assert.AreEqual(1, sent.Count, "a card that is not a candidate does nothing");
+            Click(RowCard("opp-row-melee", "o1"));
+            Assert.AreEqual(1, sent.Count, "a second candidate is not sent while the first answer is on its way");
+            // The server refused it: the same choice is offered again and can be cancelled.
+            client.Receive("{\"type\":\"error\",\"code\":\"illegal_intent\",\"message_key\":\"error.illegal-intent\",\"params\":{},\"message\":\"No.\",\"details\":{\"reason\":\"error.choice.out-of-range\"}}");
+            yield return Frames(2);
+            Assert.AreEqual(client.Text("error.choice.out-of-range"), root.Q<Label>("message-label").text, "the reason is shown when the tables know it");
             Click(cancel);
             Assert.AreEqual("cancel_choice", (string)sent[1]["kind"]);
 
@@ -763,6 +776,94 @@ namespace OpenGwt.Tests
             Assert.AreEqual(DisplayStyle.Flex, root.Q<Button>("modal-cancel").resolvedStyle.display);
             Click(root.Q<Button>("modal-cancel"));
             Assert.AreEqual("cancel_choice", (string)sent[1]["kind"]);
+        }
+
+        [UnityTest]
+        public IEnumerator ARefusedCardChoiceCanBeAnsweredAgainAndAZoneStillCloses()
+        {
+            // A card choice that cannot be cancelled: the dialog's cancel button is disabled.
+            Show(Choosing("card", "choice.create", false, Option(null, null, card: Unit), Option(null, null, card: Special)));
+            yield return Frames(3);
+            var faces = root.Q("modal-options").Query<CardElement>().ToList();
+            Click(faces[0]);
+            Assert.AreEqual("choose", (string)sent[0]["kind"]);
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"));
+
+            // Refused: the dialog comes back with its options.
+            client.Receive("{\"type\":\"error\",\"code\":\"choice_pending\",\"message_key\":\"error.choice-pending\",\"params\":{},\"message\":\"Choose first.\"}");
+            yield return Frames(2);
+            Assert.IsFalse(root.Q("modal").ClassListContains("hidden"), "the choice is offered again");
+            Assert.AreEqual(2, root.Q("modal-options").Query<CardElement>().ToList().Count);
+            Click(root.Q("modal-options").Query<CardElement>().ToList()[1]);
+            Assert.AreEqual(1, (int)sent[1]["option"]);
+
+            // The choice made, a zone list opens and its close button works.
+            var after = View(mine: new[] { ("b1", Unit, 5, 5) });
+            after["me"]["graveyard"] = new JArray(new JObject { ["instance"] = "d1", ["card"] = Special });
+            Show(after);
+            yield return Frames(2);
+            Click(root.Q<Label>("my-graveyard"));
+            yield return Frames(1);
+            Assert.IsFalse(root.Q("modal").ClassListContains("hidden"));
+            var close = root.Q<Button>("modal-cancel");
+            Assert.IsTrue(close.enabledSelf, "the close button is usable after a non-cancellable choice");
+            Click(close);
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"));
+        }
+
+        [UnityTest]
+        public IEnumerator TheResultWaitsForTheLastStepsAndTheOpponentsLeaderShows()
+        {
+            var view = View(mine: new[] { ("b1", Unit, 5, 5) });
+            view["opponent"]["leader"] = new JObject
+            {
+                ["instance"] = "l2", ["card"] = Leader,
+                ["order"] = new JObject { ["ready"] = false, ["charges"] = 1, ["cooldown"] = 0 },
+            };
+            view["phase"] = "mulligan";
+            view["turn"] = null;
+            view["me"]["mulligan"] = new JObject { ["remaining"] = 0, ["done"] = true };
+            view["opponent"]["mulligan"] = new JObject { ["remaining"] = 2, ["done"] = false };
+            view["legal_intents"] = new JArray();
+            Show(view);
+            yield return Frames(3);
+            var theirs = root.Q("opp-leader-slot").Q<CardElement>();
+            Assert.IsNotNull(theirs, "the opponent's leader is public");
+            Assert.IsFalse(theirs.OrderButton.enabledSelf, "and never usable by this player");
+            Assert.AreEqual(client.Text("ui.board.opponent-redraws", MatchClient.P("count", 2)), root.Q<Label>("opp-mulligan").text);
+
+            // Two steps arrive with the match over: the first moves a card, so the second waits
+            // its hold, and the dialog waits for the second.
+            var first = View(mine: new[] { ("b1", Unit, 5, 5), ("x1", Unit, 5, 5) });
+            var last = View();
+            last["phase"] = "match_over";
+            last["winner"] = "me";
+            last["turn"] = null;
+            Show(first, Event("card_played", 0, "x1", Unit, ("from", "hand"), ("row", "melee")));
+            Show(last, Destroyed(0, "b1", Unit));
+            client.Receive("{\"type\":\"match_over\",\"seq\":9,\"result\":{\"winner\":0,\"rounds\":[]}}");
+            yield return Frames(2);
+            Assert.IsTrue(root.Q("modal").ClassListContains("hidden"), "not while a step is still waiting");
+            yield return Seconds(1.0f);
+            Assert.IsFalse(root.Q("modal").ClassListContains("hidden"));
+            Assert.AreEqual(client.Text("ui.result.won"), root.Q<Label>("modal-title").text);
+        }
+
+        [UnityTest]
+        public IEnumerator AServerOnAnotherProtocolIsRefused()
+        {
+            var mismatches = new System.Collections.Generic.List<int>();
+            client.ProtocolMismatch += v => mismatches.Add(v);
+            client.Receive("{\"type\":\"hello\",\"protocol\":3,\"pack_hash\":\"test\",\"match_id\":\"m\",\"player_id\":\"p\",\"seat\":0,\"locale\":\"en\"}");
+            Show(View(mine: new[] { ("b1", Unit, 5, 5) }));
+            yield return Frames(3);
+            CollectionAssert.AreEqual(new[] { 3 }, mismatches);
+            Assert.IsNull(client.Hello);
+            Assert.IsNull(client.View, "nothing after the mismatched hello is handled");
+            Assert.IsNull(RowCard("my-row-melee", "b1"));
+            var expected = client.Text("ui.net.protocol-mismatch", MatchClient.P("client", MatchClient.Protocol, "server", 3));
+            Assert.AreEqual(expected, root.Q<Label>("connect-status").text);
+            Assert.IsFalse(root.Q("connect-panel").ClassListContains("hidden"), "back at the connect screen");
         }
 
         [UnityTest]

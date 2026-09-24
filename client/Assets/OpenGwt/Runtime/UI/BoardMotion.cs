@@ -293,6 +293,11 @@ namespace OpenGwt.UI
             foreach (var c in InteractiveClasses) card.RemoveFromClassList(c);
             card.AddToClassList("card--ghost");
             card.pickingMode = PickingMode.Ignore;
+            if (card.OrderButton != null)
+            {
+                card.OrderButton.pickingMode = PickingMode.Ignore;
+                card.OrderButton.SetEnabled(false);
+            }
             card.style.translate = StyleKeyword.Null;
             card.style.scale = StyleKeyword.Null;
             var local = fx.WorldToLocal(worldRect);

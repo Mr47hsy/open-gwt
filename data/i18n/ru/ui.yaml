@@ -52,8 +52,6 @@ ui.kind.stratagem: Стратагема
 ui.preview.base-power: "Базовая сила {power}"
 ui.event.card-played: "{who}: сыграна {card}"
 ui.event.player-passed: "{who}: пас"
-ui.event.round-ended: "раунд {round} окончен {mine} : {theirs}"
-ui.event.row-effect-cleared: "{effect} снят — {row} ряд ({who})"
 ui.event.card-drawn.one: "{who}: взята {count} карта"
 ui.event.card-drawn.few: "{who}: взято {count} карты"
 ui.event.card-drawn.many: "{who}: взято {count} карт"
@@ -149,7 +147,6 @@ ui.event.status-reduced.many: "{card}: {status} сокращён до {count} х
 ui.event.status-reduced.other: "{card}: {status} сокращён до {count} ходов"
 ui.event.status-removed: "{card}: {status} — конец"
 ui.event.charges-changed: "{card}: заряды {from} → {to}"
-ui.event.row-effect-set: "{effect} — {row} ряд ({who})"
 ui.event.choice-requested: "{who}: выбирает"
 ui.event.choice-cancelled: "{who}: отмена"
 ui.event.player-passed-auto: "{who}: автоматический пас"
@@ -221,3 +218,21 @@ choice.set-row-effect: Выберите ряд для эффекта
 choice.clear-row-effect: Выберите ряд, с которого снять эффект
 choice.create: Выберите карту для создания
 choice.place: "Выберите, куда поставить {card}"
+
+# Действия хода, мулиган и зоны (фаза E).
+ui.board.leave: Покинуть матч
+ui.board.opponent-redraws.one: "соперник: осталась {count} замена"
+ui.board.opponent-redraws.few: "соперник: осталось {count} замены"
+ui.board.opponent-redraws.many: "соперник: осталось {count} замен"
+ui.board.opponent-redraws.other: "соперник: осталось {count} замен"
+ui.board.opponent-mulligan-done: "соперник: рука оставлена"
+ui.net.retrying: "Связь потеряна ({reason}); переподключение, попытка {attempt} из {max} …"
+ui.net.gone: Не удалось переподключиться. Покиньте матч и попробуйте снова.
+ui.net.replaced: Другой ваш сеанс перехватил этот матч.
+ui.net.refreshing: Содержимое сервера изменилось; перезагрузка …
+
+# Строки журнала для событий match.md §8.
+ui.event.row-effect-set: "{who}: {effect} — {row} ряд"
+ui.event.row-effect-cleared: "{who}: {effect} снят — {row} ряд"
+ui.event.round-won: "{who}: выигран раунд {round} ({mine} : {theirs})"
+ui.event.round-nobody: "раунд {round}: никто не выиграл ({mine} : {theirs})"

@@ -35,7 +35,11 @@ and *Pass* is enabled only when the server allows a pass. A pending choice highl
 candidates — cards on the board, whole row-sides, slots for a placement, or a list of cards in a
 dialog — with the prompt in the middle bar and *Cancel* when the choice can be cancelled. Hover
 (or long-press) a card for its numbers, statuses and text, a row effect for what it does, and
-the graveyard and banished counts for the zone's cards.
+the graveyard and banished counts for the zone's cards. The opponent's leader and redraws show
+in the top bar; *Leave the match* goes back to the lobby. One intent is on its way at a time:
+until the server answers with a view or an error, nothing else is sent. A lost socket is
+reconnected a few times with a growing pause, and a server that announces a changed content
+pack has its cards and tables fetched again.
 
 ## Headless commands
 

@@ -142,6 +142,18 @@ def _wait(state: MatchState) -> _Wait:
     return ("seq", state.seq)
 
 
+def _details(e: IllegalIntent) -> dict[str, Any] | None:
+    """What an error carries besides its code (match.md §10): the reason key of an
+    `illegal_intent`, the instance id of an `unknown_instance`, nothing otherwise."""
+    if not e.reason:
+        return None
+    if e.code == "illegal_intent":
+        return {"reason": e.reason}
+    if e.code == "unknown_instance":
+        return {"instance": e.reason}
+    return None
+
+
 def _keeps_clock(intent: Intent, state: MatchState) -> bool:
     """An activated ability stopped on a choice that can still be cancelled, and the cancelling
     of it, leave the match as it was (cards.md §6.3): the player's turn timer runs on, so using
@@ -436,9 +448,7 @@ class MatchService:
                 try:
                     state, more = apply(self.content.library, state, seat, intent)
                 except IllegalIntent as e:
-                    raise AppError(
-                        e.code, 409, details={"reason": e.reason} if e.reason else None
-                    ) from e
+                    raise AppError(e.code, 409, details=_details(e)) from e
                 events.extend(more)
             accepted: list[tuple[int, Intent]] = [(seat, intent) for intent in intents]
             keep_clock = _keeps_clock(intents[-1], state)

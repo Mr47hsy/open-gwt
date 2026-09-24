@@ -59,6 +59,8 @@ namespace OpenGwt.UI
         private readonly Label promptText;
         private readonly Label promptSource;
         private readonly VisualElement leaderSlot;
+        private readonly VisualElement oppLeaderSlot;
+        private readonly Button leaveButton;
         private readonly Label statusLabel;
         private readonly Label messageLabel;
         private readonly Label eventLog;
@@ -83,6 +85,12 @@ namespace OpenGwt.UI
         private string roomWaitingCode;
         /// <summary>The hand card the player picked to play, while they choose its row and position.</summary>
         private string selected;
+        /// <summary>An intent is on its way: nothing else is sent until the server's view or error.</summary>
+        private bool awaitingAnswer;
+        /// <summary>The match ended while steps were still waiting: the result dialog opens once they are shown.</summary>
+        private MatchResult pendingResult;
+        /// <summary>Reconnect attempts after a lost socket, with a growing pause between them (§9).</summary>
+        private const int ReconnectAttempts = 5;
         /// <summary>During a row choice, the option index each row element (by name) answers with.</summary>
         private readonly Dictionary<string, int> rowChoices = new Dictionary<string, int>();
 
@@ -108,6 +116,8 @@ namespace OpenGwt.UI
             promptText = root.Q<Label>("prompt-text");
             promptSource = root.Q<Label>("prompt-source");
             leaderSlot = root.Q<VisualElement>("leader-slot");
+            oppLeaderSlot = root.Q<VisualElement>("opp-leader-slot");
+            leaveButton = root.Q<Button>("btn-leave");
             statusLabel = root.Q<Label>("status-label");
             messageLabel = root.Q<Label>("message-label");
             eventLog = root.Q<Label>("event-log");
@@ -129,6 +139,7 @@ namespace OpenGwt.UI
             endTurnButton.clicked += () => Send(Intents.EndTurn());
             endMulliganButton.clicked += () => Send(Intents.EndMulligan());
             cancelChoiceButton.clicked += () => Send(Intents.CancelChoice());
+            leaveButton.clicked += LeaveMatch;
             modalCancel.clicked += HideModal;
             foreach (var zone in new[] { "my-graveyard", "my-banished", "opp-graveyard", "opp-banished" })
             {
@@ -161,6 +172,7 @@ namespace OpenGwt.UI
             client.MatchOver += OnMatchOver;
             client.SocketClosed += OnSocketClosed;
             client.ProtocolMismatch += OnProtocolMismatch;
+            client.ContentChanged += OnContentChanged;
             ApplyStaticTexts();
         }
 
@@ -205,6 +217,7 @@ namespace OpenGwt.UI
             endTurnButton.text = T("ui.board.end-turn");
             endMulliganButton.text = T("ui.board.end-mulligan");
             cancelChoiceButton.text = T("ui.modal.cancel");
+            leaveButton.text = T("ui.board.leave");
             modalCancel.text = T("ui.modal.cancel");
             foreach (var row in RowNames)
             {
@@ -318,6 +331,7 @@ namespace OpenGwt.UI
             ResetSteps();
             hand.Clear();
             leaderSlot.Clear();
+            oppLeaderSlot.Clear();
             selected = null;
             prompt.AddToClassList("hidden");
             foreach (var row in RowNames)
@@ -348,7 +362,15 @@ namespace OpenGwt.UI
             _ = RunAsync(action);
         }
 
-        private void Send(JObject intent) => Run(() => client.SendIntentAsync(intent));
+        /// <summary>Send an intent the newest view offered — only while that view is on screen and
+        /// no other intent is waiting for its answer, so a double click or a click during a step's
+        /// hold sends nothing a later view did not offer.</summary>
+        private void Send(JObject intent)
+        {
+            if (steps.Count > 0 || awaitingAnswer) return;
+            awaitingAnswer = true;
+            Run(() => client.SendIntentAsync(intent));
+        }
 
         private async Task RunAsync(Func<Task> action)
         {
@@ -376,6 +398,7 @@ namespace OpenGwt.UI
 
         private void OnView(MatchView view)
         {
+            awaitingAnswer = false;
             steps.Enqueue(new Step(batch, view));
             batch = new List<JObject>();
         }
@@ -406,9 +429,26 @@ namespace OpenGwt.UI
                 }
                 step = new Step(events, last);
             }
-            foreach (var evt in step.Events) Describe(evt);
+            foreach (var evt in step.Events)
+            {
+                try
+                {
+                    Describe(evt);
+                }
+                catch (Exception e)
+                {
+                    // One odd event must not cost the step its render.
+                    Debug.LogException(e);
+                }
+            }
             Render(step.View, steps.Count == 0, animate);
             nextStepAt = Time.realtimeSinceStartup + (motion.Busy ? StepHoldSeconds : 0f);
+            if (steps.Count == 0 && pendingResult != null)
+            {
+                var result = pendingResult;
+                pendingResult = null;
+                ShowResult(result);
+            }
         }
 
         private void ResetSteps()
@@ -417,6 +457,8 @@ namespace OpenGwt.UI
             batch = new List<JObject>();
             shown = null;
             nextStepAt = 0f;
+            awaitingAnswer = false;
+            pendingResult = null;
             flash.Clear();
             motion.Reset();
             preview.Hide();
@@ -437,6 +479,7 @@ namespace OpenGwt.UI
             var offers = live ? view : NoView;
             var choice = live ? view.PendingChoice : null;
             roomWaitingCode = null;
+            if (live) messageLabel.text = "";
             if (selected != null && offers.PlayRows(selected).Count == 0) selected = null;
             rowChoices.Clear();
 
@@ -452,6 +495,8 @@ namespace OpenGwt.UI
             root.Q<Label>("opp-banished").text = T("ui.board.zone", "zone", "@ui.zone.banished", "count", opp.Banished.Count);
             root.Q<Label>("opp-passed").text = opp.Passed ? T("ui.board.passed") : "";
             root.Q<Label>("my-passed").text = me.Passed ? T("ui.board.passed") : "";
+            root.Q<Label>("opp-mulligan").text = view.Phase != "mulligan" || opp.Mulligan == null ? ""
+                : opp.Mulligan.Done ? T("ui.board.opponent-mulligan-done") : T("ui.board.opponent-redraws", "count", opp.Mulligan.Remaining);
             root.Q<Label>("round-label").text = T("ui.board.round", "round", view.Round);
             root.Q<Label>("turn-label").text = TurnText(view);
             statusLabel.text = StatusText(view);
@@ -466,7 +511,8 @@ namespace OpenGwt.UI
                 RenderRow(root.Q<VisualElement>("opp-row-" + row), opp.Rows[row], seat, offers, choice, row, false, board);
             }
             RenderHand(view, offers, inHand);
-            RenderLeader(me, offers);
+            RenderLeader(me, offers, leaderSlot);
+            RenderLeader(opp, NoView, oppLeaderSlot);
             flash.Clear();
             if (animate)
             {
@@ -567,6 +613,19 @@ namespace OpenGwt.UI
                 };
             }
             return slots;
+        }
+
+        /// <summary>Some card in hand may be played to this row-side: a `play_card` entry names the
+        /// row, and the card lands on this side (`cards.md` §3 `side`).</summary>
+        private bool AnyCardLandsOn(MatchView offers, bool mine, string rowName)
+        {
+            foreach (var intent in offers.LegalIntents)
+            {
+                if ((string)intent["kind"] != "play_card" || (string)intent["row"] != rowName) continue;
+                var card = shown.Me.Hand?.FirstOrDefault(c => c.Instance == (string)intent["card"]);
+                if (card != null && (LandingSide(card.Card) == shown.Me) == mine) return true;
+            }
+            return false;
         }
 
         /// <summary>During a `unit` choice, the option index of each candidate card; null otherwise.</summary>
@@ -684,11 +743,9 @@ namespace OpenGwt.UI
             var rowOption = RowOption(choice, mine, rowName);
             if (rowOption.HasValue) rowChoices[rowElement.name] = rowOption.Value;
             rowElement.EnableInClassList("row--candidate", rowOption.HasValue);
-            // Lit: the rows the picked card may go to, or, before a pick, any card may.
-            var playable = selected == null
-                ? offers.LegalIntents.Any(i => (string)i["kind"] == "play_card" && (string)i["row"] == rowName)
-                : slots.Count > 0;
-            rowElement.EnableInClassList("row--active", playable && (selected == null ? mine : true));
+            // Lit: the row-sides the picked card may go to, or, before a pick, any card in hand may.
+            var playable = selected == null ? AnyCardLandsOn(offers, mine, rowName) : slots.Count > 0;
+            rowElement.EnableInClassList("row--active", playable);
         }
 
         /// <summary>The row-side's effect: its name and numbers in the row head, coloured by a class
@@ -717,15 +774,16 @@ namespace OpenGwt.UI
             label.userData = manipulator;
         }
 
-        /// <summary>The leader as a small card in the bottom bar, with its activated ability.</summary>
-        private void RenderLeader(SideView me, MatchView offers)
+        /// <summary>A leader as a small card in a bar, with its activated ability — usable only for
+        /// this player's own, and only when `use_order` for it is offered.</summary>
+        private void RenderLeader(SideView side, MatchView offers, VisualElement slot)
         {
-            leaderSlot.Clear();
-            if (me.Leader == null) return;
-            var leader = me.Leader;
+            slot.Clear();
+            if (side.Leader == null) return;
+            var leader = side.Leader;
             var face = Face(leader.Card, statuses: null, power: null, basePower: null, aura: null, armor: null,
                 order: leader.Order, usable: offers.CanUseOrder(leader.Instance));
-            leaderSlot.Add(Card(leader.Instance, face, new[] { "card--mini" }));
+            slot.Add(Card(leader.Instance, face, new[] { "card--mini" }));
         }
 
         private static void Flash(VisualElement element)
@@ -894,6 +952,7 @@ namespace OpenGwt.UI
             foreach (var card in cards) modalOptions.Add(Card(card.Instance, Face(card.Card), Array.Empty<string>()));
             modalCancel.style.display = DisplayStyle.Flex;
             modalCancel.text = T("ui.modal.close");
+            modalCancel.SetEnabled(true);
             modalCancel.clickable = new Clickable(HideModal);
         }
 
@@ -953,6 +1012,7 @@ namespace OpenGwt.UI
         {
             modal.AddToClassList("hidden");
             modalOptions.Clear();
+            modalCancel.SetEnabled(true);
             modalForPhase = false;
         }
 
@@ -984,7 +1044,7 @@ namespace OpenGwt.UI
                     line = T("ui.event.match-started", "who", WhoIs((int?)evt["starter"]));
                     break;
                 case "round_started":
-                    line = T("ui.event.round-started", "round", (long)evt["round"], "who", WhoIs((int?)evt["starter"]));
+                    line = T("ui.event.round-started", "round", (long?)evt["round"] ?? 0, "who", WhoIs((int?)evt["starter"]));
                     break;
                 case "stratagem_placed":
                     line = T("ui.event.stratagem-placed", "who", Who(evt), "card", Name(card));
@@ -1058,8 +1118,8 @@ namespace OpenGwt.UI
                     break;
                 case "status_added":
                     if (instance != null) flash.Add(instance);
-                    line = evt["turns"] != null && evt["turns"].Type != JTokenType.Null
-                        ? T("ui.event.status-added-timed", "card", Name(card), "status", StatusName(evt), "count", (long)evt["turns"])
+                    line = (long?)evt["turns"] is long turns
+                        ? T("ui.event.status-added-timed", "card", Name(card), "status", StatusName(evt), "count", turns)
                         : T("ui.event.status-added", "card", Name(card), "status", StatusName(evt));
                     break;
                 case "status_reduced":
@@ -1085,12 +1145,15 @@ namespace OpenGwt.UI
                     line = T((bool?)evt["auto"] == true ? "ui.event.player-passed-auto" : "ui.event.player-passed", "who", Who(evt));
                     break;
                 case "round_ended":
-                    var scores = (JArray)evt["scores"];
+                    var scores = evt["scores"] as JArray;
                     var winners = evt["winners"] as JArray;
-                    var mine = client.Seat == 0 ? scores[0] : scores[1];
-                    var theirs = client.Seat == 0 ? scores[1] : scores[0];
-                    line = T(winners != null && winners.Count != 1 ? "ui.event.round-tied" : "ui.event.round-ended",
-                        "round", (long)evt["round"], "mine", (long)mine, "theirs", (long)theirs);
+                    if (scores == null || scores.Count != 2 || winners == null) break;
+                    var mine = (long)scores[client.Seat == 0 ? 0 : 1];
+                    var theirs = (long)scores[client.Seat == 0 ? 1 : 0];
+                    var round = (long?)evt["round"] ?? 0;
+                    if (winners.Count == 1) line = T("ui.event.round-won", "who", WhoIs((int?)winners[0]), "round", round, "mine", mine, "theirs", theirs);
+                    else if (winners.Count == 0) line = T("ui.event.round-nobody", "round", round, "mine", mine, "theirs", theirs);
+                    else line = T("ui.event.round-tied", "round", round, "mine", mine, "theirs", theirs);
                     break;
             }
             if (line == null) return;
@@ -1099,35 +1162,78 @@ namespace OpenGwt.UI
             eventLog.text = string.Join("\n", log);
         }
 
-        private void OnError(ErrorMessage error) => ShowMessage(client.ErrorText(error));
+        /// <summary>A refused intent: say why, and offer the newest view again — a choice answered
+        /// from the dialog has to be answerable once more.</summary>
+        private void OnError(ErrorMessage error)
+        {
+            awaitingAnswer = false;
+            if (steps.Count == 0 && shown != null) Render(shown, true, false);
+            ShowMessage(client.ErrorText(error));
+        }
 
         private void ShowMessage(string text) => messageLabel.text = text;
 
+        /// <summary>The match is over: the result dialog opens once the last steps have been shown.</summary>
         private void OnMatchOver(MatchResult result)
+        {
+            if (steps.Count > 0) pendingResult = result;
+            else ShowResult(result);
+        }
+
+        private void ShowResult(MatchResult result)
         {
             var title = result.Winner == null ? T("ui.result.draw") : result.Winner == client.Seat ? T("ui.result.won") : T("ui.result.lost");
             ShowModal(title, new List<(string, Action)> { (T("ui.modal.back"), LeaveMatch) }, false);
             modalCancel.style.display = DisplayStyle.None;
         }
 
+        /// <summary>The socket closed under a running match: reconnect with a growing pause, a few
+        /// times, unless another session of this player took the match over (close code 4000) or
+        /// there is nothing to reconnect to. The leave button is the way out meanwhile.</summary>
         private void OnSocketClosed(string reason)
         {
-            if (client.Result != null || client.Socket == null) return;
-            ShowMessage(T("ui.net.lost", "reason", reason));
+            if (!client.CanReconnect) return;
+            if (client.LastCloseCode == 4000)
+            {
+                ShowMessage(T("ui.net.replaced"));
+                return;
+            }
             Run(async () =>
             {
-                await Task.Delay(1000);
-                await client.ReconnectAsync();
-                ShowMessage("");
+                for (var attempt = 1; attempt <= ReconnectAttempts; attempt++)
+                {
+                    ShowMessage(T("ui.net.retrying", "reason", reason, "attempt", attempt, "max", ReconnectAttempts));
+                    await Task.Delay(1000 * (1 << (attempt - 1)));
+                    if (!client.CanReconnect) return;
+                    try
+                    {
+                        batch = new List<JObject>();
+                        await client.ReconnectAsync();
+                        ShowMessage("");
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning("reconnect attempt " + attempt + " failed: " + e.Message);
+                    }
+                }
+                ShowMessage(T("ui.net.gone"));
             });
         }
 
         private void OnProtocolMismatch(int server)
         {
+            LeaveMatch();
             var text = T("ui.net.protocol-mismatch", "client", MatchClient.Protocol, "server", server);
             ShowMessage(text);
             connectStatus.text = text;
-            LeaveMatch();
+        }
+
+        /// <summary>The content pack changed under us: render everything from the new one.</summary>
+        private void OnContentChanged()
+        {
+            ApplyStaticTexts();
+            if (shown != null) Render(shown, steps.Count == 0, false);
         }
 
         public void Dispose()
@@ -1138,6 +1244,7 @@ namespace OpenGwt.UI
             client.MatchOver -= OnMatchOver;
             client.SocketClosed -= OnSocketClosed;
             client.ProtocolMismatch -= OnProtocolMismatch;
+            client.ContentChanged -= OnContentChanged;
         }
     }
 }

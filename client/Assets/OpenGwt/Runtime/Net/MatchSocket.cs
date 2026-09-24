@@ -73,6 +73,7 @@ namespace OpenGwt.Net
 
         public async Task SendAsync(object message)
         {
+            if (!IsOpen) return;
             var bytes = Encoding.UTF8.GetBytes(Json.Stringify(message));
             await sendLock.WaitAsync();
             try

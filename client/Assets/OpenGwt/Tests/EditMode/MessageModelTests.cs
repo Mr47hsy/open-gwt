@@ -137,6 +137,12 @@ namespace OpenGwt.Tests
             Assert.AreEqual(2, result.Rounds.Count);
             CollectionAssert.AreEqual(new[] { 0, 1 }, result.Rounds[0].Winners, "a tie has two winners");
             Assert.AreEqual(9, result.Rounds[1].Scores[1]);
+
+            // On connect to a finished match the server sends match_over with a null seq (§4).
+            var over = JObject.Parse(@"{""type"":""match_over"",""seq"":null,""result"":{""winner"":1,""rounds"":[]}}");
+            Assert.AreEqual(JTokenType.Null, over["seq"].Type);
+            Assert.AreEqual(1, Json.Convert<MatchResult>(over["result"]).Winner);
+            Assert.IsNull(Json.Convert<MatchResult>(JValue.CreateNull()), "a null result parses to null, which the client replaces");
         }
     }
 }

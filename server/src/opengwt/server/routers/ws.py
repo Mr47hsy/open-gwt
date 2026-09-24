@@ -79,18 +79,23 @@ async def match_socket(websocket: WebSocket, match_id: str, token: str | None = 
     app = websocket.app
     service: MatchService = app.state.matches
     renderer = app.state.renderer
+    # The close codes of match.md §3 only reach a client over an accepted socket: a close
+    # before the accept is a refused handshake (HTTP 403) that shows no code at all.
     try:
         player, locale = await websocket_player(websocket, token)
     except AppError:
+        await websocket.accept()
         await websocket.close(code=CLOSE_UNAUTHORISED)
         return
     try:
         info = await service.get_info(match_id)
     except AppError:
+        await websocket.accept()
         await websocket.close(code=CLOSE_NOT_A_PLAYER)
         return
     seat = info.seat_of(player.id)
     if seat is None:
+        await websocket.accept()
         await websocket.close(code=CLOSE_NOT_A_PLAYER)
         return
 

@@ -52,7 +52,6 @@ ui.kind.stratagem: 计策
 ui.preview.base-power: "基础战力 {power}"
 ui.event.card-played: "{who}：打出 {card}"
 ui.event.player-passed: "{who}：pass"
-ui.event.round-ended: "第 {round} 局结束 {mine} : {theirs}"
 ui.event.row-effect-cleared: "{who}的{row}行：{effect} 已清除"
 ui.event.card-drawn.other: "{who}：抽了 {count} 张牌"
 
@@ -184,3 +183,16 @@ choice.set-row-effect: 选择施加行效果的行
 choice.clear-row-effect: 选择要清除效果的行
 choice.create: 选择要创造的牌
 choice.place: "选择 {card} 放置的位置"
+
+# 回合操作、换牌与区域（阶段 E）。
+ui.board.leave: 离开对局
+ui.board.opponent-redraws.other: "对手还可换牌 {count} 次"
+ui.board.opponent-mulligan-done: "对手已保留手牌"
+ui.net.retrying: "连接断开（{reason}），正在第 {attempt}/{max} 次重连 …"
+ui.net.gone: 无法重连。请离开对局后重试。
+ui.net.replaced: 你的另一个会话接管了这场对局。
+ui.net.refreshing: 服务器内容已更新，正在重新加载 …
+
+# match.md §8 各事件的日志行。
+ui.event.round-won: "{who}：赢下第 {round} 局（{mine} : {theirs}）"
+ui.event.round-nobody: "第 {round} 局无人获胜（{mine} : {theirs}）"

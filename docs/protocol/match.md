@@ -329,7 +329,7 @@ timer runs on through them.
 | `illegal_intent` | Not in `legal_intents`; `details.reason` is a key (below). |
 | `not_your_turn` | |
 | `choice_pending` | A `choose` (or `cancel_choice`) intent is required first. |
-| `unknown_instance` | The card instance id does not exist in this player's visible zones. |
+| `unknown_instance` | The card instance id does not exist in this player's visible zones; `details.instance` is the id. |
 | `match_over` | |
 | `match_not_started` | The room still waits for its second player. |
 | `protocol_version` | Client and server protocol versions differ. |

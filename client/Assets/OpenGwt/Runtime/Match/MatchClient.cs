@@ -50,6 +50,11 @@ namespace OpenGwt.Match
         public int Seat => Hello?.Seat ?? -1;
         public bool Prepared => Api != null && Api.Token != null;
         public int RoundsToWin => (int?)Rules["rounds_to_win"] ?? 2;
+        /// <summary>The close code of the last socket that closed, or null (`match.md` §3).</summary>
+        public int? LastCloseCode { get; private set; }
+        /// <summary>A reconnect makes sense: a match is open, its server speaks our protocol and the
+        /// player has not left it.</summary>
+        public bool CanReconnect => wsUrl != null && !mismatched && !leaving && Result == null;
 
         public event Action<MatchView> ViewChanged;
         public event Action<JObject> EventReceived;
@@ -62,9 +67,13 @@ namespace OpenGwt.Match
         public event Action<string> MessageReceived;
         /// <summary>Every intent the board sends, as sent: for tests that drive the board without a server.</summary>
         public event Action<JObject> IntentSent;
+        /// <summary>The cards, decks, rules or tables were reloaded because the server's pack changed (§1).</summary>
+        public event Action ContentChanged;
 
         private string wsUrl;
         private bool closeHandled;
+        private bool mismatched;
+        private bool leaving;
 
         public MatchClient()
         {
@@ -171,6 +180,9 @@ namespace OpenGwt.Match
             Result = null;
             Hello = null;
             closeHandled = false;
+            mismatched = false;
+            leaving = false;
+            LastCloseCode = null;
             Socket?.Dispose();
             Socket = new MatchSocket();
             await Socket.ConnectAsync(wsUrl, Api.Token, Locale);
@@ -180,6 +192,7 @@ namespace OpenGwt.Match
         /// `hello` and a full view, then the events after `since_seq` and one more view.</summary>
         public async Task ReconnectAsync()
         {
+            if (!CanReconnect) return;
             var since = View?.Seq ?? 0;
             Socket?.Dispose();
             Socket = new MatchSocket();
@@ -190,6 +203,8 @@ namespace OpenGwt.Match
 
         public async Task LeaveMatchAsync()
         {
+            leaving = true;
+            wsUrl = null;
             if (Socket != null) await Socket.CloseAsync();
             Socket?.Dispose();
             Socket = null;
@@ -230,6 +245,7 @@ namespace OpenGwt.Match
             if (Socket.Closed && !closeHandled)
             {
                 closeHandled = true;
+                LastCloseCode = Socket.CloseCode;
                 SocketClosed?.Invoke(Socket.CloseReason ?? (Socket.CloseCode?.ToString() ?? "closed"));
             }
         }
@@ -241,6 +257,8 @@ namespace OpenGwt.Match
         private void Dispatch(string json)
         {
             MessageReceived?.Invoke(json);
+            // Nothing from a server that speaks another protocol, or after leaving, is handled.
+            if (mismatched || leaving) return;
             var message = JObject.Parse(json);
             switch ((string)message["type"])
             {
@@ -250,9 +268,12 @@ namespace OpenGwt.Match
                     {
                         var spoken = Hello.Protocol;
                         Hello = null;
+                        mismatched = true;
                         ProtocolMismatch?.Invoke(spoken);
                         _ = Socket?.CloseAsync();
+                        break;
                     }
+                    if (PackHash != null && Hello.PackHash != null && Hello.PackHash != PackHash) _ = RefreshContentAsync();
                     break;
                 case "view":
                     View = Json.Convert<MatchView>(message["view"]);
@@ -265,7 +286,7 @@ namespace OpenGwt.Match
                     ErrorReceived?.Invoke(Json.Convert<ErrorMessage>(message));
                     break;
                 case "match_over":
-                    Result = Json.Convert<MatchResult>(message["result"]);
+                    Result = Json.Convert<MatchResult>(message["result"]) ?? new MatchResult();
                     MatchOver?.Invoke(Result);
                     break;
                 case "pong":
@@ -273,6 +294,26 @@ namespace OpenGwt.Match
                 default:
                     Debug.LogWarning("unknown message type: " + (string)message["type"]);
                     break;
+            }
+        }
+
+        /// <summary>The server's content pack changed under us (`match.md` §1): fetch the tables
+        /// and the pack again, then tell the board to render from them.</summary>
+        private async Task RefreshContentAsync()
+        {
+            try
+            {
+                I18n.MergeTable(Locale, await Api.TableAsync(Locale));
+                if (Locale != MessageRenderer.BaseLocale)
+                {
+                    I18n.MergeTable(MessageRenderer.BaseLocale, await Api.TableAsync(MessageRenderer.BaseLocale));
+                }
+                LoadPack(await Api.PackAsync());
+                ContentChanged?.Invoke();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
             }
         }
 

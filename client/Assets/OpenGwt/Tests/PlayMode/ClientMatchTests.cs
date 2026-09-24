@@ -55,6 +55,7 @@ namespace OpenGwt.Tests
                         leaks.Add("the opponent's draw named its card: " + e);
                     }
                     if (type == "choice_requested" && e["options"] != null) leaks.Add("choice options in an event: " + e);
+                    if (type == "choice_made" && (int?)e["seat"] != client.Seat && e["option"] != null) leaks.Add("the opponent's option index: " + e);
                 };
                 client.ViewChanged += v =>
                 {
@@ -87,10 +88,30 @@ namespace OpenGwt.Tests
                 var policy = new Policy(client, seed);
                 var lastSeq = -1;
                 var lastSentAt = -1f;
+                var reconnected = false;
                 var deadline = Time.realtimeSinceStartup + MatchDeadlineSeconds;
                 while (client.Result == null && Time.realtimeSinceStartup < deadline && lastError == null)
                 {
                     client.Pump();
+                    // Once, in the middle of the match, drop the socket and come back (match.md §9):
+                    // hello and a full view, then the missed events and one more view.
+                    if (!reconnected && policy.Sent == 8 && client.View != null)
+                    {
+                        reconnected = true;
+                        var before = client.View.Seq;
+                        var viewsBefore = views;
+                        yield return Await(client, client.ReconnectAsync());
+                        var until = Time.realtimeSinceStartup + 10f;
+                        while (views < viewsBefore + 2 && Time.realtimeSinceStartup < until)
+                        {
+                            client.Pump();
+                            yield return null;
+                        }
+                        Assert.GreaterOrEqual(views, viewsBefore + 2, "a full view on reconnect, then the resync's view");
+                        Assert.GreaterOrEqual(client.View.Seq, before, "the match went on from where it was");
+                        Assert.AreEqual(2, client.Hello.Protocol);
+                        lastSeq = -1;
+                    }
                     var view = client.View;
                     if (view != null && client.Hello != null && view.Seq != lastSeq && Time.realtimeSinceStartup - lastSentAt >= MinSecondsBetweenIntents)
                     {
@@ -117,6 +138,7 @@ namespace OpenGwt.Tests
                     Assert.IsTrue(policy.Used.Contains(kind), "the match never called for " + kind + "; used " + string.Join(", ", policy.Used));
                 }
                 Assert.IsTrue(policy.ChoiceKinds.Contains("unit"), "no unit choice; kinds " + string.Join(", ", policy.ChoiceKinds));
+                Assert.IsTrue(reconnected, "the match was too short to reconnect in the middle of it");
                 Debug.Log("client e2e " + deckId + ": " + policy.Sent + " moves, " + views + " views, " + events + " events, winner "
                     + client.Result.Winner + ", intents " + string.Join(", ", policy.Used) + ", choices " + string.Join(", ", policy.ChoiceKinds)
                     + (policy.Cancelled ? ", one cancelled" : ""));

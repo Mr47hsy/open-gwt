@@ -3,17 +3,20 @@
     <ui:VisualElement name="root" class="board">
 
         <ui:VisualElement name="match" class="match hidden">
-            <ui:VisualElement name="top-bar" class="bar">
+            <ui:VisualElement name="top-bar" class="bar bar--tall">
                 <ui:Label name="opp-name" class="bar__name" />
                 <ui:Label name="opp-score" text="0" class="bar__score" />
                 <ui:Label name="opp-rounds" class="bar__rounds" />
                 <ui:Label name="opp-hand" class="bar__info" />
                 <ui:Label name="opp-graveyard" class="bar__zone" />
                 <ui:Label name="opp-banished" class="bar__zone" />
+                <ui:Label name="opp-mulligan" class="bar__info" />
                 <ui:Label name="opp-passed" class="bar__passed" />
                 <ui:VisualElement class="bar__spacer" />
+                <ui:VisualElement name="opp-leader-slot" class="bar__leader" />
                 <ui:Label name="round-label" class="bar__info" />
                 <ui:Label name="turn-label" class="bar__turn" />
+                <ui:Button name="btn-leave" class="button" />
             </ui:VisualElement>
 
             <ui:VisualElement name="opp-board" class="side side--opponent">
