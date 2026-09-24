@@ -53,6 +53,15 @@ phase adds behaviour, not words.
   loop (a thread or the task backend) before making it the default.
 
 **Content and rules** (after phase F)
+- Vocabulary gaps the ability-drafting skill found in its sample
+  (`docs/protocol/examples/draft-abilities.csv`, 2026-09-24), each a word only with a public
+  source and the owner's go (cards.md §15): a trigger when a unit's power first reaches a
+  threshold — **once per match**, and **entering the board at or above it counts** (owner),
+  checked after every change to its power, auras included, not only at the destruction check;
+  **transforming** a unit into another card in place — the new card **belongs to the acting
+  player**, the replaced card is **banished without its on-destroyed abilities**, and the new
+  card **arrives**, so `damage_on_arrival` acts on it (owner); moving a chosen card from hand to
+  the bottom of the deck, optionally **revealing** it first.
 - Real, original card set with names and texts in three languages; balance passes with
   `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
 

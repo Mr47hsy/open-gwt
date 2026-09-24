@@ -72,3 +72,6 @@ client/*.slnx
 # ---- local server databases ----
 server/*.db
 server/*.db-journal
+
+# ---- drafts written by .agent/skills/ability-to-vocabulary ----
+.drafts/

@@ -9,7 +9,8 @@ Deeper context, project memory and task skills live in [`.agent/`](.agent/README
 - [`.agent/skills/`](.agent/skills/) — load `clean-room-review/SKILL.md` when reviewing a
   contribution, `docs-i18n-sync/SKILL.md` when touching the trilingual docs,
   `client-headless-check/SKILL.md` before a client pull request, `i18n-strings/SKILL.md` when
-  adding any player-facing text
+  adding any player-facing text, `ability-to-vocabulary/SKILL.md` when drafting plain-language
+  card designs into the card vocabulary
 
 Non-negotiable, repeated here because it gates everything: **no CD PROJEKT RED assets, and
 clean-room implementations only.** See [`.agent/context/04-legal.md`](.agent/context/04-legal.md).

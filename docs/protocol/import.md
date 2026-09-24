@@ -145,3 +145,38 @@ listing every problem that step found:
 `--dry-run` stops after step 3 and writes nothing. Names must be original in every locale, and
 never resemble official material ([`.agent/context/04-legal.md`](../../.agent/context/04-legal.md)):
 no tool can check that, so review the set before importing it.
+
+## 8. Drafting abilities from plain language
+
+A designer who writes abilities in plain language — a spreadsheet column such as
+`打出时：对一个敌方单位造成 3 点伤害。` — can have them drafted into the vocabulary by the agent
+skill [`.agent/skills/ability-to-vocabulary/`](../../.agent/skills/ability-to-vocabulary/SKILL.md),
+a Claude Code workflow:
+
+```text
+Workflow({ scriptPath: ".agent/skills/ability-to-vocabulary/workflow.js",
+           args: { source: "my-designs.csv", set: "my-set", locale: "zh-CN", batch: 8 } })
+```
+
+1. **Normalise.** The workflow reads the designs — any shape: CSV, YAML, JSON, a Markdown table
+   — normalises the cards and splits them into batches.
+2. **Translate.** One agent per batch writes an `opengwt.cardset/1` draft that says exactly what
+   each design says, reading it by the skill's translation conventions (the owner's decisions). A phrase the vocabulary cannot express is left out — never approximated —
+   and reported with the layer it would need and a proposed descriptive word.
+3. **Verify.** Another agent checks each draft with `opengwt-data check-set`, which validates
+   every card on its own against the schema and prints the text generated from it
+   ([`i18n.md`](i18n.md) §10), compares that text with the design, and fixes misreadings.
+4. **Assemble.** The drafts become one card set, dry-run through `opengwt-data import`, and a
+   report lists the vocabulary gaps, most frequent first, and every card's verdict — faithful,
+   fixed or lossy.
+
+Everything lands in `.drafts/<set>/`, which git ignores: `batches/`, `drafts/`,
+`<set>.cardset.yaml` and `gaps.md`. The card set is a proposal for the owner to review before a
+real import; a gap becomes a vocabulary word only by the owner's decision, with a public source,
+as any rules change (cards.md §15). [`examples/draft-abilities.csv`](examples/draft-abilities.csv)
+is a small original sample with some phrases the vocabulary cannot express yet.
+
+```bash
+cd server
+uv run opengwt-data check-set ../.drafts/my-set/drafts/01.yaml --locale zh-CN --data ../data
+```

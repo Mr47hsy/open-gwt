@@ -101,6 +101,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     imp.add_argument("--id-start", type=int, default=None, help="first number of new card ids")
     imp.add_argument("--preview", default=None, help="print the imported cards' texts in LOCALE")
     imp.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
+    check = sub.add_parser(
+        "check-set",
+        help="check each card of a set on its own: schema problems and generated text, as JSON",
+    )
+    check.add_argument("source", help="the card set file: .yaml, .yml, .json or .csv")
+    check.add_argument("--set", dest="set_id", default="draft", help="set id for a CSV")
+    check.add_argument("--locale", action="append", default=[], help="only this locale")
+    check.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     explicit = args.data or getattr(args, "data_sub", None)
@@ -119,6 +127,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"wrote {target}")
     elif args.command == "import":
         return _import(args, data_dir)
+    elif args.command == "check-set":
+        return _check_set(args, data_dir)
     elif args.command == "card-text":
         for line in card_texts(data_dir, args.locale, args.card, args.ignore_explicit):
             print(line)
@@ -172,6 +182,19 @@ def _import(args: argparse.Namespace, data_dir: Path) -> int:
             print(line)
     print("dry run: nothing was written" if args.dry_run else "done; names must be original")
     return 0
+
+
+def _check_set(args: argparse.Namespace, data_dir: Path) -> int:
+    from opengwt.data.importer import CardSetError, check_cards, read_cardset
+
+    try:
+        cardset = read_cardset(Path(args.source), args.set_id)
+    except CardSetError as e:
+        print(json.dumps({"read_problems": e.problems}, ensure_ascii=False, indent=1))
+        return 2
+    cards = check_cards(cardset, data_dir, args.locale)
+    print(json.dumps({"cards": cards}, ensure_ascii=False, indent=1))
+    return 1 if any(c["problems"] for c in cards) else 0
 
 
 def _find_data() -> Path:
