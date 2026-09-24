@@ -16,6 +16,7 @@ Regenerate after editing:
 | --- | --- | --- |
 | `data/i18n/*/ui.yaml`, `errors.yaml` | `opengwt-data client-i18n --out ../client/Assets/OpenGwt/Resources/i18n` | `tests/test_i18n.py` fails when stale |
 | `data/i18n/conformance.yaml` | `opengwt-data conformance-json` | same test file |
+| the core's events or views, a replay scenario, the golden | `python -m tests.client_fixtures` (from `server/`) | `tests/test_client_fixtures.py` fails when stale |
 | a font TTF (via `server/scripts/fonts.py`) | `-executeMethod OpenGwt.Editor.FontSetup.Run` | nothing; check the `*-SDF.asset` files |
 | scene, panel or player settings in code | `-executeMethod OpenGwt.Editor.ProjectSetup.Run` | nothing; it is idempotent |
 | a new SVG under `UI/Art/` | any headless run (it imports as a VectorImage and writes the `.meta`) | `BoardViewTests` checks the art resolves |
@@ -25,7 +26,10 @@ Never commit `client/Library`, `Temp`, `Logs`, `UserSettings`, `Builds`, `*.cspr
 creates it on the next headless run, so run the editor once before `git add`.
 
 Known: a headless `FontSetup.Run` once crashed the mono runtime while exiting, *after* saving
-(exit code 255). Judge such a run by the assets it wrote, not by its exit code.
+(exit code 255). Judge such a run by the assets it wrote, not by its exit code. Any editor run
+may rewrite `Fonts/*-SDF.asset`; restore them unless fonts were the change. PlayerPrefs are
+shared between test runs: `ClientMatchTests` leaves the locale on `zh-CN`, so `BoardViewTests`
+sets its own.
 
 There is no CI for the client (Unity needs a licence); the headless checks are the gate.
 `BoardViewTests` (PlayMode) needs no server; run without `-nographics` and with

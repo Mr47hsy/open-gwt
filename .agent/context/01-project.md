@@ -17,14 +17,14 @@ and extended.
 
 Anything that would flatten one of these is a design regression, not a simplification.
 
-**Transition (2026-09-24):** phases B, C and D of ADR 0009 have landed: the core plays two rows
+**Transition (2026-09-24):** phases B to E of ADR 0009 have landed: the core plays two rows
 with capacity and positions, the standalone power model, statuses with timers, draws and redraws
 each round, the tie rule and the compensation for going first (ADR 0011), every trigger through
 one resolution queue, the activated abilities of units, artifacts and leaders, and choices of
 every kind, and judges decks by every deck-building rule — units, copies, the provision budget,
-a leader of the deck's own faction; the server speaks protocol 2. A turn is activated abilities
-before and after one card, then `end_turn` — or a pass instead of the card. The Unity client
-speaks protocol 1 until phase E, so it cannot play in between. The v1 shape is gone; read
+a leader of the deck's own faction; the server and the Unity client speak protocol 2, which is
+frozen since phase E. A turn is activated abilities before and after one card, then `end_turn`
+— or a pass instead of the card. Phase F (content) is what remains. The v1 shape is gone; read
 the ADR and `docs/protocol/cards.md` before touching the core.
 
 ## Scope
@@ -58,12 +58,14 @@ texts. CI runs
 ruff, mypy, import-linter, pytest (with the migrations on SQLite and PostgreSQL) and a simulation
 on Python 3.10 (ADR 0012).
 
-`client/` is the Unity 6.6 project of milestone M3: `Assets/OpenGwt/` with the C# twin of the
-i18n renderer, `ServerApi` and `MatchSocket`, `MatchClient`, the UI Toolkit `BoardView`
-(connect → lobby → match, language and deck selection, every string keyed and shipped in the
-build), a Noto Sans / Serif font chain with SC fallbacks, editor setup, font and build scripts,
-EditMode tests and a PlayMode test that plays a match against a running server. The owner has
-play-tested it against the bot in Chinese. The iOS / Android smoke builds are deferred until the
+`client/` is the Unity 6.6 project of milestone M3, on protocol 2 since phase E:
+`Assets/OpenGwt/` with the C# twin of the i18n renderer, `ServerApi` and `MatchSocket`,
+`MatchClient`, the UI Toolkit `BoardView` (connect → lobby → match, language and deck
+selection, the board drawn from the view, redraws, placement slots, activated abilities, the
+four kinds of choice, every string keyed and shipped in the build), a Noto Sans / Serif font
+chain with SC fallbacks, editor setup, font and build scripts, EditMode tests (including the
+protocol fixtures the server generates) and PlayMode tests that play matches against a running
+server. The owner has play-tested it against the bot in Chinese. The iOS / Android smoke builds are deferred until the
 application is complete; open work is listed in `../memory/backlog.md`. The Redis backends
 (M2b) do **not exist yet**. Do not tell a user a module exists because it is mentioned here — check the filesystem.
 

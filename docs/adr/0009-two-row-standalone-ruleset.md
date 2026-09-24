@@ -16,7 +16,11 @@
   does not state: a leader belongs to the deck's own faction and is never neutral, and no card
   costs fewer than four provisions (`cards.md` §3, §12, §16). The owner's further limits the
   phase was to discuss came to these two: the standalone game has no limit by rarity or on
-  neutral cards, and bronze and gold are its only colours.
+  neutral cards, and bronze and gold are its only colours. Phase E (2026-09-24) moved the Unity
+  client to protocol 2 end to end — every control from `legal_intents`, the board from the view,
+  the four kinds of choice, the interface texts of the vocabulary in three languages — with the
+  last in-place corrections to `match.md`, which is frozen from then on; the rules did not
+  change.
 - Deciders: project owner
 - Supersedes: the game-shape parts of [ADR 0007](0007-mvp-order-and-acceptance.md) (M1 scope)
   and the vocabulary of [ADR 0003](0003-card-effect-protocol-yaml.md) v1; the protocol itself,

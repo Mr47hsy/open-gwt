@@ -1,6 +1,6 @@
 ---
 name: ruleset-v2
-description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A–D are done, E is next.
+description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A–E are done, F is next.
 metadata:
   type: project
 ---
@@ -65,6 +65,15 @@ now refuse is kept and shown with its problems; `replay` holds a record's decks 
 engine needs (`UNPLAYABLE_DECK_KEYS`), so tightening deck building breaks no record. The owner
 also said that some cards change the leader's faction during a match — the vocabulary has no
 word for it yet (see [[backlog]]).
+
+Phase E is done (2026-09-24): the Unity client speaks protocol 2 end to end, and the protocol
+is frozen — `match.md` got its last in-place corrections there (which row-side bounds a
+position, `match_over` on connect to a finished match, no view for a waiting room, the full
+list of illegal-intent reasons, both players' redraws in the view). Decisions the owner took:
+display words for statuses and row effects are descriptive originals, except that the plain
+English words ADR 0009 allows (Immune, Bleeding, Locked, Shielded, Poisoned) are used as they
+are; a card is placed with a click on it and a click on a slot, not by dragging; graveyard and
+banished piles open as read-only lists.
 
 **How to apply:** do not add v1 content or vocabulary; read ADR 0009 and take the next unfinished
 phase from [[backlog]]; vocabulary words describe behaviour and never reuse a distinctive official
