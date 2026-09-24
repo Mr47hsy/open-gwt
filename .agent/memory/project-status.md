@@ -66,6 +66,17 @@ is frozen from here: `match.md` got its last in-place corrections in phase E.
 Phase F (content) is next; the rest of [[backlog]] is open to parallel sessions, with the
 branch discipline in `AGENTS.md`.
 
+A stronger bot and a balance report exist since 2026-09-24: `SearchBot` samples worlds consistent
+with what its player sees (its own deck reshuffled, the opponent's hand and deck redrawn from
+their faction's pool minus the cards shown, a fresh seed; `opengwt.bots.sampling`) and plays the
+greedy bot's best few candidates and the pass out to the round's end in each. With 4 worlds and
+3 candidates it beats the greedy bot about 90 % of the time on the starter decks, at roughly 0.5 s
+per turn decision. `opengwt-sim --card-report --report balance.csv` gives each card's win-rate
+contribution (win rate when drawn minus when not drawn, with a 95 % margin), play rate and
+points per play and per provision, for phase F; `--jobs`, `--decks all --mirrors`,
+`--swap-seats` scale it. The first greedy report showed round one's starter winning about
+20 points more often than the second player.
+
 **Why:** an agent that assumes either more or less than this will invent or miss module paths,
 APIs and acceptance results.
 

@@ -20,7 +20,7 @@ class GreedyBot:
             return EndMulligan()
         if state.phase is Phase.CHOOSING:
             options = [i for i in legal if isinstance(i, Choose)]
-            return max(options, key=lambda i: self._value(lib, state, seat, i))
+            return max(options, key=lambda i: self.value(lib, state, seat, i))
         if EndTurn() in legal:
             return self._best_order(lib, state, seat, legal) or EndTurn()
         me, opp = state.players[seat], state.players[state.other(seat)]
@@ -28,7 +28,7 @@ class GreedyBot:
         if not plays:
             return Pass()
         lead = score(lib, state, seat) - score(lib, state, opp.seat)
-        gains = [(self._value(lib, state, seat, i) - lead, i) for i in plays]
+        gains = [(self.value(lib, state, seat, i) - lead, i) for i in plays]
         best_gain, best = max(gains, key=lambda g: g[0])
         if Pass() not in legal:
             return best  # an activated ability was used: the turn needs its card
@@ -51,7 +51,7 @@ class GreedyBot:
             return None
         lead = self._lead(lib, state, seat)
         gain, best = max(
-            ((self._value(lib, state, seat, i) - lead, i) for i in orders), key=lambda g: g[0]
+            ((self.value(lib, state, seat, i) - lead, i) for i in orders), key=lambda g: g[0]
         )
         return best if gain > 0 else None
 
@@ -62,7 +62,7 @@ class GreedyBot:
             return PlayCard(intent.card, intent.row, last)
         return intent
 
-    def _value(self, lib: Library, state: MatchState, seat: int, intent: Intent) -> int:
+    def value(self, lib: Library, state: MatchState, seat: int, intent: Intent) -> int:
         """Lead after the intent, resolving any choice it opens greedily, one level deep."""
         new, _ = apply(lib, state, seat, intent)
         for _ in range(8):
