@@ -10,9 +10,11 @@ normative, this document explains them and fixes the semantics the rules core im
 > the power and board words and the stratagem of [ADR 0011](../adr/0011-first-player-compensation.md);
 > phase C the other triggers, activated abilities of units, artifacts and leaders, the
 > resolution queue and the generalised choices, and corrected the turn (section 11.4) against
-> the standalone game. `data/`'s placeholder decks use every word. The vocabulary was revised in
-> phase B against public descriptions of the standalone game (section 16); `opengwt.cards/1` is
-> gone.
+> the standalone game; phase D the deck-building rules (section 12) — the unit minimum, the copy
+> limits, the provision budget, a leader of the deck's own faction and a card cost of at least
+> 4 — and the decks' provisions in the content pack (section 14). `data/`'s placeholder decks
+> use every word. The vocabulary was revised in phase B against public descriptions of the
+> standalone game (section 16); `opengwt.cards/1` is gone.
 
 Everything here describes *mechanics*, which are not copyrightable. Names, ids and texts are
 original to this project. Vocabulary words describe behaviour and never reuse a distinctive
@@ -66,7 +68,7 @@ never encode a name.
 | --- | --- | --- | --- |
 | `kind` | all | yes | `unit`, `special`, `artifact`, `leader` or `stratagem`. |
 | `color` | unit, special, artifact | yes, except tokens | `bronze` or `gold`; sets the copy limit in a deck (section 12). |
-| `provisions` | unit, special, artifact | yes, except tokens | Provision cost, integer ≥ 0, counted against the deck's budget. |
+| `provisions` | unit, special, artifact | yes, except tokens | Provision cost, integer ≥ 4 — no card of the standalone game costs less — counted against the deck's budget (section 12). |
 | `provision_bonus` | leader | yes | Added to `Rules.provision_base` to give the budget of a deck led by this leader. |
 | `token` | unit, artifact | no | `true`: the card is never in a deck and only reaches the board through `place_new_card`; it is banished whenever it leaves the board, whatever its statuses. A token has no `color` and no `provisions`. |
 | `power` | unit | yes | Base power, integer ≥ 1. |
@@ -86,7 +88,8 @@ What each kind is:
 - An **artifact** stands on a row like a unit and takes a place there, but has no power: power
   actions never affect it and it adds nothing to a score. It has every trigger except
   `on_boosted` and `on_damaged`.
-- A **leader** is not in the deck and never on the board. It carries the deck's provision bonus
+- A **leader** is not in the deck and never on the board. It belongs to a faction, never to
+  `neutral`, and leads decks of that faction only. It carries the deck's provision bonus
   and one activated ability — its `on_activate` abilities, the only kind it may have — usable
   from the first turn, with the charges its `activation` gives it for the whole match.
 - A **stratagem** is the compensation for going first ([ADR 0011](../adr/0011-first-player-compensation.md)):
@@ -130,9 +133,12 @@ B: two rows of nine, ten cards and then three per round up to a hand of ten, a d
 prevents turned into a redraw, the round's winner starting the next round and a tied round won
 by both, and the compensation for going first — a redraw more in round one and a stratagem
 (ADR 0011). Who starts after a tied round is this project's choice; no public source was found.
-The deck-building fields are checked from phase D on. `deck_max_cards`, `rounds_to_win`,
-`max_rounds`, `mulligans_per_skipped_draw` and the two `starter_*` fields are not in the ADR's list; they exist so that
-nothing about the shape is hard-coded.
+The deck-building fields — 25 to 40 cards, 13 units, bronze twice and gold once, a budget of 150
+plus the leader's bonus — were confirmed in phase D and are checked by the rules core (section
+12). The floor of 4 on a card's provisions is the schema's (section 3), like the floor of 1 on
+its power: it bounds what a card may cost, not what a deck may hold. `deck_max_cards`,
+`rounds_to_win`, `max_rounds`, `mulligans_per_skipped_draw` and the two `starter_*` fields are
+not in the ADR's list; they exist so that nothing about the shape is hard-coded.
 
 ## 5. Board, zones and card instances
 
@@ -566,21 +572,41 @@ cards:
 
 `leader` and `stratagem` are required in v2: the leader sets the deck's provision budget, the
 stratagem is what the deck brings for going first (ADR 0011) and costs no provisions. The schema
-checks the shape; the rules core checks legality against `Rules` and reports every problem by
-key. The phase-B core checks the first six rules; the unit minimum, the copy limits and the
-budget follow in phase D.
+checks the shape; the rules core (`check_deck`) checks legality against `Rules` and reports
+**every** rule the deck breaks at once, in the order of the table, each as a problem: the rule's
+key, the card it is about for the rules marked *card*, and the numbers its message shows.
 
-| Rule | Problem key |
-| --- | --- |
-| Every card id exists. | `error.deck.unknown-card:<id>` |
-| The leader is a `leader` card. | `error.deck.leader-not-leader:<id>` |
-| The stratagem is a `stratagem` card. | `error.deck.stratagem-not-stratagem:<id>` |
-| The leader, the stratagem and every card belong to the deck's faction or to `neutral`. | `error.deck.wrong-faction:<id>` |
-| No leader, stratagem or token among the cards. | `error.deck.leader-in-deck:<id>`, `error.deck.stratagem-in-deck:<id>`, `error.deck.token-in-deck:<id>` |
-| Between `deck_min_cards` and `deck_max_cards` cards. | `error.deck.too-few-cards`, `error.deck.too-many-cards` |
-| At least `deck_min_units` unit cards. | `error.deck.too-few-units` |
-| At most `copies_bronze` copies of a bronze card, `copies_gold` of a gold one. | `error.deck.too-many-copies:<id>` |
-| Total provisions at most `provision_base` plus the leader's `provision_bonus`. | `error.deck.over-budget` |
+| Rule | Problem key | About | Numbers |
+| --- | --- | --- | --- |
+| Every card id exists. | `error.deck.unknown-card` | card | |
+| The leader is a `leader` card. | `error.deck.leader-not-leader` | card | |
+| The stratagem is a `stratagem` card. | `error.deck.stratagem-not-stratagem` | card | |
+| The leader belongs to the deck's own faction, which is never `neutral`; the stratagem and every card to the deck's faction or to `neutral`. | `error.deck.wrong-faction` | card | |
+| No leader, stratagem or token among the cards. | `error.deck.leader-in-deck`, `error.deck.stratagem-in-deck`, `error.deck.token-in-deck` | card | |
+| Between `deck_min_cards` and `deck_max_cards` cards. | `error.deck.too-few-cards`, `error.deck.too-many-cards` | | `count`, and `min` or `max` |
+| At least `deck_min_units` units. | `error.deck.too-few-units` | | `count`, `min` |
+| At most `copies_bronze` copies of a bronze card, `copies_gold` of a gold one. | `error.deck.too-many-copies` | card | `count`, `limit` |
+| Total provisions at most `provision_base` plus the leader's `provision_bonus`. | `error.deck.over-budget` | | `used`, `budget` |
+
+How the rules count:
+
+- The leader and the stratagem are checked first, then each card in deck order, then the
+  counts. A card's problems are reported once, where it first appears.
+- A *unit* is a card of kind `unit`; specials and artifacts are not units. The copies of a card
+  are counted across the whole deck, however its entries are split.
+- A deck's provisions are the sum of its cards' `provisions`; the leader and the stratagem cost
+  nothing. Its budget is `provision_base` plus the leader's `provision_bonus` — or
+  `provision_base` alone when the leader is not a leader card, in which case the budget is not
+  judged. The server shows both as `provisions: {used, budget}` (section 14, `match.md` §2).
+- Unknown cards, and leaders, stratagems and tokens among the cards, count toward the number of
+  cards and nothing else.
+
+A deck is judged when it is saved and when a match starts with it (`match.md` §2). A match's
+record keeps its decks; replaying it holds them only to what the engine needs to set a match up
+— every card known, the leader a leader, the stratagem a stratagem, nothing among the cards a
+deck never holds — so a record stays replayable when deck building tightens. How a problem
+travels to a client, and the parameters its message is rendered with, is `match.md` §10; the
+messages are `error.deck.<rule>` in `errors.yaml`.
 
 [`examples/starter-a.deck.yaml`](examples/starter-a.deck.yaml) is legal under the default `Rules`.
 
@@ -618,13 +644,21 @@ cross-file rules below, and writes one pack:
   "factions": [...], "cards": [...], "decks": [...], "i18n": { "en": {...}, "zh-CN": {...}, "ru": {...} } }
 ```
 
-`rules` is the `Rules` value the server plays with (section 4); the client reads row capacity,
-hand limit and the provision budget from it and never assumes them.
+`rules` is the `Rules` value the server plays with (section 4) — the one it judges decks by and
+starts matches with; the client reads row capacity, hand limit and the provision budget from it
+and never assumes them. Each deck is the deck file's content with its provisions under those
+rules (section 12):
+
+```json
+{ "id": "starter-a", "faction": "placeholder-a", "leader": "l-1001", "stratagem": "g-0002",
+  "cards": [{ "id": "u-1001", "count": 1 }, …], "provisions": { "used": 163, "budget": 165 } }
+```
 
 Cross-file rules: card ids unique; every id a deck or a `place_new_card` references exists, and
-the latter names a unit or artifact; a deck's cards belong to its faction or `neutral`; every
-required text key exists in every locale. The decks under `data/decks/` must also be legal
-(section 12). Cards are sorted by id so that the pack, and its hash, are reproducible.
+the latter names a unit or artifact; a deck's cards belong to its faction or `neutral`; no leader
+is `neutral`; every required text key exists in every locale. The decks under `data/decks/` must
+also be legal under the pack's `rules` (section 12). Cards are sorted by id so that the pack, and
+its hash, are reproducible.
 
 The server loads the pack at start-up and serves it (`GET /content/pack`); the client renders from
 it. No runtime component reads YAML.
@@ -670,5 +704,21 @@ own words (`.agent/context/04-legal.md`); never from a client, a data dump or da
 - The units' turn-start abilities before the row effects, and several row effects in the order
   they were set: the community rules page of the standalone game (NamuWiki, *Gwent: The Witcher
   Card Game/Rules*).
+- Deck building (section 12, phase D): at least 25 cards and 13 units, bronze cards twice and
+  gold cards once, and provisions within 150 plus what the leader ability adds — KeenGamer's
+  guide above, the developer's forums guide *Deck Building Guides — Overview & Introduction*
+  (May 2020), Team Leviathan's *Gwent Returning Player Guide* (April 2020) and the developer's
+  *GWENT's Design 01: Provision* (February 2022); bronze cards limited to two copies since the
+  2018 relaunch, and no card cheaper than 4 provisions: The Magic Rain's *Gwent Homecoming: It is
+  time!* (November 2018) and the design article above. At most 40 cards: the developer's *6
+  things you should know about playing GWENT*, confirmed by the owner from play experience.
+- Leader abilities belong to one faction — seven per faction — and a leader is never neutral
+  when a match starts: KeenGamer's guide and the forums guide above, confirmed by the owner; the
+  bonus a leader ability adds varies from one to another (11 to 16 over the years): the
+  developer's patch notes 6.1 (April 2020), 7.1 (August 2020), 9.6 (December 2021) and 10.1
+  (January 2022). Stratagems — one per deck, neutral or of the deck's faction — are chosen apart
+  from the cards and cost no provisions: Team Leviathan's guide and KeenGamer's guide above. No
+  limit on neutral cards and none by rarity: the colours bronze and gold are the only ones since
+  the relaunch (The Magic Rain above), confirmed by the owner.
 
 Vocabulary ids describe behaviour and never reuse a distinctive official keyword (ADR 0009).

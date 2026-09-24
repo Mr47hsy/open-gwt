@@ -11,6 +11,12 @@
   card, and the turn ends with the player's `end_turn`, never by itself — not with the card as
   *Turn* below says (`docs/protocol/cards.md` §11.4, `match.md` §6); and a player's units act at
   their turn start before the row effects on their rows, which act in the order they were set.
+  Phase D (2026-09-24) confirmed the deck numbers of *Deck* below against public descriptions
+  of the standalone game (at most forty cards as well) and added, with the owner, two rules it
+  does not state: a leader belongs to the deck's own faction and is never neutral, and no card
+  costs fewer than four provisions (`cards.md` §3, §12, §16). The owner's further limits the
+  phase was to discuss came to these two: the standalone game has no limit by rarity or on
+  neutral cards, and bronze and gold are its only colours.
 - Deciders: project owner
 - Supersedes: the game-shape parts of [ADR 0007](0007-mvp-order-and-acceptance.md) (M1 scope)
   and the vocabulary of [ADR 0003](0003-card-effect-protocol-yaml.md) v1; the protocol itself,

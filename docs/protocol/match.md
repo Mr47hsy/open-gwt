@@ -10,9 +10,10 @@ sends intents; every decision is made on the server. Version 2 carries the two-r
 > **Transition.** Since ADR 0009 phase B the server speaks protocol 2: views, intents and events
 > come from the v2 rules core; phase C completed it — activated abilities of every kind,
 > `end_turn`, and choices of every kind — while no client spoke it yet, so protocol 2 changed in
-> place. The Unity client on `develop` still speaks protocol 1 (`git show
-> b68be93:docs/protocol/match.md`) until phase E; between the two it cannot play, by the owner's
-> decision.
+> place; phase D changed it in place again — the deck-building problems of `deck_illegal` became
+> objects, and decks carry their provisions and problems (sections 2 and 10). The Unity client on
+> `develop` still speaks protocol 1 (`git show b68be93:docs/protocol/match.md`) until phase E;
+> between the two it cannot play, by the owner's decision.
 
 Messages are JSON. Field names are `snake_case`. Ids are strings. Every message that can be
 rendered to a human carries keys or codes, never sentences ([ADR 0006](../adr/0006-i18n-keys-and-unity-localization.md)).
@@ -44,11 +45,11 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /content/i18n` | → `{locales, pack_hash}` | Supported locales. |
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
-| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions}]` | The caller's decks. `provisions` is `{used, budget}`. |
-| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck | Validated against the pack and the rules core's deck legality (`cards.md` §12). `leader` and `stratagem` are required. |
+| `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions, problems}]` | The caller's decks, judged by the `Rules` the server plays with (the pack's): `provisions` is `{used, budget}` (`cards.md` §12) and `problems` the deck-building rules the deck breaks, as in section 10 — empty, except for a deck saved under rules that have tightened since. |
+| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck, as `GET /decks` lists it | Validated against the pack and the rules core's deck legality (`cards.md` §12); an illegal deck is refused with `deck_illegal` and is not saved. `leader` and `stratagem` are required. |
 | `DELETE /decks/{deck_id}` | → `204` | |
-| `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. |
-| `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. |
+| `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. `deck_id` is a saved deck of the caller or a starter deck of the pack; a saved deck the rules refuse is refused with `deck_illegal`. |
+| `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. Both decks are judged by the rules the room was made with; if either breaks one, the join is refused with `deck_illegal` and `details.seat`, and the room keeps waiting. |
 | `GET /matches/{match_id}` | → `{match_id, mode, status, seat, room_code, result}` | `status` is `waiting`, `playing` or `finished`; `seat` is the caller's seat or null. |
 | `GET /matches/{match_id}/replay` | → replay record (section 9) | Only after the match ended; only for its players in the MVP. |
 
@@ -320,9 +321,26 @@ timer runs on through them.
 | `protocol_version` | Client and server protocol versions differ. |
 | `unauthorised` | Token invalid, or not a player of this match. |
 | `not_a_player` | The caller is not seated in the match (replay, status). |
-| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the rule keys of `cards.md` §12. |
+| `deck_not_found`, `deck_illegal` | Deck lookup and validation; `details.problems` lists the deck-building rules the deck breaks (below), and `details.seat`, when joining a room, whose deck it is. |
 | `room_not_found`, `room_full`, `own_room` | Joining a room. |
 | `locale_unsupported`, `invalid_request`, `unknown_message` | Request shape and content. |
+
+Each deck problem is `{key, card?, params}`, one per rule and card, in the order of `cards.md`
+§12: `key` is the rule's key and its message's (`error.deck.<rule>`); `card` the id of the card
+it is about, for the rules that concern one card; `params` what the message is rendered with —
+`card` as a reference to the card's name (`@card.<id>.name`, or the id itself for a card the pack
+does not have), and the rule's numbers: `count` and `min` (`too-few-cards`, `too-few-units`),
+`count` and `max` (`too-many-cards`), `count` and `limit` (`too-many-copies`), `used` and
+`budget` (`over-budget`). `count` selects the message's plural form (`i18n.md` §5).
+
+```json
+{ "code": "deck_illegal", "message_key": "error.deck-illegal", "params": {},
+  "message": "This deck is not legal.",
+  "details": { "problems": [
+    { "key": "error.deck.too-many-copies", "card": "u-1003",
+      "params": { "card": "@card.u-1003.name", "count": 3, "limit": 2 } },
+    { "key": "error.deck.over-budget", "params": { "used": 167, "budget": 165 } } ] } }
+```
 
 Reason keys of `illegal_intent` new in protocol 2: `error.play.row-full`,
 `error.play.position-out-of-range`, `error.play.position-required`,

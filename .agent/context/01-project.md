@@ -17,13 +17,14 @@ and extended.
 
 Anything that would flatten one of these is a design regression, not a simplification.
 
-**Transition (2026-09-24):** phases B and C of ADR 0009 have landed: the core plays two rows
+**Transition (2026-09-24):** phases B, C and D of ADR 0009 have landed: the core plays two rows
 with capacity and positions, the standalone power model, statuses with timers, draws and redraws
 each round, the tie rule and the compensation for going first (ADR 0011), every trigger through
 one resolution queue, the activated abilities of units, artifacts and leaders, and choices of
-every kind; the server speaks protocol 2. A turn is activated abilities before and after one
-card, then `end_turn` — or a pass instead of the card. Deck building is phase D and the Unity
-client speaks protocol 1 until phase E, so it cannot play in between. The v1 shape is gone; read
+every kind, and judges decks by every deck-building rule — units, copies, the provision budget,
+a leader of the deck's own faction; the server speaks protocol 2. A turn is activated abilities
+before and after one card, then `end_turn` — or a pass instead of the card. The Unity client
+speaks protocol 1 until phase E, so it cannot play in between. The v1 shape is gone; read
 the ADR and `docs/protocol/cards.md` before touching the core.
 
 ## Scope
