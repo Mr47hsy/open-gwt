@@ -38,8 +38,10 @@ OPENGWT_TEST_SERVER=http://127.0.0.1:8765 "$UNITY" -batchmode -nographics -proje
 `ClientMatchTests` plays two whole matches (one per starter deck) through `MatchClient`, taking
 every move from `legal_intents` — redraws, activated abilities, cards at a random legal
 position, `end_turn`, passes and every choice — and asserts that no message carried the
-opponent's hand, a deck's order or the seed; `BoardViewTests` runs in the same pass without the
-server. Stop the server afterwards. The scripted client keeps 60 ms between intents to stay under
+opponent's hand, a deck's order or the seed; `RandomMatchTests` drives the real board through
+`OPENGWT_TEST_SEEDS` matches (three by default; raise it for a longer soak) with random legal
+intents and checks the board against the view after every step; `BoardViewTests` runs in the
+same pass without the server. Stop the server afterwards. The scripted client keeps 60 ms between intents to stay under
 the server's rate limit; do not raise the limit for it.
 
 ## 3b. Look at it, for any visual change

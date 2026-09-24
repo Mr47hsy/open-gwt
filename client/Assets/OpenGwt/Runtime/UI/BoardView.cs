@@ -74,6 +74,9 @@ namespace OpenGwt.UI
         private List<JObject> batch = new List<JObject>();
         private MatchView shown;
         private float nextStepAt;
+        /// <summary>No step is waiting: the board shows the newest view.</summary>
+        public bool Idle => steps.Count == 0;
+
         private readonly Dictionary<string, string> languageByLabel = new Dictionary<string, string>();
         private readonly Dictionary<string, string> deckByLabel = new Dictionary<string, string>();
         private bool modalForPhase;
@@ -949,6 +952,7 @@ namespace OpenGwt.UI
         private void HideModal()
         {
             modal.AddToClassList("hidden");
+            modalOptions.Clear();
             modalForPhase = false;
         }
 

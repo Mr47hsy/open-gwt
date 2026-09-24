@@ -2,8 +2,9 @@
 // message models and flow against the real server on protocol 2, with no UI. The policy takes
 // every move from `legal_intents` alone — it never derives legality — and covers every intent
 // kind: one redraw per round and `end_mulligan`, activated abilities, a card at a random legal
-// row and position, `end_turn`, a pass when nothing else is offered, and every choice, with one
-// `cancel_choice` on the first cancellable one. Needs a running server, named by
+// row and position, `end_turn`, a pass now and then while one is offered (the server passes for
+// an empty hand by itself), and every choice, with one `cancel_choice` on the first cancellable
+// one. Needs a running server, named by
 // OPENGWT_TEST_SERVER (for example http://127.0.0.1:8765); ignored otherwise.
 using System;
 using System.Collections;
@@ -178,6 +179,9 @@ namespace OpenGwt.Tests
                 }
                 var orders = legal.Where(i => (string)i["kind"] == "use_order").ToList();
                 if (orders.Count > 0) return orders[0];
+                // A deliberate pass one time in six, so the intent is exercised and not only the
+                // automatic pass of an empty hand.
+                if (view.Allows("pass") && rng.Next(6) == 0) return Intents.Pass();
                 var plays = legal.Where(i => (string)i["kind"] == "play_card").ToList();
                 if (plays.Count > 0)
                 {
