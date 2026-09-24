@@ -485,6 +485,41 @@ def test_each_player_keeps_their_own_deck_of_an_id(client: TestClient) -> None:
     assert kept.status_code == 201, kept.text
 
 
+def test_deck_ids_have_the_shape_of_content_ids(client: TestClient) -> None:
+    """A deck id matches the content's id pattern, at most the 64 characters `decks.id` holds;
+    any other is `invalid_request` on every route that takes one, before any lookup — never a
+    database error, which PostgreSQL raises for a value longer than its column."""
+    headers, _ = _guest(client)
+    longest = "d" + "0" * 63
+    saved = client.put(f"/decks/{longest}", headers=headers, json=_starter_body())
+    assert saved.status_code == 200, saved.text
+    assert [d["deck_id"] for d in client.get("/decks", headers=headers).json()] == [longest]
+
+    def refused(response: Any, where: str) -> None:
+        assert response.status_code == 422, response.text
+        error = response.json()["error"]
+        assert error["code"] == "invalid_request"
+        assert error["message"] == "Запрос некорректен."
+        assert [e["loc"] for e in error["details"]] == [[where, "deck_id"]]
+
+    ru = {**headers, "Accept-Language": "ru"}
+    # too long, too short, upper case, a digit first, a space, a line break, not ASCII
+    for bad in ("d" * 65, "d", "Mine", "1st", "my deck", "mine%0A", "колода"):
+        refused(client.put(f"/decks/{bad}", headers=ru, json=_starter_body()), "path")
+        refused(client.delete(f"/decks/{bad}", headers=ru), "path")
+    assert [d["deck_id"] for d in client.get("/decks", headers=headers).json()] == [longest]
+
+    too_long = "starter-a" + "0" * 56
+    refused(client.post("/matches", headers=ru, json={"mode": "bot", "deck_id": too_long}), "body")
+    room = client.post("/matches", headers=headers, json={"mode": "room", "deck_id": longest})
+    assert room.status_code == 201, room.text
+    other, _ = _guest(client, "other")
+    other_ru = {**other, "Accept-Language": "ru"}
+    join = {"room_code": room.json()["room_code"], "deck_id": too_long}
+    refused(client.post("/matches/join", headers=other_ru, json=join), "body")
+    assert client.delete(f"/decks/{longest}", headers=headers).status_code == 204
+
+
 def test_full_match_against_the_bot_and_its_replay(client: TestClient) -> None:
     headers, token = _guest(client)
     created = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "starter-a"})

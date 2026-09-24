@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Path, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,11 +12,19 @@ from opengwt.core.model import Deck
 from opengwt.server.db.models import DeckRow, Player
 from opengwt.server.errors import AppError
 from opengwt.server.routers.deps import current_player, get_session
-from opengwt.server.schemas import DeckCardEntry, DeckOut, DeckProvisions, DeckUpsert
+from opengwt.server.schemas import (
+    DECK_ID_PATTERN,
+    DeckCardEntry,
+    DeckOut,
+    DeckProvisions,
+    DeckUpsert,
+)
 from opengwt.server.services.content import Content
 from opengwt.server.services.decks import problems_to_list, provisions_to_dict
 
 router = APIRouter()
+
+DeckIdPath = Annotated[str, Path(pattern=DECK_ID_PATTERN)]
 
 
 def _deck(row: DeckRow) -> Deck:
@@ -83,7 +92,7 @@ async def list_decks(
 
 @router.put("/decks/{deck_id}", response_model=DeckOut)
 async def put_deck(
-    deck_id: str,
+    deck_id: DeckIdPath,
     body: DeckUpsert,
     request: Request,
     player: Player = Depends(current_player),
@@ -115,7 +124,7 @@ async def put_deck(
 
 @router.delete("/decks/{deck_id}", status_code=204)
 async def delete_deck(
-    deck_id: str,
+    deck_id: DeckIdPath,
     player: Player = Depends(current_player),
     session: AsyncSession = Depends(get_session),
 ) -> Response:

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field
+
+# A deck id has the shape of the content's ids (decks.schema.json), so every starter deck's id is
+# one; it fits `decks.id` (String(64)) and compares alike on every database (match.md §2).
+DECK_ID_PATTERN = r"^[a-z][a-z0-9-]{1,63}$"
+DeckId = Annotated[str, Field(pattern=DECK_ID_PATTERN)]
 
 
 class GuestRequest(BaseModel):
@@ -59,12 +64,12 @@ class DeckOut(BaseModel):
 
 class CreateMatch(BaseModel):
     mode: Literal["bot", "room"]
-    deck_id: str
+    deck_id: DeckId
 
 
 class JoinMatch(BaseModel):
     room_code: str = Field(min_length=1, max_length=16)
-    deck_id: str
+    deck_id: DeckId
 
 
 class MatchCreated(BaseModel):
