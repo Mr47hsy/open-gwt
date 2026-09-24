@@ -14,7 +14,9 @@ choices), D (deck building) and E (the client on protocol 2, end to end) are don
 is frozen since E — a change now bumps the version. The vocabulary is complete since B: a later
 phase adds behaviour, not words.
 - Phase F: original placeholder set covering every vocabulary word; two starter decks per
-  faction. The owner will export a card set of their own design to import instead (2026-09-24).
+  faction. The owner will export a card set of their own design to import instead (2026-09-24),
+  with `opengwt-data import` (docs/protocol/import.md): YAML, JSON or a spreadsheet's CSV, ids
+  kept stable by `data/import/<set>.yaml`, names stubbed `TODO(i18n)`, texts generated.
 - Vocabulary gap found in phase D (owner, 2026-09-24): some cards of the standalone game change
   the leader's faction during a match; no word expresses it. A leader is never neutral when a
   match starts (`check_deck`), which stays true. Decide with the owner — with its public

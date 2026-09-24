@@ -65,7 +65,8 @@ is frozen from here: `match.md` got its last in-place corrections in phase E.
 
 Card texts are generated (2026-09-24, docs/protocol/i18n.md §10): `opengwt.data.cardtext` builds
 `card.<id>.text` from a card's abilities for every locale that lacks one, from the templates in
-`data/i18n/<locale>/abilities.yaml`; explicit texts win, and the placeholder set keeps its own.
+`data/i18n/<locale>/abilities.yaml`; explicit texts win, and the placeholder set keeps its own. `opengwt-data import` turns a card set
+(YAML, JSON or CSV) into `data/` files in one validated step (docs/protocol/import.md).
 
 Phase F (content) is next; the rest of [[backlog]] is open to parallel sessions, with the
 branch discipline in `AGENTS.md`.

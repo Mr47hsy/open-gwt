@@ -16,6 +16,11 @@ reuse official ability names. Card ids are opaque and never displayed.
 **Why:** the owner rejected JSON as the authoring format for readability; a closed vocabulary keeps
 the core a rules engine instead of a pile of card-specific code, and keeps replays stable.
 
+A designer's card set enters through `opengwt-data import` (docs/protocol/import.md): it keys cards
+by the designer's own handles, assigns opaque ids remembered in `data/import/<set>.yaml`, writes
+the cards, per-set translation files and decks, and validates the whole tree with `load_data`
+before writing anything.
+
 **How to apply:** a new card is a change under `data/` only. Behaviour the vocabulary cannot express
 is a core change with a schema version bump and tests, not a special case. Validate any example
 against the schemas before committing. See [[server-python-thin-client]].
