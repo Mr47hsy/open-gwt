@@ -21,6 +21,8 @@ ui.board.me: You
 ui.board.opponent: Opponent
 ui.board.pass: Pass
 ui.board.passed: PASSED
+ui.board.end-turn: End turn
+ui.board.end-mulligan: End mulligan
 ui.board.deck: deck {count}
 ui.board.opponent-hand: hand {hand} · deck {deck}
 ui.board.leader: "Leader: {name}"
@@ -46,6 +48,7 @@ ui.modal.confirm: Confirm
 ui.modal.cancel: Cancel
 ui.modal.back: Back to menu
 ui.net.lost: Connection lost ({reason}), reconnecting …
+ui.net.protocol-mismatch: This client speaks match protocol {client} but the server speaks {server}; update the client.
 ui.effect.power-to-one: power → 1
 ui.effect.double-power: ×2
 ui.row.melee: Melee

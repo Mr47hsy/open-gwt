@@ -21,6 +21,8 @@ ui.board.me: Вы
 ui.board.opponent: Соперник
 ui.board.pass: Пас
 ui.board.passed: ПАС
+ui.board.end-turn: Закончить ход
+ui.board.end-mulligan: Завершить мулиган
 ui.board.deck: колода {count}
 ui.board.opponent-hand: рука {hand} · колода {deck}
 ui.board.leader: "Лидер: {name}"
@@ -48,6 +50,7 @@ ui.modal.confirm: Подтвердить
 ui.modal.cancel: Отмена
 ui.modal.back: В меню
 ui.net.lost: Связь потеряна ({reason}), переподключение …
+ui.net.protocol-mismatch: Клиент говорит по протоколу матча {client}, а сервер — по протоколу {server}; обновите клиент.
 ui.effect.power-to-one: сила → 1
 ui.effect.double-power: ×2
 ui.row.melee: Ближний

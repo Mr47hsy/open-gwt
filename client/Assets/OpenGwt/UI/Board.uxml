@@ -36,7 +36,8 @@
                 <ui:Label name="deck-count" class="bar__info" />
                 <ui:VisualElement class="bar__spacer" />
                 <ui:Button name="btn-leader" class="button" />
-                <ui:Button name="btn-pass" class="button button--primary" />
+                <ui:Button name="btn-end-turn" class="button button--primary" />
+                <ui:Button name="btn-pass" class="button" />
             </ui:VisualElement>
 
             <ui:ScrollView name="hand" mode="Horizontal" class="hand" />

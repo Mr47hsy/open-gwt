@@ -4,8 +4,7 @@
 // out, ghosts never outlive their motion, and the preview shows a card in full. Set
 // OPENGWT_TEST_SCREENSHOTS to a directory to also write a PNG per stage (needs graphics, so not
 // with -nographics). Card definitions have the shape of the pack the server serves
-// (`opengwt.pack/2`); views and events are protocol 1, which the client speaks until ADR 0009
-// phase E moves it to protocol 2.
+// (`opengwt.pack/2`); views and events are protocol 2 (docs/protocol/match.md §7, §8).
 using System;
 using System.Collections;
 using System.IO;
@@ -76,7 +75,7 @@ namespace OpenGwt.Tests
             root.Q("connect-panel").AddToClassList("hidden");
             root.Q("match").RemoveFromClassList("hidden");
             seq = 0;
-            client.Receive("{\"type\":\"hello\",\"protocol\":1,\"pack_hash\":\"test\",\"match_id\":\"m\",\"player_id\":\"p\",\"seat\":0,\"locale\":\"en\"}");
+            client.Receive("{\"type\":\"hello\",\"protocol\":2,\"pack_hash\":\"test\",\"match_id\":\"m\",\"player_id\":\"p\",\"seat\":0,\"locale\":\"en\"}");
         }
 
         [TearDown]
@@ -118,7 +117,7 @@ namespace OpenGwt.Tests
 
             // Played: the new row element waits hidden while a ghost flies in from the hand.
             Show(View(hand: new[] { ("h2", Special) }, mine: new[] { ("h1", Unit, 5, 5) }),
-                Event("card_played", 0, "h1", Unit, ("row", "melee")));
+                Event("card_played", 0, "h1", Unit, ("row", "melee"), ("from", "hand")));
             yield return Frames(2);
             var placed = RowCard("my-row-melee", "h1");
             Assert.IsNotNull(placed);
@@ -133,7 +132,7 @@ namespace OpenGwt.Tests
             Assert.AreEqual(1f, RowCard("my-row-melee", "h1").resolvedStyle.opacity, 0.001f);
 
             // Destroyed: the element is gone at once, its ghost burns out where it stood.
-            Show(View(hand: new[] { ("h2", Special) }), Event("unit_destroyed", 0, "h1", Unit, ("row", "melee")));
+            Show(View(hand: new[] { ("h2", Special) }), Destroyed(0, "h1", Unit));
             yield return Frames(3);
             Assert.IsNull(RowCard("my-row-melee", "h1"));
             Assert.IsTrue(Ghosts().Single().ClassListContains("card--destroyed"));
@@ -151,10 +150,10 @@ namespace OpenGwt.Tests
 
             // My card and the opponent's answer arrive in the same frame.
             Show(View(hand: new[] { ("h2", Special) }, mine: new[] { ("h1", Unit, 5, 5) }, plays: new[] { ("h2", (string)null) }),
-                Event("card_played", 0, "h1", Unit, ("row", "melee")));
+                Event("card_played", 0, "h1", Unit, ("row", "melee"), ("from", "hand")));
             Show(View(hand: new[] { ("h2", Special) }, mine: new[] { ("h1", Unit, 5, 5) }, theirs: new[] { ("o1", Guard, 7, 7) },
                     plays: new[] { ("h2", (string)null) }),
-                Event("card_played", 1, "o1", Guard, ("row", "melee")));
+                Event("card_played", 1, "o1", Guard, ("row", "melee"), ("from", "hand")));
             yield return Frames(2);
             Assert.IsNotNull(RowCard("my-row-melee", "h1"), "the first step is on screen");
             Assert.IsNull(RowCard("opp-row-melee", "o1"), "the second waits for it");
@@ -168,7 +167,7 @@ namespace OpenGwt.Tests
 
             // A special resolves in the middle of the board and leaves nothing behind.
             Show(View(mine: new[] { ("h1", Unit, 5, 5) }, theirs: new[] { ("o1", Guard, 7, 7) }),
-                Event("card_played", 0, "h2", Special));
+                Event("card_played", 0, "h2", Special, ("from", "hand")));
             yield return Frames(3);
             Assert.IsTrue(Ghosts().Single().ClassListContains("card--cast"));
             yield return Seconds(0.3f);
@@ -194,7 +193,7 @@ namespace OpenGwt.Tests
             Assert.IsFalse(RowCard("my-row-melee", "h1").ClassListContains("card--pending"));
 
             // And the step after it moves again.
-            Show(View(hand: new[] { ("h2", Special) }), Event("unit_destroyed", 0, "h1", Unit, ("row", "melee")));
+            Show(View(hand: new[] { ("h2", Special) }), Destroyed(0, "h1", Unit));
             yield return Frames(3);
             Assert.IsTrue(Ghosts().Single().ClassListContains("card--destroyed"));
         }
@@ -253,6 +252,14 @@ namespace OpenGwt.Tests
             return evt;
         }
 
+        private static JObject Destroyed(int seat, string instance, string card)
+        {
+            var evt = Event("card_destroyed", seat, instance, card, ("row", "melee"));
+            evt["banished"] = false;
+            evt["source"] = null;
+            return evt;
+        }
+
         private static JObject View(
             (string instance, string card)[] hand = null,
             (string instance, string card, int power, int basePower)[] mine = null,
@@ -269,40 +276,53 @@ namespace OpenGwt.Tests
             }
             intents.Add(new JObject { ["kind"] = "pass" });
             var me = Side(0, mine);
-            me["hand"] = new JArray((hand ?? Array.Empty<(string, string)>()).Select(c => new JObject { ["instance"] = c.instance, ["card"] = c.card }));
+            var cards = (hand ?? Array.Empty<(string, string)>()).Select(c => new JObject { ["instance"] = c.instance, ["card"] = c.card }).ToList();
+            me["hand"] = new JArray(cards);
+            me["hand_count"] = cards.Count;
             var opponent = Side(1, theirs);
             opponent["hand_count"] = 5;
             return new JObject
             {
-                ["protocol"] = 1,
+                ["protocol"] = 2,
+                ["match_id"] = "m",
                 ["phase"] = "playing",
                 ["round"] = 1,
                 ["turn"] = turn,
+                ["winner"] = null,
                 ["me"] = me,
                 ["opponent"] = opponent,
                 ["legal_intents"] = turn == "me" ? intents : new JArray(),
+                ["pending_choice"] = null,
             };
         }
 
+        /// <summary>A side in the shape of match.md §7, with units on its melee row.</summary>
         private static JObject Side(int seat, (string instance, string card, int power, int basePower)[] melee)
         {
             var rows = new JObject();
-            foreach (var row in new[] { "melee", "ranged" }) rows[row] = new JObject { ["effects"] = new JArray(), ["units"] = new JArray() };
+            foreach (var row in new[] { "melee", "ranged" }) rows[row] = new JObject { ["effect"] = null, ["cards"] = new JArray() };
             foreach (var (instance, card, power, basePower) in melee ?? Array.Empty<(string, string, int, int)>())
             {
-                ((JArray)rows["melee"]["units"]).Add(new JObject { ["instance"] = instance, ["card"] = card, ["owner"] = seat, ["power"] = power, ["base"] = basePower });
+                ((JArray)rows["melee"]["cards"]).Add(new JObject
+                {
+                    ["instance"] = instance, ["card"] = card, ["owner"] = seat, ["power"] = power, ["base"] = basePower,
+                    ["aura"] = 0, ["armor"] = 0, ["statuses"] = new JArray(), ["order"] = null,
+                });
             }
             return new JObject
             {
                 ["seat"] = seat,
                 ["faction"] = "test",
                 ["score"] = 0,
-                ["lives"] = 2,
                 ["rounds_won"] = 0,
                 ["passed"] = false,
+                ["hand_count"] = 0,
                 ["deck_count"] = 10,
+                ["graveyard"] = new JArray(),
+                ["banished"] = new JArray(),
+                ["leader"] = null,
+                ["mulligan"] = null,
                 ["rows"] = rows,
-                ["mulligan_done"] = true,
             };
         }
 

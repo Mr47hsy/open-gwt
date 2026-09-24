@@ -1,5 +1,5 @@
 // Orchestrates one player's session: sign in, content, then a match over the socket. Holds the
-// latest view and forwards events; decides nothing (ADR 0001).
+// latest view and forwards events; decides nothing (ADR 0001). Speaks match protocol 2.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,14 +12,24 @@ using UnityEngine;
 
 namespace OpenGwt.Match
 {
+    /// <summary>A deck of the content pack as the lobby offers it (`match.md` §2, `cards.md` §14).</summary>
     public sealed class DeckOption
     {
         public string Id;
         public string Faction;
+        public string Leader;
+        public string Stratagem;
+        public int ProvisionsUsed;
+        public int ProvisionsBudget;
+        /// <summary>Deck-building rules the deck breaks, each `{key, card?, params}` (§10); empty for a legal deck.</summary>
+        public List<JObject> Problems = new List<JObject>();
     }
 
     public sealed class MatchClient : IDisposable
     {
+        /// <summary>The match protocol this client speaks (`match.md` §1).</summary>
+        public const int Protocol = 2;
+
         private const string LocalePref = "opengwt.locale";
 
         public ServerApi Api { get; private set; }
@@ -30,6 +40,8 @@ namespace OpenGwt.Match
         public string PlayerName { get; private set; }
         public Dictionary<string, JObject> Cards { get; } = new Dictionary<string, JObject>(StringComparer.Ordinal);
         public List<DeckOption> Decks { get; } = new List<DeckOption>();
+        /// <summary>The `Rules` the server plays with, from the pack (`cards.md` §4, §14): read for display only.</summary>
+        public JObject Rules { get; private set; } = new JObject();
         public HelloMessage Hello { get; private set; }
         public MatchView View { get; private set; }
         public MatchResult Result { get; private set; }
@@ -37,12 +49,17 @@ namespace OpenGwt.Match
         public string RoomCode { get; private set; }
         public int Seat => Hello?.Seat ?? -1;
         public bool Prepared => Api != null && Api.Token != null;
+        public int RoundsToWin => (int?)Rules["rounds_to_win"] ?? 2;
 
         public event Action<MatchView> ViewChanged;
         public event Action<JObject> EventReceived;
         public event Action<ErrorMessage> ErrorReceived;
         public event Action<MatchResult> MatchOver;
         public event Action<string> SocketClosed;
+        /// <summary>The server speaks another protocol version: the player has to update (§1).</summary>
+        public event Action<int> ProtocolMismatch;
+        /// <summary>Every message as it arrived, before parsing: for tests that check the wire.</summary>
+        public event Action<string> MessageReceived;
 
         private string wsUrl;
         private bool closeHandled;
@@ -104,14 +121,30 @@ namespace OpenGwt.Match
             {
                 I18n.MergeTable(MessageRenderer.BaseLocale, await Api.TableAsync(MessageRenderer.BaseLocale));
             }
-            var pack = await Api.PackAsync();
+            LoadPack(await Api.PackAsync());
+        }
+
+        /// <summary>Take the cards, decks and rules of a content pack (`opengwt.pack/2`).</summary>
+        internal void LoadPack(JObject pack)
+        {
             PackHash = (string)pack["hash"];
+            Rules = pack["rules"] as JObject ?? new JObject();
             Cards.Clear();
-            foreach (var card in pack["cards"]) Cards[(string)card["id"]] = (JObject)card;
+            foreach (var card in pack["cards"] ?? new JArray()) Cards[(string)card["id"]] = (JObject)card;
             Decks.Clear();
-            foreach (var deck in pack["decks"])
+            foreach (var deck in pack["decks"] ?? new JArray())
             {
-                Decks.Add(new DeckOption { Id = (string)deck["id"], Faction = (string)deck["faction"] });
+                var provisions = deck["provisions"] as JObject;
+                Decks.Add(new DeckOption
+                {
+                    Id = (string)deck["id"],
+                    Faction = (string)deck["faction"],
+                    Leader = (string)deck["leader"],
+                    Stratagem = (string)deck["stratagem"],
+                    ProvisionsUsed = (int?)provisions?["used"] ?? 0,
+                    ProvisionsBudget = (int?)provisions?["budget"] ?? 0,
+                    Problems = (deck["problems"] as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>(),
+                });
             }
         }
 
@@ -141,7 +174,8 @@ namespace OpenGwt.Match
             await Socket.ConnectAsync(wsUrl, Api.Token, Locale);
         }
 
-        /// <summary>Reopen the socket and ask for what was missed (match.md §9).</summary>
+        /// <summary>Reopen the socket and ask for what was missed (match.md §9): the server sends
+        /// `hello` and a full view, then the events after `since_seq` and one more view.</summary>
         public async Task ReconnectAsync()
         {
             var since = View?.Seq ?? 0;
@@ -199,11 +233,19 @@ namespace OpenGwt.Match
 
         private void Dispatch(string json)
         {
+            MessageReceived?.Invoke(json);
             var message = JObject.Parse(json);
             switch ((string)message["type"])
             {
                 case "hello":
                     Hello = Json.Convert<HelloMessage>(message);
+                    if (Hello.Protocol != Protocol)
+                    {
+                        var spoken = Hello.Protocol;
+                        Hello = null;
+                        ProtocolMismatch?.Invoke(spoken);
+                        _ = Socket?.CloseAsync();
+                    }
                     break;
                 case "view":
                     View = Json.Convert<MatchView>(message["view"]);
@@ -235,6 +277,9 @@ namespace OpenGwt.Match
 
         public string Text(string key, IReadOnlyDictionary<string, object> parameters) => I18n.Render(Locale, key, parameters);
 
+        /// <summary>True when the tables have the key in the current locale or the base one.</summary>
+        public bool Knows(string key) => I18n.Lookup(Locale, key) != null;
+
         public static Dictionary<string, object> P(params object[] pairs)
         {
             var result = new Dictionary<string, object>();
@@ -242,10 +287,12 @@ namespace OpenGwt.Match
             return result;
         }
 
-        /// <summary>Server-rendered fallback only when the key is unknown here (ADR 0006).</summary>
+        /// <summary>The reason of an illegal intent when the tables know it, else the error's key,
+        /// else the server-rendered fallback (ADR 0006, `match.md` §10).</summary>
         public string ErrorText(ErrorMessage error)
         {
-            if (error.MessageKey != null && I18n.Lookup(Locale, error.MessageKey) != null)
+            if (error.Reason != null && Knows(error.Reason)) return I18n.Render(Locale, error.Reason);
+            if (error.MessageKey != null && Knows(error.MessageKey))
             {
                 return I18n.Render(Locale, error.MessageKey, ToParams(error.Params));
             }
@@ -254,7 +301,7 @@ namespace OpenGwt.Match
 
         public string ErrorText(ApiException error)
         {
-            if (error.MessageKey != null && I18n.Lookup(Locale, error.MessageKey) != null)
+            if (error.MessageKey != null && Knows(error.MessageKey))
             {
                 return I18n.Render(Locale, error.MessageKey, ToParams(error.Params));
             }

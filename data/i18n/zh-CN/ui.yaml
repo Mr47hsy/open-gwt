@@ -21,6 +21,8 @@ ui.board.me: 你
 ui.board.opponent: 对手
 ui.board.pass: Pass
 ui.board.passed: 已 PASS
+ui.board.end-turn: 结束回合
+ui.board.end-mulligan: 结束换牌
 ui.board.deck: 牌库 {count}
 ui.board.opponent-hand: 手牌 {hand} · 牌库 {deck}
 ui.board.leader: "领袖：{name}"
@@ -45,6 +47,7 @@ ui.modal.confirm: 确认
 ui.modal.cancel: 取消
 ui.modal.back: 返回主菜单
 ui.net.lost: 连接断开（{reason}），正在重连 …
+ui.net.protocol-mismatch: 客户端使用对局协议 {client}，服务器使用协议 {server}，请更新客户端。
 ui.effect.power-to-one: 战力 → 1
 ui.effect.double-power: ×2
 ui.row.melee: 近战
