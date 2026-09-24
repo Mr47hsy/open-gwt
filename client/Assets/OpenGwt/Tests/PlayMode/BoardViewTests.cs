@@ -512,6 +512,45 @@ namespace OpenGwt.Tests
             Assert.IsFalse(root.Q<Button>("btn-pass").enabledSelf);
         }
 
+        [UnityTest]
+        public IEnumerator LobbyShowsWhatEachDeckBrings()
+        {
+            // The lobby is filled from the pack when the board is built: a client with a pack first.
+            board.Dispose();
+            client.LoadPack(JObject.Parse(@"{""hash"":""h"",""rules"":{""rounds_to_win"":2},""cards"":[],""decks"":[
+                {""id"":""deck-a"",""faction"":""test"",""leader"":""t-l-0001"",""stratagem"":""t-g-0001"",""cards"":[],
+                 ""provisions"":{""used"":163,""budget"":165},""problems"":[]},
+                {""id"":""deck-b"",""faction"":""test"",""leader"":""t-l-0001"",""stratagem"":""t-g-0001"",""cards"":[],
+                 ""provisions"":{""used"":170,""budget"":165},
+                 ""problems"":[{""key"":""error.deck.over-budget"",""params"":{""used"":170,""budget"":165}},
+                               {""key"":""error.deck.too-many-copies"",""card"":""t-u-0001"",""params"":{""card"":""@card.t-u-0001.name"",""count"":3,""limit"":2}}]}]}"));
+            client.I18n.MergeTable("en", new System.Collections.Generic.Dictionary<string, string> { ["faction.test.name"] = "Test faction" });
+            board = new BoardView(root, client, "http://127.0.0.1:1");
+            root.Q("connect-step").AddToClassList("hidden");
+            root.Q("lobby-step").RemoveFromClassList("hidden");
+            root.Q("connect-panel").RemoveFromClassList("hidden");
+            yield return Frames(3);
+
+            var lines = root.Q("deck-summary").Query<Label>().ToList().Select(l => l.text).ToList();
+            CollectionAssert.Contains(lines, client.Text("ui.lobby.leader", MatchClient.P("name", "@card.t-l-0001.name")));
+            CollectionAssert.Contains(lines, client.Text("ui.lobby.stratagem", MatchClient.P("name", "@card.t-g-0001.name")));
+            CollectionAssert.Contains(lines, client.Text("ui.lobby.provisions", MatchClient.P("used", 163, "budget", 165)));
+            Assert.IsFalse(lines.Any(l => l == client.Text("ui.lobby.problems")), "a legal deck lists no problems");
+            Assert.IsTrue(lines.Any(l => l.Contains("Test leader")), "names are rendered through the tables");
+
+            var dropdown = root.Q<DropdownField>("deck");
+            dropdown.value = dropdown.choices[1];
+            yield return Frames(2);
+            lines = root.Q("deck-summary").Query<Label>().ToList().Select(l => l.text).ToList();
+            CollectionAssert.Contains(lines, client.Text("ui.lobby.provisions", MatchClient.P("used", 170, "budget", 165)));
+            CollectionAssert.Contains(lines, client.Text("ui.lobby.problems"));
+            CollectionAssert.Contains(lines, client.Text("error.deck.over-budget", MatchClient.P("used", 170, "budget", 165)));
+            CollectionAssert.Contains(lines, client.Text("error.deck.too-many-copies", MatchClient.P("card", "@card.t-u-0001.name", "count", 3, "limit", 2)));
+            yield return Seconds(0.3f);
+            yield return Screenshot("16-lobby");
+            root.Q("connect-panel").AddToClassList("hidden");
+        }
+
         // --- the four kinds of choice (match.md §7) -------------------------------------------
 
         private JObject Choosing(string kind, string promptKey, bool cancellable, params JObject[] options)

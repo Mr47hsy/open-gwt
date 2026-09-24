@@ -72,6 +72,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="lobby-step" class="hidden">
                     <ui:DropdownField name="deck" class="field" />
+                    <ui:VisualElement name="deck-summary" class="deck-summary" />
                     <ui:VisualElement class="dialog__buttons">
                         <ui:Button name="btn-bot" class="button button--primary" />
                         <ui:Button name="btn-create-room" class="button" />

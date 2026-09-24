@@ -104,3 +104,9 @@ ui.modal.close: 关闭
 ui.board.redraws-left.other: "还可换牌 {count} 次"
 ui.board.mulligan-waiting: 等待对手换牌结束
 ui.board.choose-place: "选择 {card} 打出的位置"
+
+# 大厅：内容包里每副牌带的东西（cards.md §12、§14）。
+ui.lobby.leader: "领袖：{name}"
+ui.lobby.stratagem: "计策：{name}"
+ui.lobby.provisions: "构筑费用 {used} / {budget}"
+ui.lobby.problems: "这副卡组违反了构筑规则："

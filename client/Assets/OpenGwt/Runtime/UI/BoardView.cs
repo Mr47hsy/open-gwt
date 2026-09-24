@@ -66,6 +66,7 @@ namespace OpenGwt.UI
         private readonly Label connectStatus;
         private readonly DropdownField language;
         private readonly DropdownField deck;
+        private readonly VisualElement deckSummary;
         private readonly List<string> log = new List<string>();
         private readonly HashSet<string> flash = new HashSet<string>();
         private readonly Queue<Step> steps = new Queue<Step>();
@@ -112,6 +113,8 @@ namespace OpenGwt.UI
             connectStatus = root.Q<Label>("connect-status");
             language = root.Q<DropdownField>("language");
             deck = root.Q<DropdownField>("deck");
+            deckSummary = root.Q<VisualElement>("deck-summary");
+            deck.RegisterValueChangedCallback(_ => RenderDeckSummary());
             root.Q<TextField>("server-url").value = defaultServerUrl;
             preview = new CardPreview(root.Q<VisualElement>("card-preview"), root);
             motion = new BoardMotion(root.Q<VisualElement>("fx-layer"));
@@ -223,9 +226,37 @@ namespace OpenGwt.UI
             }
             deck.choices = labels;
             if (labels.Count > 0 && !labels.Contains(deck.value)) deck.SetValueWithoutNotify(labels[0]);
+            RenderDeckSummary();
         }
 
         private string SelectedDeck() => deckByLabel.TryGetValue(deck.value ?? "", out var id) ? id : client.Decks.FirstOrDefault()?.Id;
+
+        /// <summary>What the chosen deck brings (`match.md` §2, `cards.md` §12): its leader and
+        /// stratagem, its provisions against the budget, and the rules it breaks, if any.</summary>
+        private void RenderDeckSummary()
+        {
+            deckSummary.Clear();
+            var option = client.Decks.FirstOrDefault(d => d.Id == SelectedDeck());
+            if (option == null) return;
+            AddSummaryLine(T("ui.lobby.leader", "name", Name(option.Leader)), "deck-summary__line");
+            AddSummaryLine(T("ui.lobby.stratagem", "name", Name(option.Stratagem)), "deck-summary__line");
+            AddSummaryLine(T("ui.lobby.provisions", "used", option.ProvisionsUsed, "budget", option.ProvisionsBudget), "deck-summary__line");
+            if (option.Problems.Count == 0) return;
+            AddSummaryLine(T("ui.lobby.problems"), "deck-summary__problem");
+            foreach (var problem in option.Problems)
+            {
+                var key = (string)problem["key"];
+                if (key == null) continue;
+                AddSummaryLine(client.Text(key, MatchClient.ToParams(problem["params"] as JObject)), "deck-summary__problem");
+            }
+        }
+
+        private void AddSummaryLine(string text, string className)
+        {
+            var label = new Label(text);
+            label.AddToClassList(className);
+            deckSummary.Add(label);
+        }
 
         // --- connection and lobby -----------------------------------------------------------
 

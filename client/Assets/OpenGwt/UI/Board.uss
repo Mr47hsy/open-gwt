@@ -444,6 +444,10 @@
 .dialog__buttons { flex-direction: row; align-items: center; margin-top: var(--space-4); }
 .dialog__status { margin-top: 10px; color: var(--color-info); white-space: normal; }
 .field { margin: var(--space-2) 0; }
+/* What the chosen deck brings: leader, stratagem, provisions and any rule it breaks. */
+.deck-summary { margin: var(--space-2) 0 var(--space-3) 0; padding-left: 70px; }
+.deck-summary__line { color: var(--color-text-muted); font-size: var(--font-size-sm); white-space: normal; }
+.deck-summary__problem { color: var(--color-negative); font-size: var(--font-size-sm); white-space: normal; }
 .field .unity-base-field__label { min-width: 70px; color: var(--color-text-muted); }
 .field--code { flex-grow: 1; }
 .unity-base-dropdown__container-outer { background-color: var(--color-surface-2); }

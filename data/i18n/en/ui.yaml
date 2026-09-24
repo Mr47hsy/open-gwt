@@ -111,3 +111,9 @@ ui.board.redraws-left.one: "{count} redraw left"
 ui.board.redraws-left.other: "{count} redraws left"
 ui.board.mulligan-waiting: Waiting for the opponent to finish redrawing
 ui.board.choose-place: "Choose where to play {card}"
+
+# Lobby: what a deck of the pack brings (cards.md §12, §14).
+ui.lobby.leader: "Leader: {name}"
+ui.lobby.stratagem: "Stratagem: {name}"
+ui.lobby.provisions: "Provisions {used} / {budget}"
+ui.lobby.problems: "This deck breaks the deck-building rules:"

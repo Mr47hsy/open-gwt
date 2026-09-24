@@ -125,3 +125,9 @@ ui.board.redraws-left.many: "Осталось {count} замен"
 ui.board.redraws-left.other: "Осталось {count} замен"
 ui.board.mulligan-waiting: Ждём, пока соперник закончит мулиган
 ui.board.choose-place: "Выберите, куда сыграть {card}"
+
+# Лобби: что приносит каждая колода пакета (cards.md §12, §14).
+ui.lobby.leader: "Лидер: {name}"
+ui.lobby.stratagem: "Стратагема: {name}"
+ui.lobby.provisions: "Стоимость {used} / {budget}"
+ui.lobby.problems: "Эта колода нарушает правила сборки:"
