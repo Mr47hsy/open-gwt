@@ -50,6 +50,13 @@ phase adds behaviour, not words.
 - Accounts beyond guest tokens are out of scope by decision; a display-name change exists.
 
 **Content and rules** (after phase F)
+- Vocabulary gaps the ability-drafting skill found in its sample
+  (`docs/protocol/examples/draft-abilities.csv`, 2026-09-24), each a word only with a public
+  source and the owner's go (cards.md §15): a trigger when a unit's power first reaches a
+  threshold — **once per match** (owner), checked after every change to its power, auras
+  included, not only at the destruction check; **transforming** a unit into another card in
+  place — the new card **belongs to the acting player** (owner); moving a chosen card from hand
+  to the bottom of the deck, optionally **revealing** it first.
 - Real, original card set with names and texts in three languages; balance passes with
   `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
 

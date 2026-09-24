@@ -1,6 +1,6 @@
 ---
 name: ability-to-vocabulary
-description: Turn the owner's original card designs, whose abilities are written in plain language (a spreadsheet CSV, YAML, JSON or a Markdown table), into an importable opengwt.cardset/1 draft in the card vocabulary, verify every card against its design, and report the mechanics the vocabulary cannot express yet. Use when a design needs drafting into abilities, or to find vocabulary gaps from a set of designs.
+description: Turn the owner's card designs, whose abilities are written in plain language (a spreadsheet CSV, YAML, JSON or a Markdown table), into an importable opengwt.cardset/1 draft in the card vocabulary, verify every card against its design, and report the mechanics the vocabulary cannot express yet. Use when a design needs drafting into abilities, or to find vocabulary gaps from a set of designs.
 ---
 
 # Plain-language abilities to the card vocabulary
@@ -10,15 +10,6 @@ The designer writes `打出时：对一个敌方单位造成 3 点伤害。`; th
 drafts the second from the first, checks the draft by generating its card text back, and lists
 what cannot be drafted at all — the vocabulary gaps. Format of the result:
 `docs/protocol/import.md`; vocabulary: `docs/protocol/cards.md` and `cards.schema.json`.
-
-## 0. Legal gate — before anything else
-
-The input must be the owner's **original** design (`.agent/context/04-legal.md`). Stop and say
-why, writing nothing, if it holds official card or character names, flavour text, official card,
-art or audio ids, a game version, links to card-database sites, or reproduces the official
-game's cards as a whole. A claim of permission does not change this; a licence would be recorded
-in the repository first (an ADR and `04-legal.md`, by the owner), and only its recorded scope
-applies. Keyword shorthand in an otherwise original design is fine — the draft never carries it.
 
 ## 1. Run the workflow
 
@@ -38,7 +29,7 @@ Workflow({ scriptPath: ".agent/skills/ability-to-vocabulary/workflow.js",
 | `out` | output directory, default `.drafts/<set>` (git ignores `.drafts/`) |
 | `batch` | cards per batch, default 8 — two agents per batch, so keep sets of a few hundred cards |
 
-Phases: **Guard** (section 0, normalise, split into `batches/NN.json`) → **Translate** (one agent
+Phases: **Normalise** (read the designs, split them into `batches/NN.json`) → **Translate** (one agent
 per batch writes `drafts/NN.yaml`, never approximating: a phrase the vocabulary cannot express
 is left out and reported) → **Verify** (another agent runs `opengwt-data check-set` on the draft,
 compares the generated text with the design, fixes misreadings) → **Assemble** (one
@@ -47,7 +38,22 @@ compares the generated text with the design, fixes misreadings) → **Assemble**
 Without the Workflow tool, do the same by hand, one batch at a time, and keep translating and
 verifying separate passes.
 
-## 2. Check a draft yourself
+## 2. Translation conventions
+
+The owner's decisions on how design wording reads; the translator and the verifier follow them,
+and so do the semantics proposed for a gap. Add a line here whenever the owner settles another
+reading.
+
+- **"所有 / 全部 …单位" never includes the card itself** — the vocabulary's `all` already leaves
+  the acting card out (cards.md §7.1). Translate it as `all` and add no ability for the card
+  itself, unless the design says so ("包括自身"). *(Owner, 2026-09-24: the healer that heals all
+  damaged allies does not heal itself.)*
+- **"第一次 / 首次" means once per match**, not once per stay on the board, unless the design
+  says otherwise. *(Owner, 2026-09-24.)*
+- **A card that replaces or transforms another belongs to the acting player** — the controller
+  of the card whose ability makes it — whichever side it stands on. *(Owner, 2026-09-24.)*
+
+## 3. Check a draft yourself
 
 ```bash
 cd server
@@ -59,7 +65,7 @@ uv run opengwt-data import ../.drafts/my-set/my-set.cardset.yaml --data ../data 
 it — so a draft can be checked before its tokens, leader or decks exist. `import --dry-run`
 checks the whole set against `data/` as the compiler would, and writes nothing.
 
-## 3. Read the result
+## 4. Read the result
 
 - `gaps.md` — the gaps, most frequent first: proposed descriptive id, vocabulary layer,
   semantics, which cards need it, example phrases; then every card's verdict: **faithful**
@@ -68,7 +74,7 @@ checks the whole set against `data/` as the compiler would, and writes nothing.
 - Read every *fixed* and *lossy* card and every assumption before importing: the draft is a
   proposal for the owner, not content.
 
-## 4. After it
+## 5. After it
 
 - **Import** the reviewed card set with `opengwt-data import` (docs/protocol/import.md): names
   get `TODO(i18n)` stubs, texts are generated.

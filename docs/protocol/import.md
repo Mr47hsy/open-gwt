@@ -158,12 +158,10 @@ Workflow({ scriptPath: ".agent/skills/ability-to-vocabulary/workflow.js",
            args: { source: "my-designs.csv", set: "my-set", locale: "zh-CN", batch: 8 } })
 ```
 
-1. **Guard.** The input must be the owner's original design (section 7's last paragraph). The
-   workflow stops, writing nothing, on official card or character names, flavour text, official
-   ids, a game version or card-database links. Otherwise it normalises the cards — any shape: CSV,
-   YAML, JSON, a Markdown table — and splits them into batches.
+1. **Normalise.** The workflow reads the designs — any shape: CSV, YAML, JSON, a Markdown table
+   — normalises the cards and splits them into batches.
 2. **Translate.** One agent per batch writes an `opengwt.cardset/1` draft that says exactly what
-   each design says. A phrase the vocabulary cannot express is left out — never approximated —
+   each design says, reading it by the skill's translation conventions (the owner's decisions). A phrase the vocabulary cannot express is left out — never approximated —
    and reported with the layer it would need and a proposed descriptive word.
 3. **Verify.** Another agent checks each draft with `opengwt-data check-set`, which validates
    every card on its own against the schema and prints the text generated from it
