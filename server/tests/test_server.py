@@ -225,7 +225,12 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
     )
     assert bad.status_code == 422
     problems = bad.json()["error"]["details"]["problems"]
-    assert problems == ["error.deck.wrong-faction:u-2001", "error.deck.too-few-cards"]
+    assert problems == [
+        "error.deck.wrong-faction:u-2001",
+        "error.deck.too-few-cards",
+        "error.deck.too-few-units",
+        "error.deck.too-many-copies:u-1001",
+    ]
     no_leader = client.put(
         "/decks/mine",
         headers=headers,

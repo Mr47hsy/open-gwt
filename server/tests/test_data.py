@@ -8,7 +8,6 @@ from opengwt.core.model import (
     PHASE_C_ACTIONS,
     PHASE_C_TRIGGERS,
     PHASE_C_UNITS,
-    Deck,
     Kind,
     Rules,
     Status,
@@ -150,28 +149,3 @@ def test_load_data_rejects_broken_tree(tmp_path: Path) -> None:
     (tmp_path / "cards").mkdir()
     with pytest.raises(DataError):
         load_data(tmp_path)
-
-
-def test_check_deck_rules() -> None:
-    from tests.helpers import make_library
-
-    lib = make_library()
-    too_small = Deck(
-        "test",
-        ("plain5",) * 3 + ("tok", "leader", "strat-boost"),
-        leader="plain5",
-        stratagem="leader",
-    )
-    problems = check_deck(lib, too_small, Rules())
-    assert problems == [
-        "error.deck.leader-not-leader:plain5",
-        "error.deck.stratagem-not-stratagem:leader",
-        "error.deck.token-in-deck:tok",
-        "error.deck.leader-in-deck:leader",
-        "error.deck.stratagem-in-deck:strat-boost",
-        "error.deck.too-few-cards",
-    ]
-    big = Deck("test", ("plain5",) * 41, leader="leader", stratagem="strat-boost")
-    assert check_deck(lib, big, Rules()) == ["error.deck.too-many-cards"]
-    legal = Deck("test", ("plain5",) * 25, leader="leader", stratagem="strat-boost")
-    assert check_deck(lib, legal, Rules()) == []

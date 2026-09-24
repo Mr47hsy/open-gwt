@@ -43,7 +43,7 @@ async def resolve_deck(
             leader=row.leader or "",
             stratagem=row.stratagem or "",
         )
-        problems = check_deck(content.library, deck, Rules())
+        problems = [str(p) for p in check_deck(content.library, deck, Rules())]
         if problems:
             raise AppError("deck_illegal", 422, details={"problems": problems})
         return deck
@@ -76,7 +76,7 @@ async def put_deck(
         leader=body.leader,
         stratagem=body.stratagem,
     )
-    problems = check_deck(library, deck, Rules())
+    problems = [str(p) for p in check_deck(library, deck, Rules())]
     if problems:
         raise AppError("deck_illegal", 422, details={"problems": problems})
     row = await session.get(DeckRow, deck_id)

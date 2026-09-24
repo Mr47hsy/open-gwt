@@ -1,4 +1,5 @@
-"""The rules engine: ``new_match``, ``apply``, ``legal_intents`` and ``check_deck``.
+"""The rules engine: ``new_match``, ``apply``, ``legal_intents``, ``check_deck`` and
+``deck_provisions``.
 
 ``apply`` never mutates its input; it copies the state, applies one intent and returns the new
 state with the events it produced. Everything that changes a match goes through it. The rules
@@ -39,8 +40,10 @@ from .model import (
     ChargeTarget,
     ChoiceKind,
     ChoiceOption,
+    Color,
     Conditions,
     Deck,
+    DeckProblem,
     Invocation,
     Kind,
     Library,
@@ -94,43 +97,131 @@ QUEUE_STEPS_MAX = 1000
 # --- decks --------------------------------------------------------------------------------------
 
 
-def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[str]:
-    """Problems with a deck as message keys (cards.md §12); empty when the deck is legal.
+# The problem keys of the deck-building rules (§12), in the order ``check_deck`` reports them.
+DECK_UNKNOWN_CARD = "error.deck.unknown-card"
+DECK_LEADER_NOT_LEADER = "error.deck.leader-not-leader"
+DECK_STRATAGEM_NOT_STRATAGEM = "error.deck.stratagem-not-stratagem"
+DECK_WRONG_FACTION = "error.deck.wrong-faction"
+DECK_LEADER_IN_DECK = "error.deck.leader-in-deck"
+DECK_STRATAGEM_IN_DECK = "error.deck.stratagem-in-deck"
+DECK_TOKEN_IN_DECK = "error.deck.token-in-deck"
+DECK_TOO_FEW_CARDS = "error.deck.too-few-cards"
+DECK_TOO_MANY_CARDS = "error.deck.too-many-cards"
+DECK_TOO_FEW_UNITS = "error.deck.too-few-units"
+DECK_TOO_MANY_COPIES = "error.deck.too-many-copies"
+DECK_OVER_BUDGET = "error.deck.over-budget"
+DECK_PROBLEM_KEYS = (
+    DECK_UNKNOWN_CARD,
+    DECK_LEADER_NOT_LEADER,
+    DECK_STRATAGEM_NOT_STRATAGEM,
+    DECK_WRONG_FACTION,
+    DECK_LEADER_IN_DECK,
+    DECK_STRATAGEM_IN_DECK,
+    DECK_TOKEN_IN_DECK,
+    DECK_TOO_FEW_CARDS,
+    DECK_TOO_MANY_CARDS,
+    DECK_TOO_FEW_UNITS,
+    DECK_TOO_MANY_COPIES,
+    DECK_OVER_BUDGET,
+)
+# What the engine cannot set a match up without: every card known, the leader a leader, the
+# stratagem a stratagem, and nothing among the cards that a deck never holds (§12). A replayed
+# record is held to these alone; the rest of deck building judged it when it was played.
+UNPLAYABLE_DECK_KEYS = frozenset(
+    {
+        DECK_UNKNOWN_CARD,
+        DECK_LEADER_NOT_LEADER,
+        DECK_STRATAGEM_NOT_STRATAGEM,
+        DECK_LEADER_IN_DECK,
+        DECK_STRATAGEM_IN_DECK,
+        DECK_TOKEN_IN_DECK,
+    }
+)
 
-    Phase B checks the shape of a deck; provisions, copies and the unit minimum are phase D.
-    """
-    problems: list[str] = []
+
+def deck_provisions(lib: Library, deck: Deck, rules: Rules) -> tuple[int, int]:
+    """What a deck's cards cost and the budget its leader gives: ``(used, budget)`` (§12). The
+    leader and the stratagem cost nothing and unknown cards count for nothing; without a leader
+    card the budget is ``provision_base`` alone."""
+    used = sum(lib[cid].provisions for cid in deck.cards if cid in lib)
+    leader = lib.get(deck.leader)
+    bonus = leader.provision_bonus if leader is not None and leader.kind is Kind.LEADER else 0
+    return used, rules.provision_base + bonus
+
+
+def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[DeckProblem]:
+    """Every deck-building rule the deck breaks (§12), all at once: the leader, the stratagem,
+    each card in deck order, then the number of cards, of units, the copies of each card in the
+    order it first appears, and the budget. Empty when the deck is legal."""
+    problems: list[DeckProblem] = []
     leader = lib.get(deck.leader)
     if leader is None:
-        problems.append(f"error.deck.unknown-card:{deck.leader}")
+        problems.append(DeckProblem(DECK_UNKNOWN_CARD, deck.leader))
     elif leader.kind is not Kind.LEADER:
-        problems.append(f"error.deck.leader-not-leader:{deck.leader}")
-    elif leader.faction not in (deck.faction, NEUTRAL):
-        problems.append(f"error.deck.wrong-faction:{deck.leader}")
+        problems.append(DeckProblem(DECK_LEADER_NOT_LEADER, deck.leader))
+    elif leader.faction != deck.faction or leader.faction == NEUTRAL:
+        # a leader belongs to its deck's own faction, and no leader is neutral
+        problems.append(DeckProblem(DECK_WRONG_FACTION, deck.leader))
     stratagem = lib.get(deck.stratagem)
     if stratagem is None:
-        problems.append(f"error.deck.unknown-card:{deck.stratagem}")
+        problems.append(DeckProblem(DECK_UNKNOWN_CARD, deck.stratagem))
     elif stratagem.kind is not Kind.STRATAGEM:
-        problems.append(f"error.deck.stratagem-not-stratagem:{deck.stratagem}")
+        problems.append(DeckProblem(DECK_STRATAGEM_NOT_STRATAGEM, deck.stratagem))
     elif stratagem.faction not in (deck.faction, NEUTRAL):
-        problems.append(f"error.deck.wrong-faction:{deck.stratagem}")
+        problems.append(DeckProblem(DECK_WRONG_FACTION, deck.stratagem))
+    copies: dict[str, int] = {}
+    units = 0
     for cid in deck.cards:
+        copies[cid] = copies.get(cid, 0) + 1
         defn = lib.get(cid)
         if defn is None:
-            problems.append(f"error.deck.unknown-card:{cid}")
+            problems.append(DeckProblem(DECK_UNKNOWN_CARD, cid))
             continue
         if defn.faction not in (deck.faction, NEUTRAL):
-            problems.append(f"error.deck.wrong-faction:{cid}")
+            problems.append(DeckProblem(DECK_WRONG_FACTION, cid))
         if defn.kind is Kind.LEADER:
-            problems.append(f"error.deck.leader-in-deck:{cid}")
+            problems.append(DeckProblem(DECK_LEADER_IN_DECK, cid))
         elif defn.kind is Kind.STRATAGEM:
-            problems.append(f"error.deck.stratagem-in-deck:{cid}")
+            problems.append(DeckProblem(DECK_STRATAGEM_IN_DECK, cid))
         elif defn.token:
-            problems.append(f"error.deck.token-in-deck:{cid}")
-    if len(deck.cards) < rules.deck_min_cards:
-        problems.append("error.deck.too-few-cards")
-    if len(deck.cards) > rules.deck_max_cards:
-        problems.append("error.deck.too-many-cards")
+            problems.append(DeckProblem(DECK_TOKEN_IN_DECK, cid))
+        elif defn.kind is Kind.UNIT:
+            units += 1
+    count = len(deck.cards)
+    if count < rules.deck_min_cards:
+        problems.append(
+            DeckProblem(
+                DECK_TOO_FEW_CARDS, numbers=(("count", count), ("min", rules.deck_min_cards))
+            )
+        )
+    if count > rules.deck_max_cards:
+        problems.append(
+            DeckProblem(
+                DECK_TOO_MANY_CARDS, numbers=(("count", count), ("max", rules.deck_max_cards))
+            )
+        )
+    if units < rules.deck_min_units:
+        problems.append(
+            DeckProblem(
+                DECK_TOO_FEW_UNITS, numbers=(("count", units), ("min", rules.deck_min_units))
+            )
+        )
+    for cid in deck.cards:
+        defn = lib.get(cid)
+        n = copies.pop(cid, 0)
+        if defn is None or defn.color is None or n == 0:
+            continue  # unknown, a leader, a stratagem or a token: reported above
+        limit = rules.copies_gold if defn.color is Color.GOLD else rules.copies_bronze
+        if n > limit:
+            problems.append(
+                DeckProblem(DECK_TOO_MANY_COPIES, cid, (("count", n), ("limit", limit)))
+            )
+    if leader is not None and leader.kind is Kind.LEADER:
+        used, budget = deck_provisions(lib, deck, rules)
+        if used > budget:
+            problems.append(
+                DeckProblem(DECK_OVER_BUDGET, numbers=(("used", used), ("budget", budget)))
+            )
     return list(dict.fromkeys(problems))
 
 
@@ -138,15 +229,27 @@ def check_deck(lib: Library, deck: Deck, rules: Rules) -> list[str]:
 
 
 def new_match(
-    lib: Library, decks: tuple[Deck, Deck], seed: str, rules: Rules = DEFAULT_RULES
+    lib: Library,
+    decks: tuple[Deck, Deck],
+    seed: str,
+    rules: Rules = DEFAULT_RULES,
+    *,
+    check_legality: bool = True,
 ) -> tuple[MatchState, list[Event]]:
     """Allocate and shuffle, decide who starts, and begin round one with its draws and mulligan
-    (§11.5). ``seed`` is 64 lowercase hex characters (ADR 0010)."""
+    (§11.5). ``seed`` is 64 lowercase hex characters (ADR 0010).
+
+    Both decks must be legal under ``rules`` (§12). ``check_legality=False`` holds them only to
+    what the engine needs to set a match up (``UNPLAYABLE_DECK_KEYS``): a replayed record was
+    judged by the deck-building rules in force when it was played, not by today's."""
     parse_seed(seed)
     for seat, deck in enumerate(decks):
         problems = check_deck(lib, deck, rules)
+        if not check_legality:
+            problems = [p for p in problems if p.key in UNPLAYABLE_DECK_KEYS]
         if problems:
-            raise ValueError(f"deck for seat {seat} is not legal: {', '.join(problems)}")
+            listed = ", ".join(str(p) for p in problems)
+            raise ValueError(f"deck for seat {seat} is not legal: {listed}")
     state = MatchState(
         rules=rules,
         seed=seed,
