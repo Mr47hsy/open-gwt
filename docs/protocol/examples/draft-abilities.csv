@@ -1,0 +1,14 @@
+key,faction,kind,color,provisions,power,armor,rows,name.zh-CN,name.en,ability
+dr-scout,draft-d,unit,bronze,4,3,,,草稿斥候,Draft scout,打出时：对一个敌方单位造成 3 点伤害。
+dr-medic,draft-d,unit,bronze,5,4,,,草稿医师,Draft medic,打出时：治疗所有受伤的友方单位。
+dr-drummer,draft-d,unit,bronze,5,3,,,草稿鼓手,Draft drummer,在场时，相邻的单位战力 +1。
+dr-sentry,draft-d,unit,gold,9,6,2,melee,草稿哨兵,Draft sentry,免疫。只能放在近战行。你的每个回合开始时，使自身获得 1 点增益。
+dr-trapper,draft-d,special,bronze,5,,,,草稿陷阱,Draft trap,锁定一个敌方单位，然后对同一单位造成 2 点伤害。
+dr-rally,draft-d,special,bronze,4,,,,草稿集结,Draft rally,从你的牌库中打出一张战力不高于 4 的铜色单位。
+dr-herald,draft-d,unit,bronze,5,2,,,草稿传令官,Draft herald,打出时：在此牌旁边放置两张“草稿新兵”。
+dr-recruit,draft-d,unit,,,1,,,草稿新兵,Draft recruit,衍生卡，不会出现在卡组中。
+dr-alchemist,draft-d,unit,bronze,5,3,,,草稿炼金师,Draft alchemist,当此单位的战力第一次达到 8 或更高时，抽一张牌。
+dr-shifter,draft-d,unit,gold,8,5,,,草稿易形者,Draft shifter,打出时：把一个敌方单位变成一张“草稿新兵”，保留其所在位置。
+dr-captain,draft-d,leader,,,,,,草稿队长,Draft captain,构筑预算 +15。主动能力，共 2 次：使一个友方单位获得 3 点增益。
+dr-gambit,draft-d,stratagem,,,,,,草稿先手计,Draft gambit,使用一次：抽一张牌。
+dr-scholar,draft-d,unit,bronze,4,3,,,草稿学者,Draft scholar,打出时：从你的手牌中选择一张牌展示给对手，然后把它放到你牌库的底部。

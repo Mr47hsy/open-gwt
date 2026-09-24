@@ -397,7 +397,7 @@ def plan_import(
     # cards files, one per faction, cards in the set's order
     by_faction: dict[str, dict[str, Any]] = {}
     for entry in cardset.cards:
-        mapping = _card_mapping(entry, plan.ids, plan)
+        mapping = _card_mapping(entry, plan.ids)
         by_faction.setdefault(entry.faction, {})[plan.ids[entry.key]] = mapping
         plan.cards_by_faction[entry.faction] = plan.cards_by_faction.get(entry.faction, 0) + 1
     header = _header(cardset)
@@ -538,7 +538,7 @@ def _assign_ids(
         plan.new_ids[entry.key] = cid
 
 
-def _card_mapping(entry: CardEntry, ids: Mapping[str, str], plan: Plan) -> dict[str, Any]:
+def _card_mapping(entry: CardEntry, ids: Mapping[str, str]) -> dict[str, Any]:
     """The card as a cards file holds it: fields in cards.md order, abilities' keys ``when``,
     ``if``, ``do`` first, and card keys in ``place_new_card`` resolved to ids."""
     out: dict[str, Any] = {}
@@ -707,6 +707,40 @@ def import_cardset(
     if not plan.problems and not dry_run:
         apply_plan(plan, data_dir)
     return plan
+
+
+def check_cards(
+    cardset: CardSet, data_dir: Path, locales: Sequence[str] = ()
+) -> list[dict[str, Any]]:
+    """Each card of a set on its own, as a draft is checked while it is written: its schema
+    problems and the text generated from it (i18n.md §10), without ids, cross-file rules or
+    decks. A set's keys stand in for ids; a card names another by its key."""
+    from opengwt.core.model import card_def_from_mapping
+    from opengwt.data.cardtext import CardText
+    from opengwt.data.loader import load_i18n
+
+    tables = load_i18n(data_dir / "i18n")
+    ids = {e.key: f"draft-{i:04d}" for i, e in enumerate(cardset.cards)}
+    for entry in cardset.cards:
+        for locale, name in entry.names.items():
+            tables.setdefault(locale, {})[f"card.{ids[entry.key]}.name"] = name
+    generator = CardText(tables)
+    out: list[dict[str, Any]] = []
+    for entry in cardset.cards:
+        cid = ids[entry.key]
+        mapping = _card_mapping(entry, ids)
+        doc = {"schema": CARDS_SCHEMA, "faction": entry.faction, "cards": {cid: mapping}}
+        problems = [
+            p.replace(f"cards/{cid}", entry.key)
+            for p in _schema_problems("cards.schema.json", doc, Path(entry.key))
+        ]
+        texts: dict[str, str] = {}
+        if not problems:
+            defn = card_def_from_mapping(cid, entry.faction, mapping)
+            for locale in locales or sorted(tables):
+                texts[locale] = generator.text(locale, defn)[0]
+        out.append({"key": entry.key, "problems": problems, "text": texts})
+    return out
 
 
 def summary(plan: Plan, data_dir: Path) -> list[str]:

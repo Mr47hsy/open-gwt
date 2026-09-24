@@ -238,3 +238,25 @@ def test_the_import_command(data: Path, capsys: pytest.CaptureFixture[str]) -> N
     assert main(["import", source, "--data", str(data), "--preview", "en"]) == 0
     assert "u-3002 Sample C archer: Ranged row only." in capsys.readouterr().out
     assert (data / "import" / "sample-c.yaml").exists()
+
+
+def test_check_set_checks_each_card_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A draft is checked card by card: schema problems named by key, and the text generated
+    from each card — a card named by its key renders with its own name."""
+    herald = _unit(
+        "herald",
+        abilities=[{"when": "on_play", "do": "place_new_card", "card": "recruit", "count": 2}],
+    )
+    recruit = {"key": "recruit", "faction": "test-f", "kind": "unit", "token": True, "power": 1}
+    recruit["name"] = {"en": "Test recruit", "zh-CN": "测试新兵"}
+    broken = _unit("broken")
+    del broken["power"]
+    path = _set(tmp_path, [herald, recruit, broken])
+    assert main(["check-set", str(path), "--data", str(REPO / "data"), "--locale", "zh-CN"]) == 1
+    cards = {c["key"]: c for c in json.loads(capsys.readouterr().out)["cards"]}
+    assert cards["herald"]["text"]["zh-CN"] == "打出时：在此牌旁边放置2张新的“测试新兵”。"  # noqa: RUF001
+    assert cards["recruit"]["problems"] == []
+    assert any("power" in p and p.startswith("broken") for p in cards["broken"]["problems"])
+    assert cards["broken"]["text"] == {}
