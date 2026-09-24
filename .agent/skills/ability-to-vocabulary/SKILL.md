@@ -52,6 +52,11 @@ reading.
   says otherwise. *(Owner, 2026-09-24.)*
 - **A card that replaces or transforms another belongs to the acting player** — the controller
   of the card whose ability makes it — whichever side it stands on. *(Owner, 2026-09-24.)*
+- **"达到 N" counts a card that enters the board already at N or more** — the threshold is
+  reached on arrival too, not only by a later change of power. *(Owner, 2026-09-24.)*
+- **"变成 / 变形为" banishes the card it replaces, and that card's on-destroyed abilities do not
+  fire**; the new card takes its place and **is treated as arriving on that row**, so a
+  row effect that acts on arrival (`damage_on_arrival`) acts on it. *(Owner, 2026-09-24.)*
 
 ## 3. Check a draft yourself
 
