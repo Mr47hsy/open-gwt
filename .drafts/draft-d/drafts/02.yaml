@@ -1,0 +1,66 @@
+# Draft batch 02 of set draft-d, translated from .drafts/draft-d/batches/02.json (zh-CN designs).
+# A phrase the vocabulary cannot express is left out and reported as a gap, never approximated.
+schema: opengwt.cardset/1
+set: draft-d
+cards:
+  # 衍生卡，不会出现在卡组中。
+  - key: dr-recruit
+    faction: draft-d
+    kind: unit
+    token: true
+    power: 1
+    name: { zh-CN: 草稿新兵, en: Draft recruit }
+
+  # 当此单位的战力第一次达到 8 或更高时，抽一张牌。
+  # Unmapped: no trigger fires when a unit's power first reaches a threshold (once per match).
+  - key: dr-alchemist
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    name: { zh-CN: 草稿炼金师, en: Draft alchemist }
+
+  # 打出时：把一个敌方单位变成一张“草稿新兵”，保留其所在位置。
+  # Unmapped: no action transforms a unit into another card in place.
+  - key: dr-shifter
+    faction: draft-d
+    kind: unit
+    color: gold
+    provisions: 8
+    power: 5
+    name: { zh-CN: 草稿易形者, en: Draft shifter }
+
+  # 构筑预算 +15。主动能力，共 2 次：使一个友方单位获得 3 点增益。
+  - key: dr-captain
+    faction: draft-d
+    kind: leader
+    provision_bonus: 15
+    activation: { charges: 2 }
+    abilities:
+      - when: on_activate
+        do: boost
+        amount: 3
+        target: { units: chosen, side: self }
+    name: { zh-CN: 草稿队长, en: Draft captain }
+
+  # 使用一次：抽一张牌。
+  - key: dr-gambit
+    faction: draft-d
+    kind: stratagem
+    activation: { charges: 1 }
+    abilities:
+      - when: on_activate
+        do: draw
+        count: 1
+    name: { zh-CN: 草稿先手计, en: Draft gambit }
+
+  # 打出时：从你的手牌中选择一张牌展示给对手，然后把它放到你牌库的底部。
+  # Unmapped: no action moves a card from hand to the bottom of the deck, none reveals a card.
+  - key: dr-scholar
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    name: { zh-CN: 草稿学者, en: Draft scholar }

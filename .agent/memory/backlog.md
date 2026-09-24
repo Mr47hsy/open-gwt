@@ -50,7 +50,6 @@ phase adds behaviour, not words.
 **Content and rules** (after phase F)
 - Real, original card set with names and texts in three languages; balance passes with
   `opengwt-sim`. Legal rules in `.agent/context/04-legal.md` apply to every name.
-- Generated card text from ability templates (docs/protocol/i18n.md §10, deferred).
 
 **Tooling**
 - Client CI (needs a Unity licence secret); until then the headless checklist is the gate.

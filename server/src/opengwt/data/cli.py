@@ -35,6 +35,35 @@ def client_i18n(data_dir: Path) -> dict[str, str]:
     return out
 
 
+def card_texts(
+    data_dir: Path,
+    locales: Sequence[str] = (),
+    cards: Sequence[str] = (),
+    ignore_explicit: bool = False,
+) -> list[str]:
+    """One line per card and locale: the text the content pack carries, and whether it is the
+    explicit one of ``data/i18n`` or generated from the card's abilities (i18n.md §10)."""
+    from opengwt.data.cardtext import CardText
+    from opengwt.data.loader import load_i18n, load_library
+
+    lib = load_library(data_dir / "cards")
+    tables = load_i18n(data_dir / "i18n")
+    generator = CardText(tables)
+    lines: list[str] = []
+    for cid in cards or list(lib):
+        if cid not in lib:
+            raise SystemExit(f"unknown card {cid}")
+        for locale in locales or sorted(tables):
+            explicit = tables.get(locale, {}).get(f"card.{cid}.text")
+            if explicit is not None and not ignore_explicit:
+                lines.append(f"{cid} {locale} explicit: {explicit}")
+                continue
+            text, missing = generator.text(locale, lib[cid])
+            note = f"  [missing: {', '.join(missing)}]" if missing else ""
+            lines.append(f"{cid} {locale} generated: {text}{note}")
+    return lines
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="opengwt-data", description=__doc__)
     parser.add_argument("--data", default=None, help="path to the data/ directory")
@@ -48,6 +77,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     client.add_argument("--out", required=True, help="directory for <locale>.json files")
     client.add_argument("--check", action="store_true", help="fail if any file is stale instead")
     client.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
+    texts = sub.add_parser(
+        "card-text", help="print each card's text: explicit, or generated from its abilities"
+    )
+    texts.add_argument("--locale", action="append", default=[], help="only this locale")
+    texts.add_argument("--card", action="append", default=[], help="only this card id")
+    texts.add_argument(
+        "--ignore-explicit",
+        action="store_true",
+        help="generate even where data/i18n has an explicit text, to compare the two",
+    )
+    texts.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     explicit = args.data or getattr(args, "data_sub", None)
@@ -64,6 +104,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         target.write_text(fresh, encoding="utf-8")
         print(f"wrote {target}")
+    elif args.command == "card-text":
+        for line in card_texts(data_dir, args.locale, args.card, args.ignore_explicit):
+            print(line)
     elif args.command == "client-i18n":
         out = Path(args.out)
         stale = []

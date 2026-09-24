@@ -1,0 +1,255 @@
+# 卡面文案模板（docs/protocol/i18n.md §10）。某张卡在本语言没有显式文案时，编译器用这些模板
+# 生成 `card.<id>.text`；显式文案永远优先。每个能力由其动作模板生成一句话，句中的
+# `{target}`、`{rows}`、`{cards}`、`{from}`、`{place}`、`{filter}` 先由下面的键渲染，再原样插入。
+# `{count}` 总是句子所计数的那个数字。
+
+# --- 连接短语与句子
+ability.join.sentences: "{a}{b}"
+ability.join.list: "{a}、{b}"
+ability.join.or: "{a}或{b}"
+ability.join.and: "{a}和{b}"
+ability.if.and: "{a}且{b}"
+
+# --- 卡牌本身（写在能力之前）
+ability.card.row-only.melee: 只能打出在近战行。
+ability.card.row-only.ranged: 只能打出在远程行。
+ability.card.stratagem-row.melee: 开局位于近战行。
+ability.card.stratagem-row.ranged: 开局位于远程行。
+ability.card.opponent-side: 登场于对手一方。
+ability.card.armor: "护甲{count}。"
+ability.card.provision-bonus: "构筑预算增加{count}。"
+ability.card.status.shielded: 登场时带有护盾。
+ability.card.status.immune: 免疫：不会作为选择目标出现。
+ability.card.status.banish-on-leave: 离开战场时被放逐。
+ability.card.status.kept-at-round-end: 本局结束时留在战场上，仅一次。
+ability.card.status.status-proof: 无法被添加任何状态。
+ability.card.status.guarding: 守护：对手无法选择其所在行的其他牌。
+
+# --- 主动能力：{count} 为次数；次数无限时为冷却回合数
+ability.activate.charges: "主动能力（{count}次）：{effect}"
+ability.activate.cooldown: "主动能力（冷却{count}回合）：{effect}"
+ability.activate.charges-cooldown: "主动能力（{count}次，冷却{cooldown}回合）：{effect}"
+ability.activate.ready-on-play: 打出的当回合即可使用其主动能力。
+
+# --- 触发时机
+ability.when.on-play: "打出时：{effect}"
+ability.when.on-destroyed: "被消灭时：{effect}"
+ability.when.on-turn-start: "你的回合开始时：{effect}"
+ability.when.on-turn-end: "你的回合结束时：{effect}"
+ability.when.on-round-end: "本局结束时：{effect}"
+ability.when.on-ally-played: "你在己方打出另一个单位{filter}时：{effect}"
+ability.when.on-boosted: "获得增益时：{effect}"
+ability.when.on-damaged: "受到伤害并存活时：{effect}"
+
+# --- 条件
+ability.if.text: "若{condition}：{effect}"
+ability.if.on-row.melee: 此牌位于近战行
+ability.if.on-row.ranged: 此牌位于远程行
+ability.if.this: "此牌{state}"
+ability.if.hand-at-most: "你的手牌不多于{count}张"
+ability.if.units-at-least.self: "己方至少有{count}个其他单位{filter}"
+ability.if.units-at-least.opponent: "对手至少有{count}个单位{filter}"
+ability.if.units-at-least.both: "战场上至少有{count}个其他单位{filter}"
+ability.if.starting-deck-without-neutral: 你的初始牌库中没有中立牌
+
+# --- 此牌自身的条件（用于 `if.this`）
+ability.is.kind.unit: 是单位
+ability.is.kind.special: 是特殊牌
+ability.is.kind.artifact: 是器物
+ability.is.color.bronze: 是铜卡
+ability.is.color.gold: 是金卡
+ability.is.tags-any: "属于{tags}"
+ability.is.tags-none: "不属于{tags}"
+ability.is.statuses-any: "处于{statuses}状态"
+ability.is.statuses-none: "不处于{statuses}状态"
+ability.is.power-at-least: "战力不低于{count}"
+ability.is.power-at-most: "战力不高于{count}"
+ability.is.boosted: 已增益
+ability.is.damaged: 已受伤
+
+# --- 筛选条件：列在 `where.wrap` 中
+ability.where.wrap: "（{list}）"
+ability.where.row.melee: 近战行
+ability.where.row.ranged: 远程行
+ability.where.kind.unit: 单位
+ability.where.kind.special: 特殊牌
+ability.where.kind.artifact: 器物
+ability.where.color.bronze: 铜卡
+ability.where.color.gold: 金卡
+ability.where.tags-any: "{tags}"
+ability.where.tags-none: "非{tags}"
+ability.where.statuses-any: "{statuses}"
+ability.where.statuses-none: "未{statuses}"
+ability.where.same-id: 此牌的同名牌
+ability.where.power-at-least: "战力不低于{count}"
+ability.where.power-at-most: "战力不高于{count}"
+ability.where.stronger-than-this: 战力高于此牌
+ability.where.boosted: 已增益
+ability.where.damaged: 已受伤
+
+# --- 状态：作为单位所处的状态（筛选）与被移除的对象
+ability.state.locked: 被锁定
+ability.state.shielded: 带护盾
+ability.state.immune: 免疫
+ability.state.poisoned: 中毒
+ability.state.bleeding: 流血
+ability.state.growing: 成长
+ability.state.banish-on-leave: 离场放逐
+ability.state.kept-at-round-end: 局末保留
+ability.state.status-proof: 状态免疫
+ability.state.guarding: 守护
+ability.state.on-enemy-side: 已换边
+ability.status.locked: 锁定
+ability.status.shielded: 护盾
+ability.status.immune: 免疫
+ability.status.poisoned: 中毒
+ability.status.bleeding: 流血
+ability.status.growing: 成长
+ability.status.banish-on-leave: 离场放逐
+ability.status.kept-at-round-end: 局末保留
+ability.status.status-proof: 状态免疫
+ability.status.guarding: 守护
+
+# --- 战场上的单位（`target`）
+ability.target.chosen.self: "一个友方单位{filter}"
+ability.target.chosen.opponent: "一个敌方单位{filter}"
+ability.target.chosen.both: "一个单位{filter}"
+ability.target.chosen-row.self: "所选友方行上的所有单位{filter}"
+ability.target.chosen-row.opponent: "所选敌方行上的所有单位{filter}"
+ability.target.chosen-row.both: "所选一行上的所有单位{filter}"
+ability.target.all.self: "所有友方单位{filter}"
+ability.target.all.self-other: "所有其他友方单位{filter}"
+ability.target.all.opponent: "所有敌方单位{filter}"
+ability.target.all.both: "所有单位{filter}"
+ability.target.all.both-other: "所有其他单位{filter}"
+ability.target.random.self: "{count}个随机友方单位{filter}"
+ability.target.random.opponent: "{count}个随机敌方单位{filter}"
+ability.target.random.both: "{count}个随机单位{filter}"
+ability.target.strongest.self: "最强的友方单位{filter}"
+ability.target.strongest.opponent: "最强的敌方单位{filter}"
+ability.target.strongest.both: "最强的单位{filter}"
+ability.target.weakest.self: "最弱的友方单位{filter}"
+ability.target.weakest.opponent: "最弱的敌方单位{filter}"
+ability.target.weakest.both: "最弱的单位{filter}"
+ability.target.this: 自身
+ability.target.adjacent: "相邻单位{filter}"
+ability.target.trigger-unit: "被打出的单位{filter}"
+ability.target.previous-targets: 同一目标
+
+# --- 行（`row_target`）
+ability.rows.this: 此牌所在行
+ability.rows.chosen.self: 一个友方行
+ability.rows.chosen.opponent: 一个敌方行
+ability.rows.chosen.both: 一行
+ability.rows.chosen.both.melee: 一个近战行
+ability.rows.chosen.both.ranged: 一个远程行
+ability.rows.all.self: 你的所有行
+ability.rows.all.opponent: 敌方所有行
+ability.rows.all.both: 所有行
+ability.rows.all.self.melee: 你的近战行
+ability.rows.all.self.ranged: 你的远程行
+ability.rows.all.opponent.melee: 敌方近战行
+ability.rows.all.opponent.ranged: 敌方远程行
+ability.rows.all.both.melee: 双方近战行
+ability.rows.all.both.ranged: 双方远程行
+
+# --- 牌库、墓地或手牌中的牌（`cards`）：选取方式 × 名词
+ability.cards.chosen.unit: "一个单位{filter}"
+ability.cards.chosen.special: "一张特殊牌{filter}"
+ability.cards.chosen.artifact: "一个器物{filter}"
+ability.cards.chosen.card: "一张牌{filter}"
+ability.cards.chosen.copy: "一张此牌的同名牌{filter}"
+ability.cards.offer.unit: "随机{count}个单位{filter}中的一个"
+ability.cards.offer.special: "随机{count}张特殊牌{filter}中的一张"
+ability.cards.offer.artifact: "随机{count}个器物{filter}中的一个"
+ability.cards.offer.card: "随机{count}张牌{filter}中的一张"
+ability.cards.offer.copy: "随机{count}张此牌的同名牌{filter}中的一张"
+ability.cards.random.unit: "{count}个随机单位{filter}"
+ability.cards.random.special: "{count}张随机特殊牌{filter}"
+ability.cards.random.artifact: "{count}个随机器物{filter}"
+ability.cards.random.card: "{count}张随机牌{filter}"
+ability.cards.random.copy: "{count}张随机的此牌同名牌{filter}"
+ability.cards.first.unit: "最前面的{count}个单位{filter}"
+ability.cards.first.special: "最前面的{count}张特殊牌{filter}"
+ability.cards.first.artifact: "最前面的{count}个器物{filter}"
+ability.cards.first.card: "最前面的{count}张牌{filter}"
+ability.cards.first.copy: "最前面的{count}张此牌同名牌{filter}"
+ability.cards.all.unit: "所有单位{filter}"
+ability.cards.all.special: "所有特殊牌{filter}"
+ability.cards.all.artifact: "所有器物{filter}"
+ability.cards.all.card: "所有牌{filter}"
+ability.cards.all.copy: "所有此牌的同名牌{filter}"
+ability.cards.up-to.unit: "至多{count}个单位{filter}"
+ability.cards.up-to.special: "至多{count}张特殊牌{filter}"
+ability.cards.up-to.artifact: "至多{count}个器物{filter}"
+ability.cards.up-to.card: "至多{count}张牌{filter}"
+ability.cards.up-to.copy: "至多{count}张此牌的同名牌{filter}"
+
+# --- 区域与位置
+ability.from.deck.self: 从你的牌库中
+ability.from.deck.opponent: 从对手的牌库中
+ability.from.graveyard.self: 从你的墓地中
+ability.from.graveyard.opponent: 从对手的墓地中
+ability.from.hand.self: 从你的手牌中
+ability.from.hand.opponent: 从对手的手牌中
+ability.place.here: 此牌旁边
+ability.place.opponent: 对手一方
+ability.place.melee.self: 你的近战行
+ability.place.melee.opponent: 对手的近战行
+ability.place.ranged.self: 你的远程行
+ability.place.ranged.opponent: 对手的远程行
+
+# --- 动作，每个一句
+ability.damage.text: "对{target}造成{amount}点伤害。"
+ability.boost.text: "使{target}获得{amount}点增益。"
+ability.add-armor.text: "使{target}获得{amount}点护甲。"
+ability.heal.text: "治疗{target}。"
+ability.reset-power.text: "将{target}重置为基础战力。"
+ability.raise-base-power.text: "使{target}的基础战力提高{amount}点。"
+ability.destroy.text: "消灭{target}。"
+ability.banish.text: "放逐{target}。"
+ability.add-status.locked.text: "锁定{target}。"
+ability.add-status.locked.timed.text: "锁定{target}，持续{count}回合。"
+ability.add-status.shielded.text: "使{target}获得护盾。"
+ability.add-status.immune.text: "使{target}获得免疫。"
+ability.add-status.immune.timed.text: "使{target}获得免疫，持续{count}回合。"
+ability.add-status.poisoned.text: "使{target}中毒。"
+ability.add-status.bleeding.timed.text: "使{target}流血{count}回合。"
+ability.add-status.growing.timed.text: "使{target}成长{count}回合。"
+ability.add-status.banish-on-leave.text: "标记{target}：离开战场时被放逐。"
+ability.add-status.kept-at-round-end.text: "标记{target}：本局结束时留在战场上。"
+ability.add-status.status-proof.text: "使{target}获得状态免疫。"
+ability.add-status.status-proof.timed.text: "使{target}获得状态免疫，持续{count}回合。"
+ability.add-status.guarding.text: "使{target}守护其所在行。"
+ability.add-status.guarding.timed.text: "使{target}守护其所在行，持续{count}回合。"
+ability.remove-statuses.text: "移除{target}的{statuses}。"
+ability.remove-statuses.all.text: "移除{target}的所有状态。"
+ability.move-to-other-row.text: "将{target}移至另一行。"
+ability.return-to-hand.text: "将{target}返回手牌。"
+ability.take-control.text: "夺取{target}的控制权。"
+ability.drain.text: "对{target}造成{amount}点伤害，并使自身获得等同于所造成伤害的增益。"
+ability.duel.text: "与{target}交战：双方以自身战力轮流互相造成伤害，此单位先出手，直到其中一方离开战场。"
+ability.consume.text: "消灭{target}，并使自身获得等同于其战力的增益。"
+ability.discard.text: "{from}弃掉{cards}。"
+ability.draw.text: "抽{count}张牌。"
+ability.draw.opponent.text: "对手抽{count}张牌。"
+ability.play-from-deck.text: "{from}打出{cards}。"
+ability.play-from-graveyard.text: "{from}打出{cards}。"
+ability.summon-from-deck.text: "{from}将{cards}置入战场，位于{place}。"
+ability.place-new-card.text: "在{place}放置{count}张新的“{card}”。"
+ability.create.unit.text: "从你的阵营与中立牌中随机展示{count}个单位{filter}，打出所选单位的一张新复制。"
+ability.create.special.text: "从你的阵营与中立牌中随机展示{count}张特殊牌{filter}，打出所选牌的一张新复制。"
+ability.create.artifact.text: "从你的阵营与中立牌中随机展示{count}个器物{filter}，打出所选器物的一张新复制。"
+ability.create.card.text: "从你的阵营与中立牌中随机展示{count}张牌{filter}，打出所选牌的一张新复制。"
+ability.add-charges.this.text: "此牌的主动能力增加{count}次。"
+ability.add-charges.leader.text: "你的领袖能力增加{count}次。"
+ability.set-row-effect.damage-strongest.text: "为{rows}设置有害行效果：该行所属玩家每个回合开始时，该行最强的单位受到{amount}点伤害。"
+ability.set-row-effect.damage-weakest.text: "为{rows}设置有害行效果：该行所属玩家每个回合开始时，该行最弱的单位受到{amount}点伤害。"
+ability.set-row-effect.damage-random.text: "为{rows}设置有害行效果：该行所属玩家每个回合开始时，该行{count}个随机单位各受到{amount}点伤害。"
+ability.set-row-effect.boost-random.text: "为{rows}设置有益行效果：该行所属玩家每个回合开始时，该行{count}个随机单位各获得{amount}点增益。"
+ability.set-row-effect.damage-on-arrival.text: "为{rows}设置有害行效果：每个进入该行的单位受到{amount}点伤害。"
+ability.clear-row-effect.text: "清除{rows}的行效果。"
+ability.clear-row-effect.hazard.text: "清除{rows}的有害行效果。"
+ability.clear-row-effect.boon.text: "清除{rows}的有益行效果。"
+ability.continuous-boost.row.text: "所在行的其他单位战力+{amount}。"
+ability.continuous-boost.adjacent.text: "相邻单位战力+{amount}。"
