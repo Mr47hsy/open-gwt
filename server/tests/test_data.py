@@ -8,7 +8,6 @@ from opengwt.core.model import (
     PHASE_C_ACTIONS,
     PHASE_C_TRIGGERS,
     PHASE_C_UNITS,
-    Deck,
     Kind,
     Rules,
     Status,
@@ -17,6 +16,7 @@ from opengwt.core.model import (
 from opengwt.data import DataError, DataSet, load_data
 from opengwt.data.loader import (
     check_i18n,
+    check_leaders,
     check_references,
     load_cards_file,
     load_deck,
@@ -89,6 +89,36 @@ def test_schema_violation_is_reported_with_path(tmp_path: Path) -> None:
     assert any("u-1" in p and "power" in p for p in info.value.problems)
 
 
+def test_no_card_costs_fewer_than_four_provisions(tmp_path: Path) -> None:
+    """The cheapest card of the standalone game costs 4 (cards.md §3); tokens, leaders and
+    stratagems cost nothing and carry no provisions at all."""
+
+    def cards_file(provisions: int) -> Path:
+        path = tmp_path / f"cost-{provisions}.cards.yaml"
+        unit = {"kind": "unit", "color": "bronze", "provisions": provisions, "power": 1}
+        path.write_text(
+            yaml.safe_dump(
+                {"schema": "opengwt.cards/2", "faction": "test-x", "cards": {"u-1": unit}}
+            )
+        )
+        return path
+
+    assert load_cards_file(cards_file(4))["u-1"].provisions == 4
+    with pytest.raises(DataError) as info:
+        load_cards_file(cards_file(3))
+    assert any("provisions" in p and "minimum of 4" in p for p in info.value.problems)
+
+
+def test_no_leader_is_neutral(dataset: DataSet) -> None:
+    """A leader belongs to the faction whose decks it leads (cards.md §12)."""
+    from dataclasses import replace
+
+    lib = dict(dataset.library)
+    lib["l-1001"] = replace(lib["l-1001"], faction="neutral")
+    assert check_leaders(lib) == ["l-1001: a leader belongs to a faction, not to neutral"]
+    assert check_leaders(dataset.library) == []
+
+
 def test_v1_files_are_rejected(tmp_path: Path) -> None:
     old = tmp_path / "x.cards.yaml"
     old.write_text(
@@ -150,28 +180,3 @@ def test_load_data_rejects_broken_tree(tmp_path: Path) -> None:
     (tmp_path / "cards").mkdir()
     with pytest.raises(DataError):
         load_data(tmp_path)
-
-
-def test_check_deck_rules() -> None:
-    from tests.helpers import make_library
-
-    lib = make_library()
-    too_small = Deck(
-        "test",
-        ("plain5",) * 3 + ("tok", "leader", "strat-boost"),
-        leader="plain5",
-        stratagem="leader",
-    )
-    problems = check_deck(lib, too_small, Rules())
-    assert problems == [
-        "error.deck.leader-not-leader:plain5",
-        "error.deck.stratagem-not-stratagem:leader",
-        "error.deck.token-in-deck:tok",
-        "error.deck.leader-in-deck:leader",
-        "error.deck.stratagem-in-deck:strat-boost",
-        "error.deck.too-few-cards",
-    ]
-    big = Deck("test", ("plain5",) * 41, leader="leader", stratagem="strat-boost")
-    assert check_deck(lib, big, Rules()) == ["error.deck.too-many-cards"]
-    legal = Deck("test", ("plain5",) * 25, leader="leader", stratagem="strat-boost")
-    assert check_deck(lib, legal, Rules()) == []

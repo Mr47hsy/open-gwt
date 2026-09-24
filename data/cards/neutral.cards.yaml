@@ -15,7 +15,7 @@ cards:
   u-0002:
     kind: unit
     color: bronze
-    provisions: 5
+    provisions: 4
     power: 5
     armor: 1
     statuses: [status_proof]
@@ -54,7 +54,7 @@ cards:
   u-0006:
     kind: unit
     color: bronze
-    provisions: 3
+    provisions: 4
     power: 3
     abilities:
       - when: on_destroyed

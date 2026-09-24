@@ -18,6 +18,7 @@ from opengwt.core.model import (
     Action,
     CardDef,
     Deck,
+    Kind,
     Library,
     Rules,
     card_def_from_mapping,
@@ -205,6 +206,16 @@ def check_references(lib: Library) -> list[str]:
     return problems
 
 
+def check_leaders(lib: Library) -> list[str]:
+    """No leader is neutral: a leader belongs to the faction whose decks it leads (cards.md §12,
+    §14)."""
+    return [
+        f"{defn.id}: a leader belongs to a faction, not to {NEUTRAL}"
+        for defn in lib.values()
+        if defn.kind is Kind.LEADER and defn.faction == NEUTRAL
+    ]
+
+
 def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     """Missing keys, as ``locale: key`` strings — docs/protocol/i18n.md §2, §7 and ADR 0006.
 
@@ -232,14 +243,15 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     return problems
 
 
-def load_data(data_dir: Path) -> DataSet:
-    """Everything under ``data/``, validated. Raises ``DataError`` listing every problem found."""
+def load_data(data_dir: Path, rules: Rules = DEFAULT_RULES) -> DataSet:
+    """Everything under ``data/``, validated, the decks legal under ``rules`` — the ``Rules``
+    the pack will carry (cards.md §14). Raises ``DataError`` listing every problem found."""
     lib = load_library(data_dir / "cards")
-    problems: list[str] = check_references(lib)
+    problems: list[str] = check_references(lib) + check_leaders(lib)
     decks: dict[str, Deck] = {}
     tables: dict[str, dict[str, str]] = {}
     try:
-        decks = load_decks(data_dir / "decks", lib)
+        decks = load_decks(data_dir / "decks", lib, rules)
     except DataError as e:
         problems.extend(e.problems)
     try:

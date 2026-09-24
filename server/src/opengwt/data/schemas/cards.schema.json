@@ -156,6 +156,10 @@
       "type": "integer",
       "minimum": 0
     },
+    "provisionCost": {
+      "type": "integer",
+      "minimum": 4
+    },
     "activation": {
       "type": "object",
       "additionalProperties": false,
@@ -491,7 +495,7 @@
           "$ref": "#/$defs/color"
         },
         "provisions": {
-          "$ref": "#/$defs/nonNegativeInt"
+          "$ref": "#/$defs/provisionCost"
         },
         "provision_bonus": {
           "$ref": "#/$defs/nonNegativeInt"

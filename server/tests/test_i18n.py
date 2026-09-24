@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 import yaml
 
+from opengwt.core.engine import DECK_PROBLEM_KEYS, DECK_UNKNOWN_CARD
+from opengwt.core.model import DeckProblem
 from opengwt.i18n import Renderer, negotiate_locale, plural_category
+from opengwt.server.services.decks import problem_to_dict
 
 REPO = Path(__file__).resolve().parents[2]
 SUITE = REPO / "data" / "i18n" / "conformance.yaml"
@@ -39,6 +42,43 @@ def test_real_tables_render_card_names(dataset) -> None:  # type: ignore[no-unty
     assert renderer.render("zh-CN", "card.u-1001.name") == "占位 A 单位 1"
     assert renderer.render("ru", "card.u-1001.name").startswith("Заглушка A")
     assert renderer.render("fr", "card.u-1001.name") == "Placeholder A unit 1"
+
+
+# the numbers each deck problem's message shows (cards.md §12); the others are about one card
+DECK_PROBLEM_NUMBERS = {
+    "error.deck.too-few-cards": ("count", "min"),
+    "error.deck.too-many-cards": ("count", "max"),
+    "error.deck.too-few-units": ("count", "min"),
+    "error.deck.too-many-copies": ("count", "limit"),
+    "error.deck.over-budget": ("used", "budget"),
+}
+DECK_PROBLEMS_ABOUT_NO_CARD = (
+    "error.deck.too-few-cards",
+    "error.deck.too-many-cards",
+    "error.deck.too-few-units",
+    "error.deck.over-budget",
+)
+
+
+@pytest.mark.parametrize("count", [1, 2, 5, 21])
+def test_every_deck_problem_renders_in_every_locale(dataset, count: int) -> None:  # type: ignore[no-untyped-def]
+    """Each problem key has a message in every locale that shows every parameter the server
+    sends with it — plural forms included — so a client can list a deck's problems."""
+    renderer = Renderer(dataset.i18n)
+    for key in DECK_PROBLEM_KEYS:
+        # the first number drives the plural form; the second is told apart by its size
+        numbers = tuple(
+            (name, count if at == 0 else 1000 + count)
+            for at, name in enumerate(DECK_PROBLEM_NUMBERS.get(key, ()))
+        )
+        card = None if key in DECK_PROBLEMS_ABOUT_NO_CARD else "u-1001"
+        params = problem_to_dict(DeckProblem(key, card, numbers))["params"]
+        for locale in renderer.locales:
+            text = renderer.render(locale, key, params)
+            assert text != key and "{" not in text, (locale, key, text)
+            if card is not None and key != DECK_UNKNOWN_CARD:
+                assert renderer.render(locale, "card.u-1001.name") in text, (locale, key)
+            assert all(str(value) in text for _, value in numbers), (locale, key, text)
 
 
 @pytest.mark.parametrize(

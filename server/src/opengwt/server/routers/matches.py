@@ -51,7 +51,8 @@ async def join_match(
     session: AsyncSession = Depends(get_session),
     service: MatchService = Depends(match_service),
 ) -> MatchCreated:
-    deck = await resolve_deck(request, session, player.id, body.deck_id)
+    # judged by the rules the room was made with, in join_room
+    deck = await resolve_deck(request, session, player.id, body.deck_id, judge=False)
     await session.commit()
     info = await service.join_room(player.id, deck, body.room_code)
     return _created(request, info)

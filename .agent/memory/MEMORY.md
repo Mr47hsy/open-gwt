@@ -3,9 +3,9 @@
 Durable facts about open-gwt: decisions taken, status, and questions still open. One fact per file.
 Background that is not a decision lives in `../context/` instead.
 
-- [Project status](project-status.md) — MVP M1–M3 merged; ADR 0009 phases B and C replaced the v1 core, server on protocol 2, client cannot play until phase E; M2b not started
+- [Project status](project-status.md) — MVP M1–M3 merged; ADR 0009 phases B–D replaced the v1 core and added deck building, server on protocol 2, client cannot play until phase E; M2b not started
 - [Backlog](backlog.md) — open work by layer for parallel feature sessions
-- [Ruleset v2](ruleset-v2.md) — two-row standalone ruleset (ADR 0009); phases A–C done, turn = orders around one card then `end_turn`; D–F next in order
+- [Ruleset v2](ruleset-v2.md) — two-row standalone ruleset (ADR 0009); phases A–D done, turn = orders around one card then `end_turn`, decks judged by every §12 rule; E–F next in order
 - [Client workflow](client-workflow.md) — headless editor sequence, what to regenerate after which edit, what never to commit
 - [Server: Python, client: thin](server-python-thin-client.md) — rules core is a Python package in the server; the Unity client runs no rules and needs a server
 - [Card protocol in YAML](card-protocol-yaml.md) — closed vocabulary, JSON Schema, compiled to a content pack the server serves

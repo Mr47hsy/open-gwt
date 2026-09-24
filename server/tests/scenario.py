@@ -7,8 +7,9 @@ The runner turns each step into the intent it names (``play u-1 melee`` becomes 
 record — seed, decks, rules, intents — through ``replay`` and checks it reproduces the match
 exactly (``.agent/context/03-conventions.md``: replay-based tests, kept as data).
 
-Defaults keep scenarios short: decks of any size, the whole deck drawn in round one, no
-redraws and no stratagem on the board; a scenario may override any ``Rules`` field. Seats are
+Defaults keep scenarios short: decks of any size and make-up — no unit minimum, no copy
+limit — the whole deck drawn in round one, no redraws and no stratagem on the board; a
+scenario may override any ``Rules`` field. Seats are
 0 and 1; the seed decides who starts, and ``starter`` (default 0) states it.
 
 File shape (YAML)::
@@ -67,6 +68,9 @@ SCENARIOS = Path(__file__).parent / "replays" / "scenarios"
 
 BASE_RULES: dict[str, Any] = {
     "deck_min_cards": 1,
+    "deck_min_units": 0,
+    "copies_bronze": 99,
+    "copies_gold": 99,
     "draws_per_round": [10],
     "mulligans_per_round": [0],
     "starter_extra_mulligans": 0,

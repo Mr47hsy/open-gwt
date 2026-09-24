@@ -7,7 +7,7 @@ import json
 import logging
 import os
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
@@ -17,6 +17,7 @@ import yaml
 from alembic import command
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.testclient import WebSocketTestSession
 
 from opengwt.bots import RandomBot
@@ -32,11 +33,12 @@ from opengwt.core.intents import (
     PlayCard,
     UseOrder,
 )
-from opengwt.core.model import Kind, MatchState, Phase, Row, Side
+from opengwt.core.model import Kind, MatchState, Phase, Row, Rules, Side
 from opengwt.core.replay import record_from_dict, replay
 from opengwt.core.rng import bot_stream
 from opengwt.core.serialize import state_from_dict, state_hash
 from opengwt.data import load_data
+from opengwt.server import app as app_module
 from opengwt.server.app import create_app
 from opengwt.server.backends import (
     InlineTaskRunner,
@@ -45,10 +47,12 @@ from opengwt.server.backends import (
     VersionConflict,
 )
 from opengwt.server.config import ConfigError, Settings
-from opengwt.server.db.session import alembic_config, make_engine
+from opengwt.server.db.models import DeckRow, MatchRow
+from opengwt.server.db.session import alembic_config, make_engine, session_scope
 from opengwt.server.routers import ws as ws_router
 from opengwt.server.services import matches as match_service
 from opengwt.server.services.auth import create_token
+from opengwt.server.services.content import load_content
 from opengwt.server.services.matches import MatchService
 
 REPO = Path(__file__).resolve().parents[2]
@@ -184,6 +188,9 @@ def test_health_pack_and_i18n(client: TestClient) -> None:
     pack = client.get("/content/pack")
     assert pack.status_code == 200 and pack.json()["schema"] == "opengwt.pack/2"
     assert pack.json()["rules"]["row_capacity"] == 9
+    decks = {d["id"]: d for d in pack.json()["decks"]}
+    assert decks["starter-a"]["provisions"] == {"used": 163, "budget": 165}
+    assert decks["starter-b"]["provisions"] == {"used": 165, "budget": 165}
     etag = pack.headers["etag"]
     assert client.get("/content/pack", headers={"If-None-Match": etag}).status_code == 304
     locales = client.get("/content/i18n").json()
@@ -209,7 +216,38 @@ def test_errors_are_rendered_in_the_negotiated_locale(client: TestClient) -> Non
     assert client.patch("/me", headers=headers, json={"locale": "fr"}).status_code == 422
 
 
+def _starter_body(starter: str = "starter-a", **changes: Any) -> dict[str, Any]:
+    """A ``PUT /decks`` body with a starter deck's leader, stratagem and cards."""
+    deck = yaml.safe_load((REPO / "data" / "decks" / f"{starter}.deck.yaml").read_text())
+    body = {
+        "name": starter,
+        "faction": deck["faction"],
+        "leader": deck["leader"],
+        "stratagem": deck["stratagem"],
+        "cards": deck["cards"],
+    }
+    return {**body, **changes}
+
+
+def _with_count(cards: list[dict[str, Any]], card: str, count: int) -> list[dict[str, Any]]:
+    return [{**c, "count": count} if c["id"] == card else c for c in cards]
+
+
+def _db(client: TestClient, work: Callable[[AsyncSession], Awaitable[Any]]) -> Any:
+    """Run ``work`` on the app's own database, inside its event loop, and commit."""
+    assert client.portal is not None
+    sessions = client.app.state.sessions  # type: ignore[attr-defined]
+
+    async def run() -> Any:
+        async with session_scope(sessions) as session:
+            return await work(session)
+
+    return client.portal.call(run)
+
+
 def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
+    """Every broken rule is reported at once, each as its key, the card it is about and the
+    parameters its message takes (match.md §10)."""
     headers, _ = _guest(client)
     assert client.get("/decks", headers=headers).json() == []
     bad = client.put(
@@ -224,31 +262,190 @@ def test_decks_are_validated_by_the_rules(client: TestClient) -> None:
         },
     )
     assert bad.status_code == 422
-    problems = bad.json()["error"]["details"]["problems"]
-    assert problems == ["error.deck.wrong-faction:u-2001", "error.deck.too-few-cards"]
+    error = bad.json()["error"]
+    assert error["code"] == "deck_illegal" and error["message"] == "This deck is not legal."
+    assert error["details"]["problems"] == [
+        {
+            "key": "error.deck.wrong-faction",
+            "card": "u-2001",
+            "params": {"card": "@card.u-2001.name"},
+        },
+        {"key": "error.deck.too-few-cards", "params": {"count": 4, "min": 25}},
+        {"key": "error.deck.too-few-units", "params": {"count": 4, "min": 13}},
+        {
+            "key": "error.deck.too-many-copies",
+            "card": "u-1001",
+            "params": {"card": "@card.u-1001.name", "count": 3, "limit": 2},
+        },
+    ]
+    unknown = client.put(
+        "/decks/mine", headers=headers, json=_starter_body(leader="@l-0000", stratagem="g-0001x")
+    )
+    assert unknown.json()["error"]["details"]["problems"] == [
+        {"key": "error.deck.unknown-card", "card": "@l-0000", "params": {"card": "@@l-0000"}},
+        {"key": "error.deck.unknown-card", "card": "g-0001x", "params": {"card": "g-0001x"}},
+    ]
     no_leader = client.put(
         "/decks/mine",
         headers=headers,
         json={"name": "x", "faction": "placeholder-a", "cards": [{"id": "u-1001", "count": 25}]},
     )
     assert no_leader.status_code == 422  # a deck names its leader and its stratagem
-    starter = yaml.safe_load((REPO / "data" / "decks" / "starter-a.deck.yaml").read_text())
-    good = client.put(
-        "/decks/mine",
-        headers=headers,
-        json={
-            "name": "mine",
-            "faction": "placeholder-a",
-            "leader": starter["leader"],
-            "stratagem": starter["stratagem"],
-            "cards": starter["cards"],
-        },
-    )
+    good = client.put("/decks/mine", headers=headers, json=_starter_body(name="mine"))
     assert good.status_code == 200 and good.json()["deck_id"] == "mine"
-    assert [d["deck_id"] for d in client.get("/decks", headers=headers).json()] == ["mine"]
+    saved = client.get("/decks", headers=headers).json()
+    assert [d["deck_id"] for d in saved] == ["mine"]
+    assert saved[0]["provisions"] == {"used": 163, "budget": 165} and saved[0]["problems"] == []
+    assert saved[0] == good.json()
     other, _ = _guest(client, "other")
     assert client.delete("/decks/mine", headers=other).status_code == 404
     assert client.delete("/decks/mine", headers=headers).status_code == 204
+
+
+def test_the_server_judges_decks_by_the_rules_it_plays_with(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One ``Rules`` value: the pack publishes it, saving a deck and starting a match judge by
+    it, and a match stores it. A budget of 151 + 15 takes a deck of 166 provisions, which the
+    default rules would refuse, and refuses one of 167 against that budget."""
+    rules = replace(Rules(), provision_base=151)
+    monkeypatch.setattr(app_module, "load_content", lambda data_dir: load_content(data_dir, rules))
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        assert client.get("/content/pack").json()["rules"]["provision_base"] == 151
+        headers, _ = _guest(client)
+        body = _starter_body()
+        # 163 - 4 - 5 + 6 + 6: u-1001 and u-1002 out, a second u-1005 and u-1006 in
+        cards = _with_count(_with_count(body["cards"], "u-1005", 2), "u-1006", 2)
+        body["cards"] = [c for c in cards if c["id"] not in ("u-1001", "u-1002")]
+        saved = client.put("/decks/dear", headers=headers, json=body)
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["provisions"] == {"used": 166, "budget": 166}
+        body["cards"] = _with_count(_with_count(body["cards"], "u-1003", 1), "u-1004", 2)
+        refused = client.put("/decks/dearer", headers=headers, json=body)
+        assert refused.status_code == 422
+        assert refused.json()["error"]["details"]["problems"] == [
+            {"key": "error.deck.over-budget", "params": {"used": 167, "budget": 166}}
+        ]
+        started = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "dear"})
+        assert started.status_code == 201
+        room = client.post(
+            "/matches", headers=headers, json={"mode": "room", "deck_id": "starter-a"}
+        )
+        match_id = room.json()["match_id"]
+
+        async def stored_rules(session: AsyncSession) -> Any:
+            row = await session.get(MatchRow, match_id)
+            assert row is not None
+            return row.rules
+
+        assert _db(client, stored_rules)["provision_base"] == 151
+
+
+def test_a_saved_deck_the_rules_now_refuse_is_shown_and_cannot_start_a_match(
+    client: TestClient,
+) -> None:
+    """A deck saved under older rules stays saved: ``GET /decks`` shows what it breaks, a match
+    refuses it with the same problems, and saving it again fixes it (match.md §2)."""
+    headers, _ = _guest(client)
+    body = _starter_body(name="old")
+    assert client.put("/decks/old", headers=headers, json=body).status_code == 200
+    three = _with_count(body["cards"], "u-1003", 3)
+
+    async def break_it(session: AsyncSession) -> None:
+        row = await session.get(DeckRow, "old")
+        assert row is not None
+        row.cards = three
+
+    _db(client, break_it)
+    problem = {
+        "key": "error.deck.too-many-copies",
+        "card": "u-1003",
+        "params": {"card": "@card.u-1003.name", "count": 3, "limit": 2},
+    }
+    over = {"key": "error.deck.over-budget", "params": {"used": 167, "budget": 165}}
+    listed = client.get("/decks", headers=headers).json()
+    assert listed[0]["problems"] == [problem, over]
+    assert listed[0]["provisions"] == {"used": 167, "budget": 165}
+    refused = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "old"})
+    assert refused.status_code == 422
+    assert refused.json()["error"]["details"] == {"problems": [problem, over]}
+    assert client.put("/decks/old", headers=headers, json=body).status_code == 200
+    started = client.post("/matches", headers=headers, json={"mode": "bot", "deck_id": "old"})
+    assert started.status_code == 201
+
+
+def test_joining_a_room_refuses_a_deck_the_rules_now_refuse(client: TestClient) -> None:
+    """A join names the seat whose deck the rules refuse, and the room keeps waiting. The
+    joiner's own deck comes with its problems; the room's deck does not — they would show the
+    joiner the other player's cards (match.md §2, §10)."""
+    h0, _ = _guest(client, "a")
+    h1, _ = _guest(client, "b")
+    room = client.post("/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"}).json()
+    assert client.put("/decks/mine", headers=h1, json=_starter_body("starter-b")).status_code == 200
+
+    async def break_mine(session: AsyncSession) -> None:
+        row = await session.get(DeckRow, "mine")
+        assert row is not None
+        row.cards = _with_count(row.cards, "u-2001", 3)
+
+    _db(client, break_mine)
+    join = {"room_code": room["room_code"], "deck_id": "mine"}
+    joined = client.post("/matches/join", headers=h1, json=join)
+    assert joined.status_code == 422
+    assert joined.json()["error"]["details"] == {
+        "seat": 1,
+        "problems": [
+            {
+                "key": "error.deck.too-many-copies",
+                "card": "u-2001",
+                "params": {"card": "@card.u-2001.name", "count": 3, "limit": 2},
+            },
+            {"key": "error.deck.over-budget", "params": {"used": 173, "budget": 165}},
+        ],
+    }
+
+    async def break_the_room(session: AsyncSession) -> None:
+        row = await session.get(MatchRow, room["match_id"])
+        assert row is not None
+        deck = dict(row.decks[0])
+        deck["cards"] = [*deck["cards"], deck["cards"][0], deck["cards"][0]]
+        row.decks = [deck]
+
+    _db(client, break_the_room)
+    joined = client.post("/matches/join", headers=h1, json={**join, "deck_id": "starter-b"})
+    assert joined.status_code == 422
+    assert joined.json()["error"]["details"] == {"seat": 0}
+    status = client.get(f"/matches/{room['match_id']}", headers=h0).json()
+    assert status["status"] == "waiting"
+
+
+def test_joining_a_room_judges_decks_by_the_rules_it_was_made_with(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A room made under 25 cards at least takes a deck of 29 after the server moved to 30: the
+    rules the room stores are the ones its match is played with (match.md §2)."""
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        h0, _ = _guest(client, "a")
+        h1, _ = _guest(client, "b")
+        room = client.post(
+            "/matches", headers=h0, json={"mode": "room", "deck_id": "starter-a"}
+        ).json()
+        body = _starter_body("starter-b")
+        body["cards"] = [c for c in body["cards"] if c["id"] != "u-2001"]  # 29 cards
+        assert client.put("/decks/short", headers=h1, json=body).status_code == 200
+    stricter = replace(Rules(), deck_min_cards=30)
+    monkeypatch.setattr(
+        app_module, "load_content", lambda data_dir: load_content(data_dir, stricter)
+    )
+    with TestClient(create_app(_settings(tmp_path))) as client:
+        listed = client.get("/decks", headers=h1).json()
+        assert [p["key"] for p in listed[0]["problems"]] == ["error.deck.too-few-cards"]
+        refused = client.post("/matches", headers=h1, json={"mode": "bot", "deck_id": "short"})
+        assert refused.status_code == 422
+        joined = client.post(
+            "/matches/join", headers=h1, json={"room_code": room["room_code"], "deck_id": "short"}
+        )
+        assert joined.status_code == 200, joined.text
 
 
 def test_full_match_against_the_bot_and_its_replay(client: TestClient) -> None:

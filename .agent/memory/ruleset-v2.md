@@ -1,6 +1,6 @@
 ---
 name: ruleset-v2
-description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A, B and C are done, D is next.
+description: Decided 2026-09-23 — the game targets the two-row standalone ruleset (ADR 0009), replacing the three-row shape, in phases A–F, one pull request each; A–D are done, E is next.
 metadata:
   type: project
 ---
@@ -51,6 +51,20 @@ effects on their rows, which act in the order they were set (`RowEffect.since`);
 stops after 1000 queued steps; a first choice is cancellable only when it shows nothing hidden and
 took no random draw. `data/`'s starter decks use every phase-C word; the owner will export a
 card set of their own design later, to be imported in one go.
+
+Phase D is done (2026-09-24): `check_deck` judges every deck-building rule of `cards.md` §12 and
+reports all at once as `DeckProblem`s (key, card, numbers); the server judges decks by the one
+`Rules` value it serves (`Content.rules`), shows `provisions {used, budget}` and `problems` on
+every deck, and the pack's decks carry their provisions. Decisions the owner took for it: 25 to
+40 cards, 13 units, bronze twice and gold once, 150 plus the leader's bonus, confirmed from
+public sources and play; a leader belongs to the deck's own faction and is **never neutral**
+when a match starts; **no card costs fewer than 4** provisions (fixed in the card schema, not in
+`Rules`); no limit by rarity, colour count or neutral cards — bronze and gold are the only
+colours. Legality is judged when a deck is saved and when a match starts; a saved deck the rules
+now refuse is kept and shown with its problems; `replay` holds a record's decks only to what the
+engine needs (`UNPLAYABLE_DECK_KEYS`), so tightening deck building breaks no record. The owner
+also said that some cards change the leader's faction during a match — the vocabulary has no
+word for it yet (see [[backlog]]).
 
 **How to apply:** do not add v1 content or vocabulary; read ADR 0009 and take the next unfinished
 phase from [[backlog]]; vocabulary words describe behaviour and never reuse a distinctive official

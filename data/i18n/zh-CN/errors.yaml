@@ -19,3 +19,17 @@ error.choice-pending: 请先完成待选择的操作。
 error.unknown-instance: 这张牌不可用。
 error.unknown-message: 未知的消息类型 {type}。
 error.rate-limited: 操作过于频繁。
+
+# 卡组违反的构筑规则——deck_illegal 的 details.problems（docs/protocol/cards.md §12）。
+error.deck.unknown-card: "没有 {card} 这张卡牌。"
+error.deck.leader-not-leader: "{card} 不是领袖。"
+error.deck.stratagem-not-stratagem: "{card} 不是计策。"
+error.deck.wrong-faction: "{card} 属于其他阵营。"
+error.deck.leader-in-deck: "{card} 是领袖，不能作为卡组里的牌。"
+error.deck.stratagem-in-deck: "{card} 是计策，不能作为卡组里的牌。"
+error.deck.token-in-deck: "{card} 是衍生卡，只在对局中出现，不能放入卡组。"
+error.deck.too-few-cards.other: "卡组有 {count} 张牌，至少需要 {min} 张。"
+error.deck.too-many-cards.other: "卡组有 {count} 张牌，最多只能有 {max} 张。"
+error.deck.too-few-units.other: "卡组有 {count} 张单位牌，至少需要 {min} 张。"
+error.deck.too-many-copies.other: "{card} 放了 {count} 张，上限是 {limit} 张。"
+error.deck.over-budget: "卡组的构筑费用是 {used}，预算只有 {budget}。"

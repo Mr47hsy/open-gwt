@@ -52,7 +52,10 @@ def record_from_dict(d: dict[str, Any]) -> MatchRecord:
 
 
 def replay(lib: Library, record: MatchRecord) -> tuple[MatchState, list[Event]]:
-    state, events = new_match(lib, record.decks, record.seed, record.rules)
+    """Play a record's intents again. Its decks are not judged by today's deck-building rules,
+    only by what the engine needs (``new_match``): a record stays replayable when deck building
+    tightens (cards.md §12)."""
+    state, events = new_match(lib, record.decks, record.seed, record.rules, check_legality=False)
     for seat, intent in record.intents:
         state, more = apply(lib, state, seat, intent)
         events.extend(more)

@@ -382,6 +382,19 @@ class Deck:
 
 
 @dataclass(frozen=True)
+class DeckProblem:
+    """A deck-building rule a deck breaks (cards.md §12): the rule's key, the card it is about
+    when there is one, and the numbers its message shows (``count``, ``min``, ``limit``, …)."""
+
+    key: str
+    card: str | None = None
+    numbers: tuple[tuple[str, int], ...] = ()
+
+    def __str__(self) -> str:
+        return self.key if self.card is None else f"{self.key}:{self.card}"
+
+
+@dataclass(frozen=True)
 class Rules:
     """Every number that shapes a match or a deck (cards.md §4)."""
 
