@@ -213,6 +213,16 @@ def test_a_name_in_an_unknown_locale_is_refused(data: Path, tmp_path: Path) -> N
     assert any("name in 'zh', which is not one of en, ru, zh-CN" in p for p in plan.problems)
 
 
+def test_ids_with_a_trailing_newline_are_refused(tmp_path: Path) -> None:
+    """`$` matches before a final newline; ids are matched whole, or a file name would get one."""
+    deck = {"id": "odd\n", "faction": "test-f", "leader": "x", "stratagem": "y", "cards": {"a": 1}}
+    with pytest.raises(CardSetError) as info:
+        read_cardset(_set(tmp_path, [_unit("a", id="u-1\n")], decks=[deck]))
+    problems = "\n".join(info.value.problems)
+    assert "id 'u-1\\n' must match" in problems
+    assert "deck id 'odd\\n' must match" in problems
+
+
 def test_duplicate_keys_are_refused(tmp_path: Path) -> None:
     with pytest.raises(CardSetError) as info:
         read_cardset(_set(tmp_path, [_unit("alpha"), _unit("alpha")]))

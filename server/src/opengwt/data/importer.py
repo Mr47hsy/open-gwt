@@ -32,6 +32,7 @@ MANIFEST_SCHEMA = "opengwt.import/1"
 CARDS_SCHEMA = "opengwt.cards/2"
 DECK_SCHEMA = "opengwt.deck/2"
 MANIFEST_DIR = "import"
+# matched with fullmatch: `$` alone would let a trailing newline through
 ID = re.compile(r"^[a-z][a-z0-9-]{1,63}$")
 TAG = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 NUMBERED_ID = re.compile(r"^[a-z]-(\d+)$")
@@ -155,7 +156,7 @@ def read_cardset(path: Path, set_id: str | None = None) -> CardSet:
         if csv_path is not None:
             cardset.cards.extend(_csv_cards(path.parent / str(csv_path), problems))
         cardset.decks = _deck_entries(doc.get("decks"), path, problems)
-    if not ID.match(cardset.set_id):
+    if not ID.fullmatch(cardset.set_id):
         problems.append(f"{path}: set id {cardset.set_id!r} must match {ID.pattern}")
     if not cardset.cards:
         problems.append(f"{path}: no cards")
@@ -204,7 +205,7 @@ def _names_map(
         return {}
     out: dict[str, dict[str, str]] = {}
     for key, value in raw.items():
-        if not pattern.match(str(key)):
+        if not pattern.fullmatch(str(key)):
             problems.append(f"{path}: {what}: {key!r} must match {pattern.pattern}")
         name = value.get("name") if isinstance(value, dict) and "name" in value else value
         out[str(key)] = _localized(name, f"{path}: {what}.{key}.name", problems)
@@ -220,10 +221,10 @@ def _card_entry(raw: Any, where: str, problems: list[str]) -> CardEntry | None:
     if key is None or not str(key).strip():
         problems.append(f"{where}: a card needs a `key` or an `id`")
         return None
-    if cid is not None and not ID.match(str(cid)):
+    if cid is not None and not ID.fullmatch(str(cid)):
         problems.append(f"{where}: id {cid!r} must match {ID.pattern}")
     faction = raw.get("faction")
-    if not isinstance(faction, str) or not ID.match(faction):
+    if not isinstance(faction, str) or not ID.fullmatch(faction):
         problems.append(f"{where}: faction {faction!r} must be an id")
         faction = str(faction)
     fields = {k: v for k, v in raw.items() if k not in SET_FIELDS}
@@ -317,6 +318,9 @@ def _deck_entries(raw: Any, path: Path, problems: list[str]) -> list[DeckEntry]:
         missing = [k for k in ("id", "faction", "leader", "stratagem", "cards") if k not in deck]
         if missing:
             problems.append(f"{where}: missing {', '.join(missing)}")
+            continue
+        if not ID.fullmatch(str(deck["id"])):
+            problems.append(f"{where}: deck id {deck['id']!r} must match {ID.pattern}")
             continue
         cards_raw = deck["cards"]
         cards: list[tuple[str, int]] = []
@@ -516,7 +520,7 @@ def _assign_ids(
             plan.ids[entry.key] = rid
             taken.add(rid)
     if id_start is None:
-        numbers = [int(m.group(1)) for i in existing if (m := NUMBERED_ID.match(i))]
+        numbers = [int(m.group(1)) for i in existing if (m := NUMBERED_ID.fullmatch(i))]
         id_start = (max(numbers, default=0) // 1000 + 1) * 1000 + 1
     next_number: dict[str, int] = {}
     for entry in cardset.cards:

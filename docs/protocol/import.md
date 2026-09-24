@@ -68,7 +68,9 @@ A card is a card of a cards file (cards.md §3) — same fields, same closed voc
 | `name` | Its name per locale, or one string for the base locale. |
 | `text` | Optional explicit text per locale. Without it, a locale's text is generated from the card's abilities ([`i18n.md`](i18n.md) §10). |
 
-`place_new_card`'s `card` may name a key of the set. Every other field goes to the cards file as
+The card rules of cards.md apply as they are: a card in a deck costs at least 4 provisions, a
+leader belongs to a faction and never to `neutral`, and a deck meets every rule of cards.md §12
+(size, units, copies, budget). `place_new_card`'s `card` may name a key of the set. Every other field goes to the cards file as
 written and is validated against [`cards.schema.json`](cards.schema.json); a problem names the
 card's key.
 
