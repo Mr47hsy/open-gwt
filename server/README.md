@@ -31,3 +31,16 @@ curl -s -X POST localhost:8000/auth/guest -H 'content-type: application/json' -d
 ```
 
 Design: `docs/adr/` and `docs/protocol/` at the repository root.
+
+Bots and balance: `opengwt-sim` plays `random`, `greedy` or `search` bots — the last samples
+worlds consistent with what its player sees and plays its best candidates out to the round's
+end (`--search-worlds`, `--search-width`). With `--card-report` or `--report balance.csv` it
+reports each card's win-rate contribution — the win rate when drawn minus when not drawn — its
+play rate and its points per play and per provision; `--decks all --mirrors` plays every pairing
+of the decks and `--jobs 0` uses every CPU.
+
+```bash
+uv run opengwt-sim --bot-a search --bot-b greedy --matches 40 --jobs 0 --data ../data
+uv run opengwt-sim --bot-a greedy --bot-b greedy --decks all --mirrors --matches 500 \
+    --jobs 0 --card-report --report balance.csv --data ../data
+```

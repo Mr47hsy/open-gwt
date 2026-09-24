@@ -48,6 +48,9 @@ phase adds behaviour, not words.
   a no-op on whichever worker serves it; and like it, keeps its deadline through a `use_order`
   stopped on a cancellable choice and its `cancel_choice` (`_keeps_clock`, match.md §9).
 - Accounts beyond guest tokens are out of scope by decision; a display-name change exists.
+- The server runs its bot inside the event loop (`MatchService._bot_moves`); the search bot
+  (`OPENGWT_BOT=search`) takes about half a second per turn decision, so run the bot off the
+  loop (a thread or the task backend) before making it the default.
 
 **Content and rules** (after phase F)
 - Real, original card set with names and texts in three languages; balance passes with

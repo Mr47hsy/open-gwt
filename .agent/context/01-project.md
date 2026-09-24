@@ -50,7 +50,8 @@ Milestones M1 and M2 of ADR 0007 are implemented. `server/` is a uv project (Pyt
 with `opengwt.core` (the v2 rules engine of ADR 0009 phase B, SHA-256 random streams, views,
 canonical serialisation, replay), `opengwt.data`
 (YAML loading against the protocol schemas), `opengwt.i18n` (the shared message-format renderer),
-`opengwt.bots` (random, greedy), `opengwt.sim` (`opengwt-sim`) and `opengwt.server`
+`opengwt.bots` (random, greedy, search), `opengwt.sim` (`opengwt-sim`, with a per-card balance
+report) and `opengwt.server`
 (`opengwt-server`: FastAPI, guest tokens, decks, bot and room matches, the WebSocket match
 protocol, SQLite plus memory `MatchStore` / `EventBus` / `Cache`, Alembic migrations). `data/`
 holds v2 placeholder cards for two factions and neutral, two starter decks and en / zh-CN / ru
