@@ -56,6 +56,15 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 A `deck_id` is the caller's own name for a deck: two players may each keep a deck `mine`, and no
 route reads, replaces or deletes another player's deck.
 
+A `deck_id` has the shape of the content's ids (`cards.md` §2): 2 to 64 characters, a lower-case
+ASCII letter followed by lower-case letters, digits and hyphens — `^[a-z][a-z0-9-]{1,63}$`, the
+whole string. Every starter deck's id has it. `PUT` and `DELETE /decks/{deck_id}`, `POST /matches`
+and `/matches/join` refuse any other `deck_id` with `invalid_request` (422) before looking up a
+deck; `details` lists the violations, each with its `loc` — `["path", "deck_id"]` or
+`["body", "deck_id"]`. The limit is what the database stores, and the alphabet makes ids compare
+alike on every supported database, whatever its collation does with case, accents or trailing
+spaces.
+
 Errors are `{error: {code, message_key, params, message, details?}}` with the appropriate HTTP
 status. `message` is `message_key` rendered on the server with `params` in the negotiated locale
 (player profile, then `Accept-Language`, then `en`; see [`i18n.md`](i18n.md)). A client that knows
