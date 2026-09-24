@@ -88,6 +88,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="generate even where data/i18n has an explicit text, to compare the two",
     )
     texts.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
+    imp = sub.add_parser(
+        "import",
+        help="turn a card set (YAML, JSON or CSV) into data/ files, validated before writing",
+    )
+    imp.add_argument("source", help="the card set file: .yaml, .yml, .json or .csv")
+    imp.add_argument("--set", dest="set_id", default=None, help="set id (required for a CSV)")
+    imp.add_argument("--dry-run", action="store_true", help="validate and report, write nothing")
+    imp.add_argument(
+        "--replace", action="store_true", help="overwrite files this set did not write before"
+    )
+    imp.add_argument("--id-start", type=int, default=None, help="first number of new card ids")
+    imp.add_argument("--preview", default=None, help="print the imported cards' texts in LOCALE")
+    imp.add_argument("--data", dest="data_sub", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     explicit = args.data or getattr(args, "data_sub", None)
@@ -104,6 +117,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         target.write_text(fresh, encoding="utf-8")
         print(f"wrote {target}")
+    elif args.command == "import":
+        return _import(args, data_dir)
     elif args.command == "card-text":
         for line in card_texts(data_dir, args.locale, args.card, args.ignore_explicit):
             print(line)
@@ -125,6 +140,37 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "stale: " + ", ".join(stale) + "; run `opengwt-data client-i18n`", file=sys.stderr
             )
             return 1
+    return 0
+
+
+def _import(args: argparse.Namespace, data_dir: Path) -> int:
+    from opengwt.data.importer import CardSetError, import_cardset, preview_texts, summary
+
+    try:
+        plan = import_cardset(
+            Path(args.source),
+            data_dir,
+            set_id=args.set_id,
+            replace=args.replace,
+            id_start=args.id_start,
+            dry_run=args.dry_run,
+        )
+    except CardSetError as e:
+        print("the card set cannot be read:", file=sys.stderr)
+        for problem in e.problems:
+            print("  " + problem, file=sys.stderr)
+        return 2
+    for line in summary(plan, data_dir):
+        print(line)
+    if plan.problems:
+        print("nothing was written; problems:", file=sys.stderr)
+        for problem in plan.problems:
+            print("  " + problem, file=sys.stderr)
+        return 1
+    if args.preview:
+        for line in preview_texts(plan, data_dir, args.preview):
+            print(line)
+    print("dry run: nothing was written" if args.dry_run else "done; names must be original")
     return 0
 
 

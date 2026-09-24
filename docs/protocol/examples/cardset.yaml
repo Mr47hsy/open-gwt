@@ -1,0 +1,30 @@
+# Worked example for docs/protocol/import.md: a card set whose cards come from a spreadsheet's CSV
+# export, with the set's factions, tags and one deck here. Every name is a placeholder.
+schema: opengwt.cardset/1
+set: sample-c
+factions:
+  sample-c:
+    name: { en: Sample faction C, zh-CN: 示例阵营 C, ru: "Образец: фракция C" }
+tags:
+  sample-tag:
+    name: { en: Sample tag, zh-CN: 示例标签 }        # ru is stubbed, marked TODO
+cards_csv: cardset.csv
+decks:
+  sample-c-starter:
+    faction: sample-c
+    leader: sc-captain
+    stratagem: sc-gambit
+    cards:
+      sc-soldier: 2
+      sc-archer: 2
+      sc-shieldbearer: 2
+      sc-healer: 2
+      sc-drummer: 2
+      sc-scout: 2
+      sc-trapper: 2
+      sc-bannerman: 2
+      sc-veteran: 2
+      sc-herald: 2
+      sc-volley: 2
+      sc-rally: 2
+      sc-champion: 1

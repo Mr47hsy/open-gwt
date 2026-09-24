@@ -35,6 +35,8 @@ data/
 ```
 
 Schemas: [`cards.schema.json`](cards.schema.json), [`decks.schema.json`](decks.schema.json).
+A card set designed elsewhere — a spreadsheet, a YAML file of its own — is turned into these files
+by `opengwt-data import` ([`import.md`](import.md)).
 Worked examples: [`examples/`](examples/). The two example card files together use every word
 of the vocabulary; phase F's placeholder set grows from them.
 

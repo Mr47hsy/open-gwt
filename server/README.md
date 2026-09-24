@@ -12,6 +12,8 @@ uv run ruff check . && uv run ruff format --check .
 uv run mypy
 uv run lint-imports
 uv run opengwt-sim --matches 200 --replay-check 20 --data ../data
+uv run opengwt-data card-text --data ../data             # every card's text, explicit or generated
+uv run opengwt-data import set.yaml --data ../data --dry-run   # import a card set (docs/protocol/import.md)
 uv run opengwt-server                     # serve on 127.0.0.1:8000 with SQLite and memory backends
 uv run opengwt-server migrate             # apply migrations and exit
 uv run opengwt-server config              # print the effective configuration

@@ -1,0 +1,17 @@
+key,faction,kind,color,provisions,power,armor,rows,statuses,tags,token,provision_bonus,activation,abilities,name.en,name.zh-CN,name.ru,text.en
+sc-soldier,sample-c,unit,bronze,4,5,,,,sample-tag,,,,,Sample C soldier,示例 C 士兵,Образец C: солдат,
+sc-archer,sample-c,unit,bronze,5,3,,ranged,,,,,,"[{when: on_play, do: damage, amount: 2, target: {units: chosen, side: opponent}}]",Sample C archer,示例 C 弓手,Образец C: лучник,
+sc-shieldbearer,sample-c,unit,bronze,5,4,2,melee,shielded,,,,,,Sample C shieldbearer,示例 C 持盾者,Образец C: щитоносец,
+sc-healer,sample-c,unit,bronze,4,3,,,,,,,,"[{when: on_play, do: heal, target: {units: all, side: self, where: {damaged: true}}}]",Sample C healer,,,
+sc-drummer,sample-c,unit,bronze,5,3,,,,,,,,"[{when: while_on_board, do: continuous_boost, amount: 1, scope: adjacent}]",Sample C drummer,示例 C 鼓手,Образец C: барабанщик,
+sc-scout,sample-c,unit,bronze,4,3,,,,sample-tag,,,,"[{when: on_play, do: summon_from_deck, cards: {pick: all, where: {same_id_as_this: true}}}]",Sample C scout,示例 C 斥候,Образец C: разведчик,
+sc-trapper,sample-c,unit,bronze,5,4,,,,,,,,"[{when: on_play, do: add_status, status: locked, target: {units: chosen, side: opponent}}]",Sample C trapper,示例 C 设陷者,Образец C: ловчий,
+sc-bannerman,sample-c,unit,bronze,4,3,,,,,,,,"[{when: on_ally_played, if: {trigger_unit: {tags_any: [sample-tag]}}, do: boost, amount: 1, target: {units: this}}]",Sample C bannerman,示例 C 旗手,Образец C: знаменосец,
+sc-veteran,sample-c,unit,bronze,5,6,,,,,,,,"[{when: on_play, if: {hand_at_most: 4}, do: boost, amount: 2, target: {units: this}}]",Sample C veteran,示例 C 老兵,Образец C: ветеран,
+sc-herald,sample-c,unit,bronze,5,3,,,,,,,,"[{when: on_play, do: place_new_card, card: sc-recruit, count: 2}]",Sample C herald,示例 C 传令官,Образец C: глашатай,
+sc-recruit,sample-c,unit,,,1,,,,sample-tag,true,,,,Sample C recruit,示例 C 新兵,Образец C: новобранец,
+sc-volley,sample-c,special,bronze,5,,,,,,,,,"[{when: on_play, do: damage, amount: 1, target: {units: random, side: opponent, count: 3}}]",Sample C volley,示例 C 齐射,Образец C: залп,
+sc-rally,sample-c,special,bronze,4,,,,,,,,,"[{when: on_play, do: boost, amount: 1, target: {units: all, side: self}}]",Sample C rally,示例 C 集结,Образец C: сбор,Boost every allied unit by 1.
+sc-champion,sample-c,unit,gold,9,8,,,,,,,,"[{when: on_play, do: duel, target: {units: chosen, side: opponent}}]",Sample C champion,示例 C 勇士,Образец C: поборник,
+sc-captain,sample-c,leader,,,,,,,,,15,{charges: 2},"[{when: on_activate, do: boost, amount: 2, target: {units: chosen, side: self}}]",Sample C captain,示例 C 队长,Образец C: капитан,
+sc-gambit,sample-c,stratagem,,,,,,,,,,,"[{when: on_activate, do: draw, count: 1}]",Sample C gambit,示例 C 先手计,Образец C: гамбит,
