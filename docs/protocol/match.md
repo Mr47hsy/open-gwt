@@ -46,12 +46,15 @@ All routes except `/health` and `/auth/guest` require `Authorization: Bearer <to
 | `GET /content/i18n/{locale}` | → flat map key → message | All domains merged; `ETag` is the pack hash. See `i18n.md`. |
 | `PATCH /me` | `{display_name?, locale?}` → profile | `locale` drives server-rendered fallback text. |
 | `GET /decks` | → `[{deck_id, name, faction, leader, stratagem, cards, provisions, problems}]` | The caller's decks, judged by the `Rules` the server plays with (the pack's): `provisions` is `{used, budget}` (`cards.md` §12) and `problems` the deck-building rules the deck breaks, as in section 10 — empty for a deck saved now, but a deck saved earlier breaks rules that have tightened or content that changed since (a deck from before ADR 0011, with no stratagem, reports it as an unknown card with an empty id). |
-| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck, as `GET /decks` lists it | Validated against the pack and the rules core's deck legality (`cards.md` §12); an illegal deck is refused with `deck_illegal` and is not saved. `leader` and `stratagem` are required. |
-| `DELETE /decks/{deck_id}` | → `204` | |
+| `PUT /decks/{deck_id}` | `{name, faction, leader, stratagem, cards}` → the deck, as `GET /decks` lists it | Creates or replaces the caller's deck of that id. Validated against the pack and the rules core's deck legality (`cards.md` §12); an illegal deck is refused with `deck_illegal` and is not saved. `leader` and `stratagem` are required. |
+| `DELETE /decks/{deck_id}` | → `204` | The caller's deck of that id; `deck_not_found` if they have none. |
 | `POST /matches` | `{mode: "bot" \| "room", deck_id}` → `{match_id, room_code?, ws_url}` | `bot` starts immediately against a server-hosted bot. `room` waits for a second player. `deck_id` is a saved deck of the caller or a starter deck of the pack; a saved deck the rules refuse is refused with `deck_illegal`. |
 | `POST /matches/join` | `{room_code, deck_id}` → `{match_id, ws_url}` | Second player of a room. Both decks are judged by the rules the room was made with, which its match is played with; if either breaks one, the join is refused with `deck_illegal` and `details.seat`, and the room keeps waiting. The joiner's own deck (seat 1) comes with its `problems`; the room's (seat 0) does not, since they would show the joiner the other player's cards. |
 | `GET /matches/{match_id}` | → `{match_id, mode, status, seat, room_code, result}` | `status` is `waiting`, `playing` or `finished`; `seat` is the caller's seat or null. |
 | `GET /matches/{match_id}/replay` | → replay record (section 9) | Only after the match ended; only for its players in the MVP. |
+
+A `deck_id` is the caller's own name for a deck: two players may each keep a deck `mine`, and no
+route reads, replaces or deletes another player's deck.
 
 Errors are `{error: {code, message_key, params, message, details?}}` with the appropriate HTTP
 status. `message` is `message_key` rendered on the server with `params` in the negotiated locale

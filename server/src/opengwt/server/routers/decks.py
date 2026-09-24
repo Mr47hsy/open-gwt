@@ -44,6 +44,12 @@ def _out(row: DeckRow, content: Content) -> DeckOut:
     )
 
 
+async def _own_deck(session: AsyncSession, player_id: str, deck_id: str) -> DeckRow | None:
+    """The player's deck of that id. Deck ids are per player: another player's deck of the same
+    id is a different deck, and never this one."""
+    return await session.get(DeckRow, {"player_id": player_id, "id": deck_id})
+
+
 async def resolve_deck(
     request: Request, session: AsyncSession, player_id: str, deck_id: str, judge: bool = True
 ) -> Deck:
@@ -51,8 +57,8 @@ async def resolve_deck(
     deck the server's rules make illegal — one saved under older rules, say — is refused with
     its problems, unless ``judge`` is off: joining a room judges it by the room's rules."""
     content: Content = request.app.state.content
-    row = await session.get(DeckRow, deck_id)
-    if row is not None and row.player_id == player_id:
+    row = await _own_deck(session, player_id, deck_id)
+    if row is not None:
         deck = _deck(row)
         problems = check_deck(content.library, deck, content.rules) if judge else []
         if problems:
@@ -93,9 +99,7 @@ async def put_deck(
     problems = check_deck(content.library, deck, content.rules)
     if problems:
         raise AppError("deck_illegal", 422, details={"problems": problems_to_list(problems)})
-    row = await session.get(DeckRow, deck_id)
-    if row is not None and row.player_id != player.id:
-        raise AppError("deck_not_found", 404, {"deck": deck_id})
+    row = await _own_deck(session, player.id, deck_id)
     if row is None:
         row = DeckRow(id=deck_id, player_id=player.id, name=body.name, faction=body.faction)
         session.add(row)
@@ -115,8 +119,8 @@ async def delete_deck(
     player: Player = Depends(current_player),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
-    row = await session.get(DeckRow, deck_id)
-    if row is None or row.player_id != player.id:
+    row = await _own_deck(session, player.id, deck_id)
+    if row is None:
         raise AppError("deck_not_found", 404, {"deck": deck_id})
     await session.delete(row)
     return Response(status_code=204)
