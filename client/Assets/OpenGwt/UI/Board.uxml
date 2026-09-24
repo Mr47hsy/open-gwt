@@ -94,7 +94,6 @@
                 <ui:Label name="modal-title" class="dialog__title" />
                 <ui:VisualElement name="modal-options" class="modal__options" />
                 <ui:VisualElement class="dialog__buttons">
-                    <ui:Button name="modal-confirm" class="button button--primary" />
                     <ui:Button name="modal-cancel" class="button" />
                 </ui:VisualElement>
             </ui:VisualElement>

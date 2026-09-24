@@ -48,7 +48,6 @@ namespace OpenGwt.UI
         private readonly VisualElement modal;
         private readonly Label modalTitle;
         private readonly VisualElement modalOptions;
-        private readonly Button modalConfirm;
         private readonly Button modalCancel;
         private readonly ScrollView hand;
         private readonly Button passButton;
@@ -95,7 +94,6 @@ namespace OpenGwt.UI
             modal = root.Q<VisualElement>("modal");
             modalTitle = root.Q<Label>("modal-title");
             modalOptions = root.Q<VisualElement>("modal-options");
-            modalConfirm = root.Q<Button>("modal-confirm");
             modalCancel = root.Q<Button>("modal-cancel");
             hand = root.Q<ScrollView>("hand");
             passButton = root.Q<Button>("btn-pass");
@@ -204,7 +202,6 @@ namespace OpenGwt.UI
             endTurnButton.text = T("ui.board.end-turn");
             endMulliganButton.text = T("ui.board.end-mulligan");
             cancelChoiceButton.text = T("ui.modal.cancel");
-            modalConfirm.text = T("ui.modal.confirm");
             modalCancel.text = T("ui.modal.cancel");
             foreach (var row in RowNames)
             {
@@ -892,7 +889,6 @@ namespace OpenGwt.UI
                 modalOptions.Add(empty);
             }
             foreach (var card in cards) modalOptions.Add(Card(card.Instance, Face(card.Card), Array.Empty<string>()));
-            modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = DisplayStyle.Flex;
             modalCancel.text = T("ui.modal.close");
             modalCancel.clickable = new Clickable(HideModal);
@@ -922,7 +918,6 @@ namespace OpenGwt.UI
                 });
                 modalOptions.Add(element);
             }
-            modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = choice.Cancellable ? DisplayStyle.Flex : DisplayStyle.None;
             modalCancel.text = T("ui.modal.cancel");
             modalCancel.SetEnabled(view.Allows("cancel_choice"));
@@ -945,7 +940,6 @@ namespace OpenGwt.UI
                 button.AddToClassList("button");
                 modalOptions.Add(button);
             }
-            modalConfirm.style.display = DisplayStyle.None;
             modalCancel.style.display = DisplayStyle.Flex;
             modalCancel.text = T("ui.modal.cancel");
             modalCancel.SetEnabled(true);

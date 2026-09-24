@@ -50,10 +50,6 @@ ui.kind.leader: Лидер
 ui.kind.artifact: Артефакт
 ui.kind.stratagem: Стратагема
 ui.preview.base-power: "Базовая сила {power}"
-ui.hand.count.one: "{count} карта в руке"
-ui.hand.count.few: "{count} карты в руке"
-ui.hand.count.many: "{count} карт в руке"
-ui.hand.count.other: "{count} карт в руке"
 ui.event.card-played: "{who}: сыграна {card}"
 ui.event.player-passed: "{who}: пас"
 ui.event.round-ended: "раунд {round} окончен {mine} : {theirs}"
@@ -70,7 +66,6 @@ ui.zone.banished: Изгнано
 ui.zone.empty: Здесь пока пусто
 
 # Подробности карты: сила, броня, активируемая способность, статусы (cards.md §5, §6.3, §9).
-ui.card.use: Использовать
 ui.card.armor: "Броня {count}"
 ui.card.boosted: "Усилена на {amount}"
 ui.card.damaged: "Ранена на {amount}"

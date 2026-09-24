@@ -50,7 +50,6 @@ ui.kind.leader: 领袖
 ui.kind.artifact: 器物
 ui.kind.stratagem: 计策
 ui.preview.base-power: "基础战力 {power}"
-ui.hand.count.other: "手牌 {count} 张"
 ui.event.card-played: "{who}：打出 {card}"
 ui.event.player-passed: "{who}：pass"
 ui.event.round-ended: "第 {round} 局结束 {mine} : {theirs}"
@@ -64,7 +63,6 @@ ui.zone.banished: 放逐区
 ui.zone.empty: 这里还没有牌
 
 # 卡牌详情：战力、护甲、主动能力、状态（cards.md §5、§6.3、§9）。
-ui.card.use: 使用
 ui.card.armor: "护甲 {count}"
 ui.card.boosted: "已增益 {amount}"
 ui.card.damaged: "受伤 {amount}"
