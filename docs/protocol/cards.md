@@ -29,6 +29,7 @@ data/
   cards/<faction>.cards.yaml     one file per faction, plus neutral.cards.yaml
   decks/<deck-id>.deck.yaml      one file per deck
   i18n/<locale>/cards.yaml       card, faction and tag texts, one flat map per locale
+  i18n/<locale>/abilities.yaml   the templates card texts are generated from (i18n.md §10)
   i18n/<locale>/ui.yaml          client strings, including the names of statuses and row effects
   i18n/conformance.yaml          renderer conformance cases, run by server and client
 ```
@@ -624,8 +625,10 @@ faction.placeholder-a.name: Placeholder faction A
 tag.tag-a.name: Placeholder tag A
 ```
 
-Required keys: per card, tokens and leaders included, `card.<id>.name` and `card.<id>.text`; per
-faction, `faction.<id>.name`; per tag used by any card, `tag.<id>.name`. The interface names of
+Required keys: per card, tokens and leaders included, `card.<id>.name`; per faction,
+`faction.<id>.name`; per tag used by any card, `tag.<id>.name`. `card.<id>.text` is optional: a
+locale without it gets a text generated from the card's abilities
+([`i18n.md`](i18n.md) §10), and an explicit one always wins. The interface names of
 the vocabulary players see — `status.<status>.name` and `.text` for every status,
 `row-effect.<effect>.name` and `.text` for every row effect, with the id's underscores written as
 hyphens (`status.banish-on-leave.name`) — live in `ui.yaml`, and the words chosen there are
@@ -658,9 +661,11 @@ rules (section 12):
 
 Cross-file rules: card ids unique; every id a deck or a `place_new_card` references exists, and
 the latter names a unit or artifact; a deck's cards belong to its faction or `neutral`; no leader
-is `neutral`; every required text key exists in every locale. The decks under `data/decks/` must
-also be legal under the pack's `rules` (section 12). Cards are sorted by id so that the pack, and
-its hash, are reproducible.
+is `neutral`; every required text key exists in every locale. Before that last check the
+compiler generates every `card.<id>.text` a locale lacks (i18n.md §10); a template the generator
+needs and no table has is an error. The decks under `data/decks/` must also be legal under the
+pack's `rules` (section 12). Cards are sorted by id so that the pack, and its hash, are
+reproducible.
 
 The server loads the pack at start-up and serves it (`GET /content/pack`); the client renders from
 it. No runtime component reads YAML.

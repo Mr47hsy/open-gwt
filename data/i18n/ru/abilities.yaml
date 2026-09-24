@@ -1,0 +1,372 @@
+# Шаблоны текста карт (docs/protocol/i18n.md §10). Если у карты нет явного текста на этом языке,
+# компилятор собирает `card.<id>.text` из этих шаблонов; явный текст всегда важнее. Каждая
+# способность даёт одно предложение по шаблону своего действия; его части — `{target}`, `{rows}`,
+# `{cards}`, `{from}`, `{place}`, `{filter}` — сначала рендерятся из ключей ниже и вставляются
+# как есть. `{count}` — всегда то число, с которым согласуется предложение.
+# Цель действия стоит в винительном падеже (`ability.target.…`); получатель урона, брони,
+# базовой силы, щита и иммунитета — в дательном (`ability.target-to.…`).
+
+# --- соединение фраз и предложений
+ability.join.sentences: "{a} {b}"
+ability.join.list: "{a}, {b}"
+ability.join.or: "{a} или {b}"
+ability.join.and: "{a} и {b}"
+ability.if.and: "{a} и {b}"
+
+# --- сама карта, перед способностями
+ability.card.row-only.melee: Только ближний ряд.
+ability.card.row-only.ranged: Только дальний ряд.
+ability.card.stratagem-row.melee: Начинает в ближнем ряду.
+ability.card.stratagem-row.ranged: Начинает в дальнем ряду.
+ability.card.opponent-side: Выходит на сторону противника.
+ability.card.armor: "Броня {count}."
+ability.card.provision-bonus: "+{count} к бюджету."
+ability.card.status.shielded: Выходит на поле со щитом.
+ability.card.status.immune: "Иммунитет: не предлагается для выбора."
+ability.card.status.banish-on-leave: Изгоняется, когда покидает поле.
+ability.card.status.kept-at-round-end: Один раз остаётся на поле в конце раунда.
+ability.card.status.status-proof: На неё нельзя наложить статус.
+ability.card.status.guarding: "Охрана: противник не может выбрать другие карты в её ряду."
+
+# --- активируемые способности: {count} — заряды, а при бесконечных зарядах — перезарядка
+ability.activate.charges.one: "Активация, {count} заряд: {effect}"
+ability.activate.charges.few: "Активация, {count} заряда: {effect}"
+ability.activate.charges.many: "Активация, {count} зарядов: {effect}"
+ability.activate.charges.other: "Активация, {count} зарядов: {effect}"
+ability.activate.cooldown.one: "Активация раз в {count} ход: {effect}"
+ability.activate.cooldown.few: "Активация раз в {count} хода: {effect}"
+ability.activate.cooldown.many: "Активация раз в {count} ходов: {effect}"
+ability.activate.cooldown.other: "Активация раз в {count} ходов: {effect}"
+ability.activate.charges-cooldown.one: "Активация, {count} заряд, перезарядка {cooldown}: {effect}"
+ability.activate.charges-cooldown.few: "Активация, {count} заряда, перезарядка {cooldown}: {effect}"
+ability.activate.charges-cooldown.many: "Активация, {count} зарядов, перезарядка {cooldown}: {effect}"
+ability.activate.charges-cooldown.other: "Активация, {count} зарядов, перезарядка {cooldown}: {effect}"
+ability.activate.ready-on-play: Способность можно использовать уже в ход розыгрыша.
+
+# --- триггеры
+ability.when.on-play: "При розыгрыше: {effect}"
+ability.when.on-destroyed: "При уничтожении: {effect}"
+ability.when.on-turn-start: "В начале вашего хода: {effect}"
+ability.when.on-turn-end: "В конце вашего хода: {effect}"
+ability.when.on-round-end: "В конце раунда: {effect}"
+ability.when.on-ally-played: "Когда вы разыгрываете на своей стороне другой отряд{filter}: {effect}"
+ability.when.on-boosted: "При усилении: {effect}"
+ability.when.on-damaged: "Когда переживает урон: {effect}"
+
+# --- условия
+ability.if.text: "Если {condition}: {effect}"
+ability.if.on-row.melee: эта карта в ближнем ряду
+ability.if.on-row.ranged: эта карта в дальнем ряду
+ability.if.this: "эта карта {state}"
+ability.if.hand-at-most.one: "у вас в руке не больше {count} карты"
+ability.if.hand-at-most.other: "у вас в руке не больше {count} карт"
+ability.if.units-at-least.self.one: "на вашей стороне не меньше {count} другого отряда{filter}"
+ability.if.units-at-least.self.other: "на вашей стороне не меньше {count} других отрядов{filter}"
+ability.if.units-at-least.opponent.one: "на стороне противника не меньше {count} отряда{filter}"
+ability.if.units-at-least.opponent.other: "на стороне противника не меньше {count} отрядов{filter}"
+ability.if.units-at-least.both.one: "на поле не меньше {count} другого отряда{filter}"
+ability.if.units-at-least.both.other: "на поле не меньше {count} других отрядов{filter}"
+ability.if.starting-deck-without-neutral: в вашей начальной колоде не было нейтральных карт
+
+# --- какова сама карта (после `if.this`)
+ability.is.kind.unit: является отрядом
+ability.is.kind.special: является особой картой
+ability.is.kind.artifact: является артефактом
+ability.is.color.bronze: бронзовая
+ability.is.color.gold: золотая
+ability.is.tags-any: "относится к: {tags}"
+ability.is.tags-none: "не относится к: {tags}"
+ability.is.statuses-any: "имеет статус: {statuses}"
+ability.is.statuses-none: "не имеет статуса: {statuses}"
+ability.is.power-at-least: "имеет силу не меньше {count}"
+ability.is.power-at-most: "имеет силу не больше {count}"
+ability.is.boosted: усилена
+ability.is.damaged: ранена
+
+# --- фильтры: уточнения отряда или карты, перечисленные внутри `where.wrap`
+ability.where.wrap: " ({list})"
+ability.where.row.melee: в ближнем ряду
+ability.where.row.ranged: в дальнем ряду
+ability.where.kind.unit: отряд
+ability.where.kind.special: особая карта
+ability.where.kind.artifact: артефакт
+ability.where.color.bronze: бронза
+ability.where.color.gold: золото
+ability.where.tags-any: "{tags}"
+ability.where.tags-none: "не {tags}"
+ability.where.statuses-any: "статус: {statuses}"
+ability.where.statuses-none: "без статуса: {statuses}"
+ability.where.same-id: копия этой карты
+ability.where.power-at-least: "сила не меньше {count}"
+ability.where.power-at-most: "сила не больше {count}"
+ability.where.stronger-than-this: сильнее этой карты
+ability.where.boosted: усиленный
+ability.where.damaged: раненый
+
+# --- статусы: в фильтрах и в списке снимаемых
+ability.state.locked: блокировка
+ability.state.shielded: щит
+ability.state.immune: иммунитет
+ability.state.poisoned: яд
+ability.state.bleeding: кровотечение
+ability.state.growing: рост
+ability.state.banish-on-leave: изгнание при уходе
+ability.state.kept-at-round-end: сохранение в конце раунда
+ability.state.status-proof: защита от статусов
+ability.state.guarding: охрана
+ability.state.on-enemy-side: на чужой стороне
+ability.status.locked: блокировка
+ability.status.shielded: щит
+ability.status.immune: иммунитет
+ability.status.poisoned: яд
+ability.status.bleeding: кровотечение
+ability.status.growing: рост
+ability.status.banish-on-leave: изгнание при уходе
+ability.status.kept-at-round-end: сохранение в конце раунда
+ability.status.status-proof: защита от статусов
+ability.status.guarding: охрана
+
+# --- отряды на поле, `target`: винительный падеж
+ability.target.chosen.self: "союзный отряд{filter}"
+ability.target.chosen.opponent: "вражеский отряд{filter}"
+ability.target.chosen.both: "отряд{filter}"
+ability.target.chosen-row.self: "все союзные отряды{filter} в выбранном ряду"
+ability.target.chosen-row.opponent: "все вражеские отряды{filter} в выбранном ряду"
+ability.target.chosen-row.both: "все отряды{filter} в выбранном ряду"
+ability.target.all.self: "все союзные отряды{filter}"
+ability.target.all.self-other: "все другие союзные отряды{filter}"
+ability.target.all.opponent: "все вражеские отряды{filter}"
+ability.target.all.both: "все отряды{filter}"
+ability.target.all.both-other: "все другие отряды{filter}"
+ability.target.random.self.one: "случайный союзный отряд{filter}"
+ability.target.random.self.few: "{count} случайных союзных отряда{filter}"
+ability.target.random.self.other: "{count} случайных союзных отрядов{filter}"
+ability.target.random.opponent.one: "случайный вражеский отряд{filter}"
+ability.target.random.opponent.few: "{count} случайных вражеских отряда{filter}"
+ability.target.random.opponent.other: "{count} случайных вражеских отрядов{filter}"
+ability.target.random.both.one: "случайный отряд{filter}"
+ability.target.random.both.few: "{count} случайных отряда{filter}"
+ability.target.random.both.other: "{count} случайных отрядов{filter}"
+ability.target.strongest.self: "сильнейший союзный отряд{filter}"
+ability.target.strongest.opponent: "сильнейший вражеский отряд{filter}"
+ability.target.strongest.both: "сильнейший отряд{filter}"
+ability.target.weakest.self: "слабейший союзный отряд{filter}"
+ability.target.weakest.opponent: "слабейший вражеский отряд{filter}"
+ability.target.weakest.both: "слабейший отряд{filter}"
+ability.target.this: себя
+ability.target.adjacent: "соседние отряды{filter}"
+ability.target.trigger-unit: "разыгранный отряд{filter}"
+ability.target.previous-targets.one: ту же цель
+ability.target.previous-targets.other: те же цели
+
+# --- получатель, `target`: дательный падеж
+ability.target-to.chosen.self: "союзному отряду{filter}"
+ability.target-to.chosen.opponent: "вражескому отряду{filter}"
+ability.target-to.chosen.both: "отряду{filter}"
+ability.target-to.chosen-row.self: "всем союзным отрядам{filter} в выбранном ряду"
+ability.target-to.chosen-row.opponent: "всем вражеским отрядам{filter} в выбранном ряду"
+ability.target-to.chosen-row.both: "всем отрядам{filter} в выбранном ряду"
+ability.target-to.all.self: "всем союзным отрядам{filter}"
+ability.target-to.all.self-other: "всем другим союзным отрядам{filter}"
+ability.target-to.all.opponent: "всем вражеским отрядам{filter}"
+ability.target-to.all.both: "всем отрядам{filter}"
+ability.target-to.all.both-other: "всем другим отрядам{filter}"
+ability.target-to.random.self.one: "случайному союзному отряду{filter}"
+ability.target-to.random.self.other: "{count} случайным союзным отрядам{filter}"
+ability.target-to.random.opponent.one: "случайному вражескому отряду{filter}"
+ability.target-to.random.opponent.other: "{count} случайным вражеским отрядам{filter}"
+ability.target-to.random.both.one: "случайному отряду{filter}"
+ability.target-to.random.both.other: "{count} случайным отрядам{filter}"
+ability.target-to.strongest.self: "сильнейшему союзному отряду{filter}"
+ability.target-to.strongest.opponent: "сильнейшему вражескому отряду{filter}"
+ability.target-to.strongest.both: "сильнейшему отряду{filter}"
+ability.target-to.weakest.self: "слабейшему союзному отряду{filter}"
+ability.target-to.weakest.opponent: "слабейшему вражескому отряду{filter}"
+ability.target-to.weakest.both: "слабейшему отряду{filter}"
+ability.target-to.this: себе
+ability.target-to.adjacent: "соседним отрядам{filter}"
+ability.target-to.trigger-unit: "разыгранному отряду{filter}"
+ability.target-to.previous-targets.one: той же цели
+ability.target-to.previous-targets.other: тем же целям
+
+# --- ряды, `row_target`: винительный падеж
+ability.rows.this: свой ряд
+ability.rows.chosen.self: выбранный союзный ряд
+ability.rows.chosen.opponent: выбранный вражеский ряд
+ability.rows.chosen.both: выбранный ряд
+ability.rows.chosen.both.melee: выбранный ближний ряд
+ability.rows.chosen.both.ranged: выбранный дальний ряд
+ability.rows.all.self: ваши ряды
+ability.rows.all.opponent: вражеские ряды
+ability.rows.all.both: все ряды
+ability.rows.all.self.melee: ваш ближний ряд
+ability.rows.all.self.ranged: ваш дальний ряд
+ability.rows.all.opponent.melee: вражеский ближний ряд
+ability.rows.all.opponent.ranged: вражеский дальний ряд
+ability.rows.all.both.melee: оба ближних ряда
+ability.rows.all.both.ranged: оба дальних ряда
+
+# --- карты колоды, кладбища или руки, `cards`: способ выбора × существительное, винительный падеж
+ability.cards.chosen.unit: "отряд{filter}"
+ability.cards.chosen.special: "особую карту{filter}"
+ability.cards.chosen.artifact: "артефакт{filter}"
+ability.cards.chosen.card: "карту{filter}"
+ability.cards.chosen.copy: "копию этой карты{filter}"
+ability.cards.offer.unit: "один из {count} случайных отрядов{filter}"
+ability.cards.offer.special: "одну из {count} случайных особых карт{filter}"
+ability.cards.offer.artifact: "один из {count} случайных артефактов{filter}"
+ability.cards.offer.card: "одну из {count} случайных карт{filter}"
+ability.cards.offer.copy: "одну из {count} случайных копий этой карты{filter}"
+ability.cards.random.unit.one: "случайный отряд{filter}"
+ability.cards.random.unit.few: "{count} случайных отряда{filter}"
+ability.cards.random.unit.other: "{count} случайных отрядов{filter}"
+ability.cards.random.special.one: "случайную особую карту{filter}"
+ability.cards.random.special.few: "{count} случайные особые карты{filter}"
+ability.cards.random.special.other: "{count} случайных особых карт{filter}"
+ability.cards.random.artifact.one: "случайный артефакт{filter}"
+ability.cards.random.artifact.few: "{count} случайных артефакта{filter}"
+ability.cards.random.artifact.other: "{count} случайных артефактов{filter}"
+ability.cards.random.card.one: "случайную карту{filter}"
+ability.cards.random.card.few: "{count} случайные карты{filter}"
+ability.cards.random.card.other: "{count} случайных карт{filter}"
+ability.cards.random.copy.one: "случайную копию этой карты{filter}"
+ability.cards.random.copy.few: "{count} случайные копии этой карты{filter}"
+ability.cards.random.copy.other: "{count} случайных копий этой карты{filter}"
+ability.cards.first.unit.one: "первый отряд{filter}"
+ability.cards.first.unit.few: "первые {count} отряда{filter}"
+ability.cards.first.unit.other: "первые {count} отрядов{filter}"
+ability.cards.first.special.one: "первую особую карту{filter}"
+ability.cards.first.special.few: "первые {count} особые карты{filter}"
+ability.cards.first.special.other: "первые {count} особых карт{filter}"
+ability.cards.first.artifact.one: "первый артефакт{filter}"
+ability.cards.first.artifact.few: "первые {count} артефакта{filter}"
+ability.cards.first.artifact.other: "первые {count} артефактов{filter}"
+ability.cards.first.card.one: "первую карту{filter}"
+ability.cards.first.card.few: "первые {count} карты{filter}"
+ability.cards.first.card.other: "первые {count} карт{filter}"
+ability.cards.first.copy.one: "первую копию этой карты{filter}"
+ability.cards.first.copy.few: "первые {count} копии этой карты{filter}"
+ability.cards.first.copy.other: "первые {count} копий этой карты{filter}"
+ability.cards.all.unit: "все отряды{filter}"
+ability.cards.all.special: "все особые карты{filter}"
+ability.cards.all.artifact: "все артефакты{filter}"
+ability.cards.all.card: "все карты{filter}"
+ability.cards.all.copy: "все копии этой карты{filter}"
+ability.cards.up-to.unit.one: "до {count} отряда{filter}"
+ability.cards.up-to.unit.other: "до {count} отрядов{filter}"
+ability.cards.up-to.special.one: "до {count} особой карты{filter}"
+ability.cards.up-to.special.other: "до {count} особых карт{filter}"
+ability.cards.up-to.artifact.one: "до {count} артефакта{filter}"
+ability.cards.up-to.artifact.other: "до {count} артефактов{filter}"
+ability.cards.up-to.card.one: "до {count} карты{filter}"
+ability.cards.up-to.card.other: "до {count} карт{filter}"
+ability.cards.up-to.copy.one: "до {count} копии этой карты{filter}"
+ability.cards.up-to.copy.other: "до {count} копий этой карты{filter}"
+
+# --- зоны и места
+ability.from.deck.self: из вашей колоды
+ability.from.deck.opponent: из колоды противника
+ability.from.graveyard.self: с вашего кладбища
+ability.from.graveyard.opponent: с кладбища противника
+ability.from.hand.self: из вашей руки
+ability.from.hand.opponent: из руки противника
+ability.place.here: рядом с этой картой
+ability.place.opponent: на сторону противника
+ability.place.melee.self: в ваш ближний ряд
+ability.place.melee.opponent: в ближний ряд противника
+ability.place.ranged.self: в ваш дальний ряд
+ability.place.ranged.opponent: в дальний ряд противника
+
+# --- действия, по предложению на каждое
+ability.damage.text.one: "Наносит {target} {amount} урон."
+ability.damage.text.other: "Наносит {target} {amount} урона."
+ability.boost.text: "Усиливает {target} на {amount}."
+ability.add-armor.text: "Даёт {target} +{amount} брони."
+ability.heal.text: "Исцеляет {target}."
+ability.reset-power.text: "Возвращает {target} к базовой силе."
+ability.raise-base-power.text: "Повышает {target} базовую силу на {amount}."
+ability.destroy.text: "Уничтожает {target}."
+ability.banish.text: "Изгоняет {target}."
+ability.add-status.locked.text: "Блокирует {target}."
+ability.add-status.locked.timed.text.one: "Блокирует {target} на {count} ход."
+ability.add-status.locked.timed.text.few: "Блокирует {target} на {count} хода."
+ability.add-status.locked.timed.text.other: "Блокирует {target} на {count} ходов."
+ability.add-status.shielded.text: "Даёт {target} щит."
+ability.add-status.immune.text: "Даёт {target} иммунитет."
+ability.add-status.immune.timed.text.one: "Даёт {target} иммунитет на {count} ход."
+ability.add-status.immune.timed.text.few: "Даёт {target} иммунитет на {count} хода."
+ability.add-status.immune.timed.text.other: "Даёт {target} иммунитет на {count} ходов."
+ability.add-status.poisoned.text: "Отравляет {target}."
+ability.add-status.bleeding.timed.text.one: "Накладывает на {target} кровотечение на {count} ход."
+ability.add-status.bleeding.timed.text.few: "Накладывает на {target} кровотечение на {count} хода."
+ability.add-status.bleeding.timed.text.other: "Накладывает на {target} кровотечение на {count} ходов."
+ability.add-status.growing.timed.text.one: "Накладывает на {target} рост на {count} ход."
+ability.add-status.growing.timed.text.few: "Накладывает на {target} рост на {count} хода."
+ability.add-status.growing.timed.text.other: "Накладывает на {target} рост на {count} ходов."
+ability.add-status.banish-on-leave.text: "Помечает {target}: покидая поле, изгоняется."
+ability.add-status.kept-at-round-end.text: "Помечает {target}: остаётся на поле в конце раунда."
+ability.add-status.status-proof.text: "Защищает {target} от новых статусов."
+ability.add-status.status-proof.timed.text.one: "Защищает {target} от новых статусов на {count} ход."
+ability.add-status.status-proof.timed.text.few: "Защищает {target} от новых статусов на {count} хода."
+ability.add-status.status-proof.timed.text.other: "Защищает {target} от новых статусов на {count} ходов."
+ability.add-status.guarding.text: "Ставит {target} охранять свой ряд."
+ability.add-status.guarding.timed.text.one: "Ставит {target} охранять свой ряд на {count} ход."
+ability.add-status.guarding.timed.text.few: "Ставит {target} охранять свой ряд на {count} хода."
+ability.add-status.guarding.timed.text.other: "Ставит {target} охранять свой ряд на {count} ходов."
+ability.remove-statuses.text: "Очищает {target} от статусов: {statuses}."
+ability.remove-statuses.all.text: "Очищает {target} от всех статусов."
+ability.move-to-other-row.text: "Перемещает {target} в другой ряд."
+ability.return-to-hand.text: "Возвращает {target} в руку."
+ability.take-control.text: "Переманивает {target} на вашу сторону."
+ability.drain.text.one: "Наносит {target} {amount} урон и усиливается на нанесённый урон."
+ability.drain.text.other: "Наносит {target} {amount} урона и усиливается на нанесённый урон."
+ability.duel.text: "Нападает на {target}: они по очереди бьют друг друга, начиная с этой карты, пока один не покинет поле."
+ability.consume.text: "Уничтожает {target} и усиливается на силу цели."
+ability.discard.text: "Сбросьте {cards} {from}."
+ability.draw.text.one: "Возьмите карту."
+ability.draw.text.few: "Возьмите {count} карты."
+ability.draw.text.other: "Возьмите {count} карт."
+ability.draw.opponent.text.one: "Противник берёт карту."
+ability.draw.opponent.text.few: "Противник берёт {count} карты."
+ability.draw.opponent.text.other: "Противник берёт {count} карт."
+ability.play-from-deck.text: "Разыграйте {cards} {from}."
+ability.play-from-graveyard.text: "Разыграйте {cards} {from}."
+ability.summon-from-deck.text: "Выводит на поле {cards} {from} {place}."
+ability.place-new-card.text.one: "Выставляет {place} новую копию «{card}»."
+ability.place-new-card.text.few: "Выставляет {place} {count} новые копии «{card}»."
+ability.place-new-card.text.other: "Выставляет {place} {count} новых копий «{card}»."
+ability.create.unit.text.one: "Показывает {count} случайный отряд{filter} вашей фракции или нейтральный; разыграйте новую копию выбранного."
+ability.create.unit.text.few: "Показывает {count} случайных отряда{filter} вашей фракции или нейтральных; разыграйте новую копию выбранного."
+ability.create.unit.text.other: "Показывает {count} случайных отрядов{filter} вашей фракции или нейтральных; разыграйте новую копию выбранного."
+ability.create.special.text.one: "Показывает {count} случайную особую карту{filter} вашей фракции или нейтральную; разыграйте новую копию выбранной."
+ability.create.special.text.few: "Показывает {count} случайные особые карты{filter} вашей фракции или нейтральные; разыграйте новую копию выбранной."
+ability.create.special.text.other: "Показывает {count} случайных особых карт{filter} вашей фракции или нейтральных; разыграйте новую копию выбранной."
+ability.create.artifact.text.one: "Показывает {count} случайный артефакт{filter} вашей фракции или нейтральный; разыграйте новую копию выбранного."
+ability.create.artifact.text.few: "Показывает {count} случайных артефакта{filter} вашей фракции или нейтральных; разыграйте новую копию выбранного."
+ability.create.artifact.text.other: "Показывает {count} случайных артефактов{filter} вашей фракции или нейтральных; разыграйте новую копию выбранного."
+ability.create.card.text.one: "Показывает {count} случайную карту{filter} вашей фракции или нейтральную; разыграйте новую копию выбранной."
+ability.create.card.text.few: "Показывает {count} случайные карты{filter} вашей фракции или нейтральные; разыграйте новую копию выбранной."
+ability.create.card.text.other: "Показывает {count} случайных карт{filter} вашей фракции или нейтральных; разыграйте новую копию выбранной."
+ability.add-charges.this.text.one: "Способность этой карты получает {count} заряд."
+ability.add-charges.this.text.few: "Способность этой карты получает {count} заряда."
+ability.add-charges.this.text.other: "Способность этой карты получает {count} зарядов."
+ability.add-charges.leader.text.one: "Способность вашего лидера получает {count} заряд."
+ability.add-charges.leader.text.few: "Способность вашего лидера получает {count} заряда."
+ability.add-charges.leader.text.other: "Способность вашего лидера получает {count} зарядов."
+ability.set-row-effect.damage-strongest.text.one: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда сильнейший отряд там получает {amount} урон."
+ability.set-row-effect.damage-strongest.text.other: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда сильнейший отряд там получает {amount} урона."
+ability.set-row-effect.damage-weakest.text.one: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда слабейший отряд там получает {amount} урон."
+ability.set-row-effect.damage-weakest.text.other: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда слабейший отряд там получает {amount} урона."
+ability.set-row-effect.damage-random.text.one: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда случайный отряд там получает {amount} ед. урона."
+ability.set-row-effect.damage-random.text.few: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда {count} случайных отряда там получают {amount} ед. урона."
+ability.set-row-effect.damage-random.text.other: "Накладывает на {rows} вредный эффект: в начале каждого хода владельца ряда {count} случайных отрядов там получают {amount} ед. урона."
+ability.set-row-effect.boost-random.text.one: "Накладывает на {rows} полезный эффект: в начале каждого хода владельца ряда случайный отряд там усиливается на {amount}."
+ability.set-row-effect.boost-random.text.few: "Накладывает на {rows} полезный эффект: в начале каждого хода владельца ряда {count} случайных отряда там усиливаются на {amount}."
+ability.set-row-effect.boost-random.text.other: "Накладывает на {rows} полезный эффект: в начале каждого хода владельца ряда {count} случайных отрядов там усиливаются на {amount}."
+ability.set-row-effect.damage-on-arrival.text.one: "Накладывает на {rows} вредный эффект: каждый отряд, попадающий туда, получает {amount} урон."
+ability.set-row-effect.damage-on-arrival.text.other: "Накладывает на {rows} вредный эффект: каждый отряд, попадающий туда, получает {amount} урона."
+ability.clear-row-effect.text: "Очищает {rows} от эффектов."
+ability.clear-row-effect.hazard.text: "Очищает {rows} от вредных эффектов."
+ability.clear-row-effect.boon.text: "Очищает {rows} от полезных эффектов."
+ability.continuous-boost.row.text: "Другие отряды в её ряду получают +{amount} к силе."
+ability.continuous-boost.adjacent.text: "Соседние отряды получают +{amount} к силе."

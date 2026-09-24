@@ -1,0 +1,107 @@
+# Draft of .drafts/draft-d/batches/01.json — a proposal for the owner, not content.
+schema: opengwt.cardset/1
+set: draft-d
+cards:
+  # 打出时：对一个敌方单位造成 3 点伤害。
+  - key: dr-scout
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 4
+    power: 3
+    name: { zh-CN: 草稿斥候, en: Draft scout }
+    abilities:
+      - when: on_play
+        do: damage
+        amount: 3
+        target: { units: chosen, side: opponent }
+
+  # 打出时：治疗所有受伤的友方单位。
+  - key: dr-medic
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 4
+    name: { zh-CN: 草稿医师, en: Draft medic }
+    abilities:
+      - when: on_play
+        do: heal
+        target: { units: all, side: self, where: { damaged: true } }
+
+  # 在场时，相邻的单位战力 +1。
+  - key: dr-drummer
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 3
+    name: { zh-CN: 草稿鼓手, en: Draft drummer }
+    abilities:
+      - when: while_on_board
+        do: continuous_boost
+        amount: 1
+        scope: adjacent
+
+  # 免疫。只能放在近战行。你的每个回合开始时，使自身获得 1 点增益。
+  - key: dr-sentry
+    faction: draft-d
+    kind: unit
+    color: gold
+    provisions: 9
+    power: 6
+    armor: 2
+    rows: [melee]
+    statuses: [immune]
+    name: { zh-CN: 草稿哨兵, en: Draft sentry }
+    abilities:
+      - when: on_turn_start
+        do: boost
+        amount: 1
+        target: { units: this }
+
+  # 锁定一个敌方单位，然后对同一单位造成 2 点伤害。
+  - key: dr-trapper
+    faction: draft-d
+    kind: special
+    color: bronze
+    provisions: 5
+    name: { zh-CN: 草稿陷阱, en: Draft trap }
+    abilities:
+      - when: on_play
+        do: add_status
+        status: locked
+        target: { units: chosen, side: opponent }
+      - when: on_play
+        do: damage
+        amount: 2
+        target: { units: previous_targets }
+
+  # 从你的牌库中打出一张战力不高于 4 的铜色单位。
+  - key: dr-rally
+    faction: draft-d
+    kind: special
+    color: bronze
+    provisions: 4
+    name: { zh-CN: 草稿集结, en: Draft rally }
+    abilities:
+      - when: on_play
+        do: play_from_deck
+        cards:
+          pick: chosen
+          side: self
+          where: { kind: [unit], color: bronze, power_at_most: 4 }
+
+  # 打出时：在此牌旁边放置两张“草稿新兵”。
+  - key: dr-herald
+    faction: draft-d
+    kind: unit
+    color: bronze
+    provisions: 5
+    power: 2
+    name: { zh-CN: 草稿传令官, en: Draft herald }
+    abilities:
+      - when: on_play
+        do: place_new_card
+        card: dr-recruit
+        count: 2

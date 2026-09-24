@@ -1,0 +1,297 @@
+# Card text templates (docs/protocol/i18n.md §10). The compiler builds `card.<id>.text` from these
+# for every card that has no explicit text in this locale; an explicit text always wins.
+# A sentence is rendered from its action's template; the phrases it is made of — `{target}`,
+# `{rows}`, `{cards}`, `{from}`, `{place}`, `{filter}` — are rendered first from the keys below
+# and inserted as they are. `{count}` is always the number the sentence counts, so plural
+# variants follow it. Every key must exist in every locale (plural variants aside).
+
+# --- joining phrases and sentences
+ability.join.sentences: "{a} {b}"
+ability.join.list: "{a}, {b}"
+ability.join.or: "{a} or {b}"
+ability.join.and: "{a} and {b}"
+ability.if.and: "{a} and {b}"
+
+# --- the card itself, before its abilities
+ability.card.row-only.melee: Melee row only.
+ability.card.row-only.ranged: Ranged row only.
+ability.card.stratagem-row.melee: Starts on the melee row.
+ability.card.stratagem-row.ranged: Starts on the ranged row.
+ability.card.opponent-side: Lands on the opponent's side.
+ability.card.armor: "Armour {count}."
+ability.card.provision-bonus: "Adds {count} to the provision budget."
+ability.card.status.shielded: Enters the board with a shield.
+ability.card.status.immune: "Immune: never offered as a choice."
+ability.card.status.banish-on-leave: Banished whenever it leaves the board.
+ability.card.status.kept-at-round-end: Stays on the board when a round ends, once.
+ability.card.status.status-proof: No status can be added to it.
+ability.card.status.guarding: "Guards its row: the opponent cannot choose any other card there."
+
+# --- activated abilities: {count} is the charges, or the cooldown when charges are unlimited
+ability.activate.charges.one: "Activate once: {effect}"
+ability.activate.charges.other: "Activate, {count} charges: {effect}"
+ability.activate.cooldown.one: "Activate once per turn: {effect}"
+ability.activate.cooldown.other: "Activate every {count} turns: {effect}"
+ability.activate.charges-cooldown.one: "Activate once: {effect}"
+ability.activate.charges-cooldown.other: "Activate, {count} charges, cooldown {cooldown}: {effect}"
+ability.activate.ready-on-play: Its ability can be used on the turn it is played.
+
+# --- triggers
+ability.when.on-play: "When played: {effect}"
+ability.when.on-destroyed: "When destroyed: {effect}"
+ability.when.on-turn-start: "At the start of your turn: {effect}"
+ability.when.on-turn-end: "At the end of your turn: {effect}"
+ability.when.on-round-end: "When the round ends: {effect}"
+ability.when.on-ally-played: "When you play another unit{filter} on your side: {effect}"
+ability.when.on-boosted: "When boosted: {effect}"
+ability.when.on-damaged: "When it survives damage: {effect}"
+
+# --- conditions
+ability.if.text: "If {condition}: {effect}"
+ability.if.on-row.melee: it is on the melee row
+ability.if.on-row.ranged: it is on the ranged row
+ability.if.this: "it {state}"
+ability.if.hand-at-most.one: "you hold {count} card or fewer"
+ability.if.hand-at-most.other: "you hold {count} cards or fewer"
+ability.if.units-at-least.self.one: "you have at least {count} other unit{filter}"
+ability.if.units-at-least.self.other: "you have at least {count} other units{filter}"
+ability.if.units-at-least.opponent.one: "the opponent has at least {count} unit{filter}"
+ability.if.units-at-least.opponent.other: "the opponent has at least {count} units{filter}"
+ability.if.units-at-least.both.one: "there is at least {count} other unit{filter} on the board"
+ability.if.units-at-least.both.other: "there are at least {count} other units{filter} on the board"
+ability.if.starting-deck-without-neutral: your starting deck had no neutral card
+
+# --- what the acting card is, after `if.this`
+ability.is.kind.unit: is a unit
+ability.is.kind.special: is a special card
+ability.is.kind.artifact: is an artifact
+ability.is.color.bronze: is bronze
+ability.is.color.gold: is gold
+ability.is.tags-any: "is {tags}"
+ability.is.tags-none: "is not {tags}"
+ability.is.statuses-any: "is {statuses}"
+ability.is.statuses-none: "is not {statuses}"
+ability.is.power-at-least: "has {count} power or more"
+ability.is.power-at-most: "has {count} power or less"
+ability.is.boosted: is boosted
+ability.is.damaged: is damaged
+
+# --- filters: the qualifiers of a unit or a card, listed inside `where.wrap`
+ability.where.wrap: " ({list})"
+ability.where.row.melee: on the melee row
+ability.where.row.ranged: on the ranged row
+ability.where.kind.unit: unit
+ability.where.kind.special: special card
+ability.where.kind.artifact: artifact
+ability.where.color.bronze: bronze
+ability.where.color.gold: gold
+ability.where.tags-any: "{tags}"
+ability.where.tags-none: "not {tags}"
+ability.where.statuses-any: "{statuses}"
+ability.where.statuses-none: "not {statuses}"
+ability.where.same-id: copy of this card
+ability.where.power-at-least: "{count} power or more"
+ability.where.power-at-most: "{count} power or less"
+ability.where.stronger-than-this: stronger than this unit
+ability.where.boosted: boosted
+ability.where.damaged: damaged
+
+# --- statuses: as a state a unit is in (filters), and as a thing removed from it
+ability.state.locked: locked
+ability.state.shielded: shielded
+ability.state.immune: immune
+ability.state.poisoned: poisoned
+ability.state.bleeding: bleeding
+ability.state.growing: growing
+ability.state.banish-on-leave: marked for banishment
+ability.state.kept-at-round-end: kept at round end
+ability.state.status-proof: status-proof
+ability.state.guarding: guarding
+ability.state.on-enemy-side: on the other side
+ability.status.locked: lock
+ability.status.shielded: shield
+ability.status.immune: immunity
+ability.status.poisoned: poison
+ability.status.bleeding: bleeding
+ability.status.growing: growth
+ability.status.banish-on-leave: banishment mark
+ability.status.kept-at-round-end: round-end keep
+ability.status.status-proof: status protection
+ability.status.guarding: guard
+
+# --- units on the board, `target`. A locale that needs another case for the recipient of an
+# action (damage, armour, base power, drain, a shield, immunity) adds `ability.target-to.…` twins.
+ability.target.chosen.self: "an allied unit{filter}"
+ability.target.chosen.opponent: "an enemy unit{filter}"
+ability.target.chosen.both: "a unit{filter}"
+ability.target.chosen-row.self: "all allied units{filter} on a row of your choice"
+ability.target.chosen-row.opponent: "all enemy units{filter} on a row of your choice"
+ability.target.chosen-row.both: "all units{filter} on a row of your choice"
+ability.target.all.self: "all allied units{filter}"
+ability.target.all.self-other: "all other allied units{filter}"
+ability.target.all.opponent: "all enemy units{filter}"
+ability.target.all.both: "all units{filter}"
+ability.target.all.both-other: "all other units{filter}"
+ability.target.random.self.one: "a random allied unit{filter}"
+ability.target.random.self.other: "{count} random allied units{filter}"
+ability.target.random.opponent.one: "a random enemy unit{filter}"
+ability.target.random.opponent.other: "{count} random enemy units{filter}"
+ability.target.random.both.one: "a random unit{filter}"
+ability.target.random.both.other: "{count} random units{filter}"
+ability.target.strongest.self: "the strongest allied unit{filter}"
+ability.target.strongest.opponent: "the strongest enemy unit{filter}"
+ability.target.strongest.both: "the strongest unit{filter}"
+ability.target.weakest.self: "the weakest allied unit{filter}"
+ability.target.weakest.opponent: "the weakest enemy unit{filter}"
+ability.target.weakest.both: "the weakest unit{filter}"
+ability.target.this: itself
+ability.target.adjacent: "the adjacent units{filter}"
+ability.target.trigger-unit: "the played unit{filter}"
+ability.target.previous-targets.one: the same unit
+ability.target.previous-targets.other: the same units
+
+# --- row-sides, `row_target`
+ability.rows.this: its row
+ability.rows.chosen.self: one of your rows
+ability.rows.chosen.opponent: an enemy row
+ability.rows.chosen.both: a row
+ability.rows.chosen.both.melee: a melee row
+ability.rows.chosen.both.ranged: a ranged row
+ability.rows.all.self: your rows
+ability.rows.all.opponent: the enemy rows
+ability.rows.all.both: every row
+ability.rows.all.self.melee: your melee row
+ability.rows.all.self.ranged: your ranged row
+ability.rows.all.opponent.melee: the enemy melee row
+ability.rows.all.opponent.ranged: the enemy ranged row
+ability.rows.all.both.melee: both melee rows
+ability.rows.all.both.ranged: both ranged rows
+
+# --- cards in a deck, graveyard or hand, `cards`: pick × noun
+ability.cards.chosen.unit: "a unit{filter}"
+ability.cards.chosen.special: "a special card{filter}"
+ability.cards.chosen.artifact: "an artifact{filter}"
+ability.cards.chosen.card: "a card{filter}"
+ability.cards.chosen.copy: "a copy of this card{filter}"
+ability.cards.offer.unit: "one of {count} random units{filter}"
+ability.cards.offer.special: "one of {count} random special cards{filter}"
+ability.cards.offer.artifact: "one of {count} random artifacts{filter}"
+ability.cards.offer.card: "one of {count} random cards{filter}"
+ability.cards.offer.copy: "one of {count} random copies of this card{filter}"
+ability.cards.random.unit.one: "a random unit{filter}"
+ability.cards.random.unit.other: "{count} random units{filter}"
+ability.cards.random.special.one: "a random special card{filter}"
+ability.cards.random.special.other: "{count} random special cards{filter}"
+ability.cards.random.artifact.one: "a random artifact{filter}"
+ability.cards.random.artifact.other: "{count} random artifacts{filter}"
+ability.cards.random.card.one: "a random card{filter}"
+ability.cards.random.card.other: "{count} random cards{filter}"
+ability.cards.random.copy.one: "a random copy of this card{filter}"
+ability.cards.random.copy.other: "{count} random copies of this card{filter}"
+ability.cards.first.unit.one: "the first unit{filter}"
+ability.cards.first.unit.other: "the first {count} units{filter}"
+ability.cards.first.special.one: "the first special card{filter}"
+ability.cards.first.special.other: "the first {count} special cards{filter}"
+ability.cards.first.artifact.one: "the first artifact{filter}"
+ability.cards.first.artifact.other: "the first {count} artifacts{filter}"
+ability.cards.first.card.one: "the first card{filter}"
+ability.cards.first.card.other: "the first {count} cards{filter}"
+ability.cards.first.copy.one: "the first copy of this card{filter}"
+ability.cards.first.copy.other: "the first {count} copies of this card{filter}"
+ability.cards.all.unit: "all units{filter}"
+ability.cards.all.special: "all special cards{filter}"
+ability.cards.all.artifact: "all artifacts{filter}"
+ability.cards.all.card: "all cards{filter}"
+ability.cards.all.copy: "all copies of this card{filter}"
+ability.cards.up-to.unit.one: "up to {count} unit{filter}"
+ability.cards.up-to.unit.other: "up to {count} units{filter}"
+ability.cards.up-to.special.one: "up to {count} special card{filter}"
+ability.cards.up-to.special.other: "up to {count} special cards{filter}"
+ability.cards.up-to.artifact.one: "up to {count} artifact{filter}"
+ability.cards.up-to.artifact.other: "up to {count} artifacts{filter}"
+ability.cards.up-to.card.one: "up to {count} card{filter}"
+ability.cards.up-to.card.other: "up to {count} cards{filter}"
+ability.cards.up-to.copy.one: "up to {count} copy of this card{filter}"
+ability.cards.up-to.copy.other: "up to {count} copies of this card{filter}"
+
+# --- zones and places
+ability.from.deck.self: from your deck
+ability.from.deck.opponent: from the opponent's deck
+ability.from.graveyard.self: from your graveyard
+ability.from.graveyard.opponent: from the opponent's graveyard
+ability.from.hand.self: from your hand
+ability.from.hand.opponent: from the opponent's hand
+ability.place.here: next to it
+ability.place.opponent: on the opponent's side
+ability.place.melee.self: on your melee row
+ability.place.melee.opponent: on the opponent's melee row
+ability.place.ranged.self: on your ranged row
+ability.place.ranged.opponent: on the opponent's ranged row
+
+# --- actions, one sentence each
+ability.damage.text: "Deal {amount} damage to {target}."
+ability.boost.text: "Boost {target} by {amount}."
+ability.add-armor.text: "Give {target} {amount} armour."
+ability.heal.text: "Heal {target}."
+ability.reset-power.text: "Reset {target} to base power."
+ability.raise-base-power.text: "Raise the base power of {target} by {amount}."
+ability.destroy.text: "Destroy {target}."
+ability.banish.text: "Banish {target}."
+ability.add-status.locked.text: "Lock {target}."
+ability.add-status.locked.timed.text.one: "Lock {target} for {count} turn."
+ability.add-status.locked.timed.text.other: "Lock {target} for {count} turns."
+ability.add-status.shielded.text: "Give {target} a shield."
+ability.add-status.immune.text: "Give {target} immunity."
+ability.add-status.immune.timed.text.one: "Give {target} immunity for {count} turn."
+ability.add-status.immune.timed.text.other: "Give {target} immunity for {count} turns."
+ability.add-status.poisoned.text: "Poison {target}."
+ability.add-status.bleeding.timed.text.one: "Make {target} bleed for {count} turn."
+ability.add-status.bleeding.timed.text.other: "Make {target} bleed for {count} turns."
+ability.add-status.growing.timed.text.one: "Make {target} grow for {count} turn."
+ability.add-status.growing.timed.text.other: "Make {target} grow for {count} turns."
+ability.add-status.banish-on-leave.text: "Mark {target} to be banished when leaving the board."
+ability.add-status.kept-at-round-end.text: "Mark {target} to stay on the board when the round ends."
+ability.add-status.status-proof.text: "Protect {target} from new statuses."
+ability.add-status.status-proof.timed.text.one: "Protect {target} from new statuses for {count} turn."
+ability.add-status.status-proof.timed.text.other: "Protect {target} from new statuses for {count} turns."
+ability.add-status.guarding.text: "Make {target} guard its row."
+ability.add-status.guarding.timed.text.one: "Make {target} guard its row for {count} turn."
+ability.add-status.guarding.timed.text.other: "Make {target} guard its row for {count} turns."
+ability.remove-statuses.text: "Remove {statuses} from {target}."
+ability.remove-statuses.all.text: "Remove every status from {target}."
+ability.move-to-other-row.text: "Move {target} to the other row."
+ability.return-to-hand.text: "Return {target} to hand."
+ability.take-control.text: "Take control of {target}."
+ability.drain.text: "Deal {amount} damage to {target} and boost itself by the damage dealt."
+ability.duel.text: "Fight {target}: they strike each other in turn, this unit first, until one leaves the board."
+ability.consume.text: "Destroy {target} and boost itself by the power destroyed."
+ability.discard.text: "Discard {cards} {from}."
+ability.draw.text.one: Draw a card.
+ability.draw.text.other: "Draw {count} cards."
+ability.draw.opponent.text.one: The opponent draws a card.
+ability.draw.opponent.text.other: "The opponent draws {count} cards."
+ability.play-from-deck.text: "Play {cards} {from}."
+ability.play-from-graveyard.text: "Play {cards} {from}."
+ability.summon-from-deck.text: "Bring {cards} {from} onto the board {place}."
+ability.place-new-card.text.one: "Place a new {card} {place}."
+ability.place-new-card.text.other: "Place {count} new copies of {card} {place}."
+ability.create.unit.text: "Offer {count} random units{filter} of your faction or neutral; play a new copy of the one you pick."
+ability.create.special.text: "Offer {count} random special cards{filter} of your faction or neutral; play a new copy of the one you pick."
+ability.create.artifact.text: "Offer {count} random artifacts{filter} of your faction or neutral; play a new copy of the one you pick."
+ability.create.card.text: "Offer {count} random cards{filter} of your faction or neutral; play a new copy of the one you pick."
+ability.add-charges.this.text.one: Its ability gains a charge.
+ability.add-charges.this.text.other: "Its ability gains {count} charges."
+ability.add-charges.leader.text.one: Your leader's ability gains a charge.
+ability.add-charges.leader.text.other: "Your leader's ability gains {count} charges."
+ability.set-row-effect.damage-strongest.text: "Set a hazard on {rows}: at each turn start of that row's player, the strongest unit there takes {amount} damage."
+ability.set-row-effect.damage-weakest.text: "Set a hazard on {rows}: at each turn start of that row's player, the weakest unit there takes {amount} damage."
+ability.set-row-effect.damage-random.text.one: "Set a hazard on {rows}: at each turn start of that row's player, a random unit there takes {amount} damage."
+ability.set-row-effect.damage-random.text.other: "Set a hazard on {rows}: at each turn start of that row's player, {count} random units there take {amount} damage."
+ability.set-row-effect.boost-random.text.one: "Set a boon on {rows}: at each turn start of that row's player, a random unit there is boosted by {amount}."
+ability.set-row-effect.boost-random.text.other: "Set a boon on {rows}: at each turn start of that row's player, {count} random units there are boosted by {amount}."
+ability.set-row-effect.damage-on-arrival.text: "Set a hazard on {rows}: every unit that arrives there takes {amount} damage."
+ability.clear-row-effect.text: "Clear the row effects from {rows}."
+ability.clear-row-effect.hazard.text: "Clear the hazards from {rows}."
+ability.clear-row-effect.boon.text: "Clear the boons from {rows}."
+ability.continuous-boost.row.text: "The other units on its row have {amount} more power."
+ability.continuous-boost.adjacent.text: "The adjacent units have {amount} more power."

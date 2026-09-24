@@ -1,0 +1,74 @@
+[
+  {
+    "key": "dr-recruit",
+    "faction": "draft-d",
+    "kind": "unit",
+    "power": 1,
+    "token": true,
+    "name": {
+      "zh-CN": "草稿新兵",
+      "en": "Draft recruit"
+    },
+    "ability": "衍生卡，不会出现在卡组中。"
+  },
+  {
+    "key": "dr-alchemist",
+    "faction": "draft-d",
+    "kind": "unit",
+    "color": "bronze",
+    "provisions": 5,
+    "power": 3,
+    "name": {
+      "zh-CN": "草稿炼金师",
+      "en": "Draft alchemist"
+    },
+    "ability": "当此单位的战力第一次达到 8 或更高时，抽一张牌。"
+  },
+  {
+    "key": "dr-shifter",
+    "faction": "draft-d",
+    "kind": "unit",
+    "color": "gold",
+    "provisions": 8,
+    "power": 5,
+    "name": {
+      "zh-CN": "草稿易形者",
+      "en": "Draft shifter"
+    },
+    "ability": "打出时：把一个敌方单位变成一张“草稿新兵”，保留其所在位置。"
+  },
+  {
+    "key": "dr-captain",
+    "faction": "draft-d",
+    "kind": "leader",
+    "provision_bonus": 15,
+    "name": {
+      "zh-CN": "草稿队长",
+      "en": "Draft captain"
+    },
+    "ability": "构筑预算 +15。主动能力，共 2 次：使一个友方单位获得 3 点增益。"
+  },
+  {
+    "key": "dr-gambit",
+    "faction": "draft-d",
+    "kind": "stratagem",
+    "name": {
+      "zh-CN": "草稿先手计",
+      "en": "Draft gambit"
+    },
+    "ability": "使用一次：抽一张牌。"
+  },
+  {
+    "key": "dr-scholar",
+    "faction": "draft-d",
+    "kind": "unit",
+    "color": "bronze",
+    "provisions": 4,
+    "power": 3,
+    "name": {
+      "zh-CN": "草稿学者",
+      "en": "Draft scholar"
+    },
+    "ability": "打出时：从你的手牌中选择一张牌展示给对手，然后把它放到你牌库的底部。"
+  }
+]

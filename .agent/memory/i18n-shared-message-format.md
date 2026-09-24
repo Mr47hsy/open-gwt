@@ -16,6 +16,11 @@ that do not know the key. `data/i18n/conformance.yaml` runs in both CI pipelines
 **Why:** the owner wanted the server side thought through, not waved away; the risk once two
 sides render text is drift, and a shared conformance suite is the only mechanism that catches it.
 
+Card texts are the one place the compiler composes messages: it renders phrase keys first and
+passes them as literal parameters to sentence templates (i18n.md §10), so the format itself
+stayed as it was. A grammatical case a locale needs is a twin key (`ability.target-to.…`), not
+syntax.
+
 **How to apply:** never put a sentence in an event, view, log or stored record; never extend the
 message syntax ad hoc — a new need means Fluent, not a bigger regex; add plural rules and cases
 for any new locale on both sides. See [[card-protocol-yaml]], [[client-ui-toolkit]].

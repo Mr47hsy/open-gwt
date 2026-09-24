@@ -23,6 +23,7 @@ from opengwt.core.model import (
     Rules,
     card_def_from_mapping,
 )
+from opengwt.data.cardtext import fill_card_texts
 
 SCHEMA_DIR = Path(__file__).parent / "schemas"
 NEUTRAL = "neutral"
@@ -219,9 +220,10 @@ def check_leaders(lib: Library) -> list[str]:
 def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
     """Missing keys, as ``locale: key`` strings — docs/protocol/i18n.md §2, §7 and ADR 0006.
 
-    Plural variants are compared by their base key: a locale that has any variant (or the bare
-    base key) of an English plural counts as complete, and a locale with variants must have
-    ``.other``.
+    ``tables`` are expected to carry the generated card texts already (``fill_card_texts``), so
+    a missing ``card.<id>.text`` means it was not generated. Plural variants are compared by
+    their base key: a locale that has any variant (or the bare base key) of an English plural
+    counts as complete, and a locale with variants must have ``.other``.
     """
     problems: list[str] = []
     base = tables.get(BASE_LOCALE)
@@ -245,7 +247,9 @@ def check_i18n(lib: Library, tables: dict[str, dict[str, str]]) -> list[str]:
 
 def load_data(data_dir: Path, rules: Rules = DEFAULT_RULES) -> DataSet:
     """Everything under ``data/``, validated, the decks legal under ``rules`` — the ``Rules``
-    the pack will carry (cards.md §14). Raises ``DataError`` listing every problem found."""
+    the pack will carry (cards.md §14) — and every card text a locale lacks generated from the
+    card's abilities (docs/protocol/i18n.md §10). Raises ``DataError`` listing every problem
+    found."""
     lib = load_library(data_dir / "cards")
     problems: list[str] = check_references(lib) + check_leaders(lib)
     decks: dict[str, Deck] = {}
@@ -255,7 +259,8 @@ def load_data(data_dir: Path, rules: Rules = DEFAULT_RULES) -> DataSet:
     except DataError as e:
         problems.extend(e.problems)
     try:
-        tables = load_i18n(data_dir / "i18n")
+        tables, text_problems = fill_card_texts(lib, load_i18n(data_dir / "i18n"), rules)
+        problems.extend(text_problems)
         problems.extend(check_i18n(lib, tables))
     except DataError as e:
         problems.extend(e.problems)
